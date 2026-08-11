@@ -1,0 +1,65 @@
+// حسابي — التقدّم، وتغيير المسار، والتنبيهات التي لا يصحّ إخفاؤها.
+
+import * as data from '../data.js';
+import * as store from '../store.js';
+import { el, ar, pct, go, padNav } from '../ui.js';
+
+export default function accountScreen() {
+  const track = store.get().track;
+  const pool = data.forTrack(track);
+  const prog = store.progress(pool);
+  const subjects = store.bySubject(pool).sort((a, b) => b.mastery - a.mastery);
+  const label = data.manifest().tracks[track].label;
+
+  return padNav(el('div.pane', [
+    el('div.stack', { style: { gap: '6px' } }, [
+      el('h1.title', 'حسابي'),
+      el('p.lede', `مسار ${label} — ${ar(prog.done)} من ${ar(prog.total)} سؤالاً`),
+    ]),
+
+    el('div.stack', [
+      el('span.section-title', 'الإتقان حسب العلم'),
+      el('div.stack', subjects.map((s) =>
+        el('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px' } }, [
+          el('div.row', { style: { fontSize: '13.5px' } }, [
+            el('span', s.subject),
+            el('span.num', { style: { color: 'var(--ink-4)' } },
+              s.done ? `${ar(s.done)}/${ar(s.total)} — ${pct(s.mastery)}` : '—'),
+          ]),
+          el('div.bar', el('i', { style: { width: `${Math.round(s.mastery * 100)}%` } })),
+        ]))),
+    ]),
+
+    el('button.card', { onclick: () => go('track') }, [
+      el('div.row', [
+        el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'غيّر المسار'),
+        el('span', { style: { fontSize: '18px', color: 'var(--ink-8)' } }, '‹'),
+      ]),
+      el('span.fine', { style: { textAlign: 'start' } }, 'الأئمة · المؤذنون · المتقاعدون'),
+    ]),
+
+    // التنبيهان اللذان لا يُخفَيان عن الطالب (README §٥.٣ و§٥.٤)
+    el('div.card.card--sand', { style: { gap: '8px' } }, [
+      el('span', { style: { fontSize: '13.5px', fontWeight: '600', color: 'var(--sand-ink)' } }, 'قبل أن تعتمد على هذه الأسئلة'),
+      el('span.fine', { style: { color: 'var(--sand-ink2)' } },
+        'هي اجتهادٌ تدريبيٌّ مبنيٌّ على الكتب المقرَّرة، لا أسئلةَ اختباراتٍ رسمية — والوزارة لا تنشر نماذج أسئلة. والفقه على المذهب الحنبليّ، فالصواب ما في دليل الطالب لا ما اشتُهر في غيره.'),
+    ]),
+
+    el('div.card', { style: { gap: '8px' } }, [
+      el('span', { style: { fontSize: '13.5px', fontWeight: '600' } }, 'بياناتك'),
+      el('span.fine', 'تقدّمك محفوظٌ على جهازك وحده. لا حساب، ولا خادم، ولا بياناتٍ شخصية. وتسجيلات التسميع تُحذف تلقائياً بعد ٣٠ يوماً.'),
+      el('button', {
+        onclick: () => {
+          if (confirm('سيُمحى تقدّمك كلّه من هذا الجهاز. أمتأكّد؟')) { store.reset(); go('track'); }
+        },
+        style: {
+          font: 'inherit', fontSize: '13.5px', color: 'var(--wrong)', background: 'none',
+          border: 'none', cursor: 'pointer', textAlign: 'start', padding: '4px 0 0',
+        },
+      }, 'امسح تقدّمي'),
+    ]),
+
+    el('p.fine', { style: { textAlign: 'center' } },
+      'إدارة الشؤون الفنية — قطاع المساجد، هاتف ٢٢٢٦٢٧٤٠'),
+  ]));
+}

@@ -1,0 +1,11 @@
+{
+  "name": "awqaf-prep",
+  "version": "1.0.0",
+  "description": "منصة الاستعداد لاختبارات الوظائف الدينية — وزارة الأوقاف والشؤون الإسلامية، دولة الكويت",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node tools/serve.js"
+  },
+  "engines": { "node": ">=18" }
+}

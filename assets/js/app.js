@@ -1,0 +1,49 @@
+// نقطة الدخول: تحميل البيانات، وتسجيل الشاشات، وفتح أولّها.
+
+import * as data from './data.js';
+import * as store from './store.js';
+import * as audio from './audio.js';
+import { defineRoutes, go, el, startClock } from './ui.js';
+
+import trackScreen from './screens/track.js';
+import homeScreen from './screens/home.js';
+import { booksScreen, bookScreen } from './screens/books.js';
+import quizScreen from './screens/quiz.js';
+import customScreen from './screens/custom.js';
+import tajweedScreen, { surahsScreen } from './screens/tajweed.js';
+import reciteScreen from './screens/recite.js';
+import flashcardsScreen from './screens/flashcards.js';
+import accountScreen from './screens/account.js';
+
+defineRoutes({
+  track: trackScreen,
+  home: homeScreen,
+  books: booksScreen,
+  book: bookScreen,
+  quiz: quizScreen,
+  custom: customScreen,
+  tajweed: tajweedScreen,
+  surahs: surahsScreen,
+  recite: reciteScreen,
+  flashcards: flashcardsScreen,
+  account: accountScreen,
+});
+
+startClock();
+audio.sweep();
+
+const screen = document.getElementById('screen');
+screen.append(el('div.empty', el('span.head', 'يُحمَّل المنهج…')));
+
+data.load()
+  .then(() => {
+    // أول شاشةٍ في التطبيق اختيارُ المسار، ولا يُتجاوَز إلا بعد اختياره.
+    go(store.get().track ? 'home' : 'track');
+  })
+  .catch((err) => {
+    screen.replaceChildren(el('div.empty', [
+      el('span.head', 'تعذّر تحميل البيانات'),
+      el('p.lede', String(err.message || err)),
+      el('p.fine', 'شغّل المشروع عبر خادمٍ محليّ (npm start) لا بفتح الملف مباشرةً.'),
+    ]));
+  });

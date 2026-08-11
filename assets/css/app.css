@@ -1,0 +1,356 @@
+/* =========================================================================
+   منصة الاستعداد لاختبارات الوظائف الدينية
+   اللغة البصرية 2a — مأخوذة حرفياً من «شاشات التطبيق.dc.html»
+   ========================================================================= */
+
+:root {
+  /* الأسطح */
+  --paper:    #faf7f1;  /* خلفية الشاشة */
+  --surface:  #f2ece2;  /* البطاقات */
+  --sunk:     #ece5da;  /* المسارات الفارغة (أشرطة التقدّم) */
+  --line:     #ded5c7;  /* الحدود */
+  --hairline: #e7dfd2;  /* فواصل داخلية */
+
+  /* الحبر */
+  --ink:      #1c1917;
+  --ink-2:    #57504a;
+  --ink-3:    #6d6355;
+  --ink-4:    #7d7367;
+  --ink-5:    #8a8075;
+  --ink-6:    #97897a;
+  --ink-7:    #a19686;
+  --ink-8:    #b0a596;
+
+  /* الأخضر — لون الهوية */
+  --green:      #14655a;
+  --green-tint: #dfeae6;
+
+  /* الرملي — للتنبيه والمراجعة */
+  --sand:      #eee2cc;
+  --sand-ink:  #5f5230;
+  --sand-ink2: #82724d;
+  --sand-ink3: #7a6a45;
+
+  /* الأحمر — للخطأ وحده */
+  --wrong:      #b3453a;
+  --wrong-tint: #fbeeec;
+
+  /* الشكل */
+  --r-phone:  44px;
+  --r-card:   28px;
+  --r-card-2: 24px;
+  --r-chip:   20px;
+  --r-pill:   999px;
+  --h-btn:    56px;
+  --h-nav:    62px;
+  --pad:      24px;
+
+  /* الخطوط */
+  --sans:  'IBM Plex Sans Arabic', system-ui, sans-serif;
+  --serif: 'Amiri', serif;
+  --quran: 'Amiri Quran', 'Amiri', serif;
+  /* IBM Plex Mono بلا حروفٍ عربية. فلولا هذا الاحتياط لتباعدت الحروف العربية
+     في أي نصٍّ يخلط رقماً بكلمة. الأرقام تبقى أحاديةً، والحروف تعود للخطّ العربيّ. */
+  --mono:  'IBM Plex Mono', 'IBM Plex Sans Arabic', ui-monospace, monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: var(--sans);
+  color: var(--ink);
+  background: #e6e0d5;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+/* ─── إطار الجهاز ───────────────────────────────────────────────────────── */
+
+.stage { min-height: 100dvh; display: flex; align-items: center; justify-content: center; }
+
+.device {
+  width: 390px;
+  height: 844px;
+  max-height: 100dvh;
+  background: var(--paper);
+  border-radius: var(--r-phone);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* على الجوال: ملء الشاشة بلا إطار */
+@media (max-width: 480px), (max-height: 880px) {
+  body { background: var(--paper); }
+  .device {
+    width: 100%; height: 100dvh; max-height: none;
+    border-radius: 0; border: none;
+  }
+}
+
+.statusbar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: max(18px, env(safe-area-inset-top)) 32px 2px;
+  font-size: 13.5px; font-weight: 600; color: var(--ink-2);
+  flex-shrink: 0;
+}
+.battery { width: 18px; height: 9px; border: 1px solid #a89e90; border-radius: 3px; display: block; }
+
+.screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  scrollbar-width: none;
+}
+.screen::-webkit-scrollbar { display: none; }
+.screen:focus { outline: none; }
+
+/* ─── شريط التنقّل العائم ───────────────────────────────────────────────── */
+
+.tabbar {
+  position: absolute;
+  bottom: max(26px, env(safe-area-inset-bottom));
+  right: var(--pad); left: var(--pad);
+  background: var(--ink);
+  border-radius: var(--r-pill);
+  height: var(--h-nav);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 26px;
+  z-index: 20;
+}
+/* سمة hidden وحدها لا تكفي: display:flex أعلاه يتغلّب عليها، فيبقى الشريط
+   حاجباً للنقر أسفل كل شاشةٍ بلا تبويبات. */
+.tabbar[hidden] { display: none; }
+.tabbar button {
+  font: inherit; font-size: 13.5px; background: none; border: none; cursor: pointer;
+  color: rgba(250, 247, 241, 0.5);
+  padding: 8px 2px;
+}
+.tabbar button[aria-current="page"] { color: var(--paper); font-weight: 600; }
+
+/* حين يظهر شريط التنقّل نترك له فراغاً أسفل المحتوى */
+.pad-nav { padding-bottom: 104px !important; }
+
+/* ─── التخطيط العام داخل الشاشة ─────────────────────────────────────────── */
+
+.pane { flex: 1; display: flex; flex-direction: column; padding: 22px var(--pad); gap: 20px; }
+.pane--tight { gap: 14px; }
+.push { margin-top: auto; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.stack-sm { display: flex; flex-direction: column; gap: 8px; }
+.row { display: flex; justify-content: space-between; align-items: center; }
+.row-base { display: flex; justify-content: space-between; align-items: baseline; }
+
+/* ─── الطباعة ───────────────────────────────────────────────────────────── */
+
+.display { font-family: var(--serif); font-size: 40px; font-weight: 700; line-height: 1.2; }
+.title   { font-family: var(--serif); font-size: 36px; font-weight: 700; line-height: 1.3; }
+.head    { font-family: var(--serif); font-size: 30px; font-weight: 700; line-height: 1.3; }
+.h-card  { font-family: var(--serif); font-size: 27px; font-weight: 700; line-height: 1.35; }
+.lede    { font-size: 15px; line-height: 1.85; color: var(--ink-4); }
+.meta    { font-size: 13.5px; line-height: 1.75; color: var(--ink-5); }
+.fine    { font-size: 12.5px; line-height: 1.8; color: var(--ink-6); }
+.section-title { font-size: 16px; font-weight: 700; }
+.num { font-family: var(--mono); }
+
+/* ─── الأسطح ────────────────────────────────────────────────────────────── */
+
+.card {
+  background: var(--surface);
+  border-radius: var(--r-card-2);
+  padding: 20px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.card--lg { border-radius: var(--r-card); padding: 24px; }
+.card--green { background: var(--green); color: var(--paper); }
+.card--sand  { background: var(--sand); color: var(--sand-ink); }
+.card--paper { background: var(--paper); }
+
+button.card, a.card, .card[role="button"] { font: inherit; text-align: inherit; border: none; cursor: pointer; width: 100%; color: inherit; }
+.card[role="button"]:active, button.card:active { transform: scale(0.988); }
+.card { transition: transform .12s ease; }
+
+/* ─── الشارات ───────────────────────────────────────────────────────────── */
+
+.chip {
+  font-size: 12.5px; color: var(--green); background: var(--green-tint);
+  padding: 6px 13px; border-radius: var(--r-chip); align-self: flex-start;
+}
+.chip--muted { color: var(--ink-3); background: var(--surface); }
+.chip--onGreen { background: rgba(250, 247, 241, 0.16); color: var(--paper); font-size: 12px; padding: 5px 11px; }
+
+/* شارة الصفحة في الكتاب — ورقة الثقة الوحيدة، فلها لونها الخاص.
+   لا تُخطّ بـIBM Plex Mono لأنه بلا حروفٍ عربية، فيتباعد الخطّ تباعداً قبيحاً. */
+.pagecite {
+  font-family: var(--sans); font-size: 11.5px;
+  color: var(--sand-ink3); background: var(--sand);
+  padding: 4px 10px; border-radius: var(--r-chip); white-space: nowrap;
+}
+.card--green .pagecite { background: rgba(250, 247, 241, 0.18); color: var(--paper); }
+
+/* ─── الأزرار ───────────────────────────────────────────────────────────── */
+
+.btn {
+  font: inherit; font-size: 16px; font-weight: 600;
+  background: var(--ink); color: var(--paper);
+  border: none; border-radius: var(--r-pill); height: var(--h-btn);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  cursor: pointer; width: 100%; padding: 0 20px;
+  transition: opacity .12s ease, transform .12s ease;
+}
+.btn:active { transform: scale(0.985); }
+.btn[disabled] { opacity: .38; cursor: default; transform: none; }
+.btn--ghost { background: var(--surface); color: var(--ink-3); font-size: 14px; font-weight: 400; width: auto; flex-shrink: 0; }
+.btn--green { background: var(--green); }
+.btn-row { display: flex; gap: 10px; align-items: center; }
+.btn-row .btn:first-child { flex: 1; }
+
+.iconbtn {
+  width: 38px; height: 38px; border-radius: 50%; background: var(--surface);
+  border: none; cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: var(--ink-2); font-family: var(--sans);
+}
+.iconbtn--lg { width: 46px; height: 46px; background: var(--ink); color: var(--paper); font-size: 15px; }
+
+/* ─── أشرطة التقدّم ─────────────────────────────────────────────────────── */
+
+.bar { height: 6px; border-radius: var(--r-chip); background: var(--sunk); overflow: hidden; display: flex; }
+.bar > i { background: var(--green); display: block; transition: width .3s ease; }
+.bar--thin { height: 4px; }
+.bar--onGreen { background: rgba(250, 247, 241, 0.24); }
+.bar--onGreen > i { background: var(--paper); }
+.bar--wrong > i { background: var(--wrong); }
+
+/* ─── الترويسات العلوية ─────────────────────────────────────────────────── */
+
+.topbar { display: flex; align-items: center; gap: 14px; padding: 16px var(--pad) 0; flex-shrink: 0; }
+.topbar .grow { flex: 1; }
+.topbar-title { font-size: 13.5px; color: var(--ink-5); text-align: center; flex: 1; }
+
+/* ─── القوائم ───────────────────────────────────────────────────────────── */
+
+.list { display: flex; flex-direction: column; }
+.list-item {
+  font: inherit; text-align: inherit; background: none; border: none; cursor: pointer; color: inherit;
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 15px 4px; border-bottom: 1px solid var(--hairline);
+}
+.list-item:last-child { border-bottom: none; }
+.list-item .num { font-size: 12.5px; color: var(--ink-5); }
+
+/* ─── الشبكة ────────────────────────────────────────────────────────────── */
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tile {
+  background: var(--surface); border-radius: var(--r-card-2); padding: 18px;
+  min-height: 116px; display: flex; flex-direction: column; justify-content: space-between; gap: 8px;
+  font: inherit; text-align: inherit; border: none; cursor: pointer; color: inherit;
+}
+.tile--sand { background: var(--sand); }
+.tile--sand .h-card { color: var(--sand-ink); }
+.tile--sand .fine { color: var(--sand-ink2); }
+
+/* ─── الإجابة والتصحيح الذاتي ───────────────────────────────────────────── */
+
+.answerbox {
+  flex: 1; min-height: 150px;
+  background: var(--surface); border-radius: var(--r-card); padding: 20px;
+  font: inherit; font-size: 15.5px; line-height: 2.1; color: var(--ink);
+  border: none; resize: none; width: 100%;
+  caret-color: var(--green);
+}
+.answerbox::placeholder { color: var(--ink-7); }
+.answerbox:focus { outline: 2px solid var(--green-tint); outline-offset: 2px; }
+
+.point {
+  display: flex; gap: 12px; align-items: center;
+  background: var(--surface); border-radius: 18px; padding: 9px 16px;
+  font: inherit; text-align: inherit; border: none; cursor: pointer; width: 100%;
+  color: var(--ink-4); font-size: 14px; line-height: 1.6;
+}
+.point .box { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid #c5bbaa; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; color: transparent; }
+.point[aria-pressed="true"] { background: var(--green-tint); color: var(--ink); }
+.point[aria-pressed="true"] .box { background: var(--green); border-color: var(--green); color: #fff; }
+
+/* ─── خيارات الاختيار من متعدد ──────────────────────────────────────────── */
+
+.choice {
+  font: inherit; text-align: inherit; cursor: pointer; width: 100%;
+  background: var(--surface); border: 1.5px solid transparent; border-radius: 18px;
+  padding: 15px 18px; font-size: 15px; line-height: 1.7; color: var(--ink);
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+}
+.choice[data-state="right"] { border-color: var(--green); background: var(--green-tint); font-weight: 600; }
+.choice[data-state="wrong"] { border-color: var(--wrong); background: var(--wrong-tint); }
+.choice[data-state="dim"]   { color: var(--ink-4); }
+.choice .mark { font-size: 15px; flex-shrink: 0; }
+.choice[data-state="right"] .mark { color: var(--green); }
+.choice[data-state="wrong"] .mark { color: var(--wrong); }
+
+/* ─── القرآن والتجويد ───────────────────────────────────────────────────── */
+
+.ayah { font-family: var(--quran); font-size: 42px; line-height: 2.1; text-align: center; }
+.ayah--sm { font-size: 27px; line-height: 2.3; }
+.ayah w { display: inline; padding-bottom: 5px; }
+.ayah w[data-hl="ghunnah"] { border-bottom: 3px solid var(--green); }
+.ayah w[data-hl="madd"]    { border-bottom: 3px solid #a07a2c; }
+.ayah .ayah-no { font-family: var(--serif); color: #a07a2c; }
+
+.legend { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.legend span {
+  display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--ink-3);
+  background: var(--surface); padding: 6px 13px; border-radius: var(--r-chip);
+}
+.legend i { width: 12px; height: 3px; display: block; }
+
+.sheet {
+  flex: 1; background: var(--surface); border-radius: 34px 34px 0 0;
+  padding: 24px 22px; display: flex; flex-direction: column; gap: 12px;
+  min-height: 0;
+}
+
+/* ─── التسميع ───────────────────────────────────────────────────────────── */
+
+.wave { flex: 1; display: flex; align-items: center; gap: 2.5px; height: 34px; }
+.wave span { flex: 1; background: var(--line); border-radius: 2px; min-height: 3px; transition: height .1s linear, background .1s linear; }
+.wave span[data-on="1"] { background: var(--green); }
+
+/* ─── بطاقات الحفظ ──────────────────────────────────────────────────────── */
+
+.deck { position: relative; flex: 1; min-height: 380px; }
+.deck .under { position: absolute; background: #f3ece1; border: 1px solid var(--line); border-radius: 26px; }
+.deck .under.a { inset: 16px 10px -16px 10px; }
+.deck .under.b { inset: 8px 5px -8px 5px; background: #f7f1e8; }
+.flashcard {
+  position: absolute; inset: 0; background: var(--paper);
+  border: 1px solid var(--line); border-radius: 26px; padding: 24px;
+  display: flex; flex-direction: column; gap: 14px; overflow-y: auto;
+  scrollbar-width: none;
+}
+.flashcard::-webkit-scrollbar { display: none; }
+.flashcard .count { font-family: var(--serif); font-size: 44px; color: var(--green); font-weight: 700; line-height: 1; }
+.flashcard ol { list-style: none; display: flex; flex-direction: column; gap: 7px; font-size: 14.5px; line-height: 1.7; color: #4a4238; }
+
+/* ─── التنبيهات ─────────────────────────────────────────────────────────── */
+
+.disclaimer { font-size: 12.5px; line-height: 1.8; color: var(--ink-6); padding: 0 4px; }
+.note-sand { background: var(--sand); color: var(--sand-ink2); border-radius: 18px; padding: 13px 16px; font-size: 12.5px; line-height: 1.8; }
+
+.empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 40px 30px; color: var(--ink-5); }
+
+/* ─── الحركة ────────────────────────────────────────────────────────────── */
+
+@keyframes fade-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.screen > * { animation: fade-up .22s ease both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, .screen > * { animation: none !important; transition: none !important; }
+}
