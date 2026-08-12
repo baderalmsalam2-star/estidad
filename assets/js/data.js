@@ -10,6 +10,7 @@ const BANK_FILES = [
   '06_nahw.json',
   '07_meethaq.json',
   '08_fiqh_janaiz.json',
+  '09_generated_fiqh.json',
 ];
 
 // الكتاب المقرَّر لكل علم — مصدره حقل `book` في البنوك و`sourceBooks` في المنيفست.
@@ -221,12 +222,17 @@ export function flashcardsOf(track) {
   return forTrack(track)
     .filter((q) => Array.isArray(q.keyPoints) && q.keyPoints.length >= 3)
     .map((q) => {
-      // النقطة الأولى كثيراً ما تكون «العدد: سبعة» — نرفعها عنواناً للبطاقة.
+      // إن هُيكلت الإجابة (tools/هيكلة_الإجابات.py) فالعدد والبنود مفصولان
+      // بيقين، فتُرقَّم البنود بأمان. وإلا فلا ترقيم.
+      if (q.answer && Array.isArray(q.answer.items)) {
+        return { q, count: q.answer.countWord, items: q.answer.items,
+                 caveats: q.answer.caveats || [], numbered: true };
+      }
       const first = q.keyPoints[0] || '';
       const countMatch = first.match(/^العدد[:：]\s*(.+)$/);
       const count = countMatch ? countMatch[1].trim() : (first.match(NUMBER_WORDS) || [])[0] || null;
       const items = countMatch ? q.keyPoints.slice(1) : q.keyPoints;
-      return { q, count, items };
+      return { q, count, items, caveats: [], numbered: false };
     })
     .filter((c) => c.items.length >= 3);
 }

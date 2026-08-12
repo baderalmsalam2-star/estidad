@@ -16,7 +16,7 @@ export default function flashcardsScreen() {
   const wrap = el('div', { style: { display: 'flex', flexDirection: 'column', flex: '1', minHeight: '0' } });
 
   const paint = () => {
-    const { q, count, items } = cards[i];
+    const { q, count, items, caveats, numbered } = cards[i];
     const known = store.isMemorized(q.id);
 
     wrap.replaceChildren(
@@ -34,7 +34,7 @@ export default function flashcardsScreen() {
           el('button.flashcard', {
             onclick: () => { flipped = !flipped; paint(); },
             style: { font: 'inherit', textAlign: 'start', cursor: 'pointer', color: 'inherit' },
-          }, flipped ? back(q, count, items) : front(q)),
+          }, flipped ? back(q, count, items, caveats, numbered) : front(q)),
         ]),
 
         el('div.btn-row', { style: { marginTop: 'auto' } }, [
@@ -66,13 +66,18 @@ export default function flashcardsScreen() {
     ];
   }
 
-  function back(q, count, items) {
+  function back(q, count, items, caveats, numbered) {
     return [
       el('span.chip', `${q.subject}${q.topic ? ' · ' + q.topic : ''}`),
       count ? el('span.count', count) : null,
-      // لا تُرقَّم البنود: بعض `keyPoints` قيودٌ لا معدوداتٌ، فترقيمُها يناقض
-      // العدد المذكور أعلاه ويُعلّم الطالب خطأً. العدد وحده هو الحاكم.
-      el('ol', items.map((t) => el('li', `— ${t}`))),
+      // لا تُرقَّم البنود إلا إذا فُصلت عن القيود بيقين، وإلا ناقض الترقيمُ
+      // العددَ المذكور فعلَّم الطالب خطأً.
+      el('ol', items.map((t, n) => el('li', numbered ? `${ar(n + 1)} — ${t}` : `— ${t}`))),
+      caveats && caveats.length
+        ? el('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '8px', borderTop: '1px solid var(--hairline)' } },
+            [el('span.fine', { style: { color: 'var(--sand-ink3)' } }, 'قيود:'),
+             ...caveats.map((c) => el('span.fine', `· ${c}`))])
+        : null,
       el('div', { style: { marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px', borderTop: '1px solid var(--hairline)' } }, [
         el('span', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, [pageCite(q), devBadge(q)]),
         el('span.fine', 'اقلبها ثانيةً'),
