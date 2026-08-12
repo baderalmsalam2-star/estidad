@@ -41,6 +41,7 @@ const state = {
   tajweed: null,
   hints: {},        // ترشيحات الصفحات — مُرشِّحٌ لا حَكَم
   pageIndex: {},    // أي صفحةٍ رُسمت صورتُها
+  bookLinks: {},    // مراجع الكتب غير المرفوعة
 };
 
 // العلم → مُعرِّف كتابه في books/
@@ -71,11 +72,15 @@ export function pageRefOf(q) {
   }
   const h = state.hints[q.id];
   return h && { book: h.book, page: h.page, label: `ص${h.page}`, verified: false,
-                confidence: h.confidence, hasImage: hasImage(h.book, h.page) };
+                confidence: h.confidence, countWord: h.countWord, countAgrees: h.countAgrees,
+                hasImage: hasImage(h.book, h.page) };
 }
 
 const hasImage = (book, page) => !!state.pageIndex[book]?.pages?.includes(page);
 export const bookPageCount = (book) => state.pageIndex[book]?.count || null;
+/** مرجعُ الكتاب الرسميّ — يُعرَض حين لا يكون مرفوعاً داخل التطبيق. */
+export const bookLink = (book) => state.bookLinks[book] || null;
+export const allBookLinks = () => state.bookLinks;
 
 async function getJSON(path) {
   const res = await fetch(path);
@@ -87,16 +92,18 @@ async function getJSON(path) {
 export async function load() {
   if (state.manifest) return state;
 
-  const [manifest, hints, pageIndex, ...banks] = await Promise.all([
+  const [manifest, hints, pageIndex, bookLinks, ...banks] = await Promise.all([
     getJSON('data/manifest.json'),
     getJSON('data/page-hints.json').catch(() => ({})),
     getJSON('books/pages-index.json').catch(() => ({})),
+    getJSON('data/book-links.json').catch(() => ({})),
     ...BANK_FILES.map((f) => getJSON(`data/banks/${f}`)),
   ]);
 
   state.manifest = manifest;
   state.hints = hints;
   state.pageIndex = pageIndex;
+  state.bookLinks = bookLinks;
 
   banks.forEach((bank, i) => {
     const file = BANK_FILES[i];

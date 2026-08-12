@@ -1,0 +1,53 @@
+{
+  "_note": "روابط الكتب الرسمية — مصدرها docs/منهج_الأئمة_روابط_الكتب.md. تُعرَض حين لا يكون الكتاب مرفوعاً داخل التطبيق، وهي البديل الأسلم الذي أوصى به دليل الكتب.",
+  "daleel-altalib": {
+    "title": "دليل الطالب لنيل المطالب",
+    "author": "مرعي بن يوسف الكرمي الحنبلي",
+    "links": [
+      { "label": "المكتبة الشاملة — نصٌّ كاملٌ قابلٌ للبحث", "url": "https://shamela.ws/book/11196", "best": true },
+      { "label": "أرشيف — PDF", "url": "https://archive.org/details/sarayassaf_gmail_20170323_0111" }
+    ]
+  },
+  "ghayat-almureed": {
+    "title": "غاية المريد في علم التجويد",
+    "author": "الشيخ عطية قابل نصر",
+    "links": [
+      { "label": "أرشيف — نسخة ١", "url": "https://archive.org/details/tajweed_20131222_1321", "best": true },
+      { "label": "أرشيف — نسخة ٢", "url": "https://archive.org/details/20191118_20191118_1229" }
+    ]
+  },
+  "tuhfa-saniyya": {
+    "title": "التحفة السنية بشرح الآجرومية",
+    "author": "محمد محيي الدين عبد الحميد",
+    "links": [
+      { "label": "طبعة أوقاف قطر — ١٨٣ صفحة، نسخةٌ نظيفة", "url": "https://archive.org/details/20200227_20200227_0640", "best": true },
+      { "label": "طبعة المكتبة العصرية", "url": "https://archive.org/details/to7fah.ss" }
+    ]
+  },
+  "meethaq-almasjid": {
+    "title": "ميثاق المسجد",
+    "author": "وزارة الأوقاف والشؤون الإسلامية",
+    "links": [
+      { "label": "الصفحة الرسمية للوزارة", "url": "https://main.awqaf.gov.kw/ar/الخدمات/ميثاق-المسجد-47", "best": true },
+      { "label": "مكتبة نور", "url": "https://www.noor-book.com/en/ebook-ميثاق-المسجد-الوثيقه-المنظمه-لعمل-الامام-والخطيب-والمؤذن--pdf" }
+    ]
+  },
+  "bareeq-aljuman": {
+    "title": "بريق الجمان بشرح أركان الإيمان",
+    "author": "د. محمد محمدي النورستاني — مكتب الشؤون الفنية",
+    "warning": "إصدارٌ رسميٌّ للوزارة، وترقيم النسخ المرفوعة قد يخالف الطبعة المعتمدة. خذ النسخة المعتمدة من إدارة الشؤون الفنية — هاتف ٢٢٣٤٢٥٧٦.",
+    "links": [
+      { "label": "صفحة الكتاب — قطاع المساجد", "url": "http://www.masajed.gov.kw/Content/DepartmentContent.aspx?ContentID=1976", "best": true },
+      { "label": "أرشيف — ٢٥٥ صفحة (ترقيمٌ مخالف)", "url": "https://archive.org/details/bareeq_joman" }
+    ]
+  },
+  "zubdat-altafseer": {
+    "title": "زبدة التفسير",
+    "author": "د. محمد سليمان الأشقر",
+    "warning": "المقرَّر جزء عمّ وحده، وهو في آخر الكتاب: ص٥٥٥ إلى ٦٠٤.",
+    "links": [
+      { "label": "أرشيف — نسخةٌ كاملة", "url": "https://archive.org/details/ar_Zobdat_altafser", "best": true },
+      { "label": "بهامش مصحف المدينة", "url": "https://www.noor-book.com/كتاب-زبدة-التفسير-بهامش-مصحف-المدينة-pdf" }
+    ]
+  }
+}

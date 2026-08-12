@@ -11,6 +11,8 @@ const EMPTY = {
   // بطاقات حُفِظت
   memorized: {},
   exams: [],
+  // قرارات اعتماد التوثيق — للمراجع لا للطالب
+  reviews: {},
 };
 
 function read() {
@@ -105,6 +107,16 @@ export function bySubject(questions) {
   }
   return [...map.values()].map((s) => ({ ...s, mastery: s.done ? s.sum / s.done : 0 }));
 }
+
+/* ── اعتماد التوثيق ─────────────────────────────────────────────────── */
+
+export function setReview(id, status, page) {
+  cache.reviews[id] = { status, page, at: Date.now() };
+  write();
+}
+
+export const reviewOf = (id) => cache.reviews[id]?.status || null;
+export const allReviews = () => cache.reviews;
 
 export function reset() {
   cache = { ...EMPTY };

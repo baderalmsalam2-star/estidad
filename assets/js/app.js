@@ -15,6 +15,7 @@ import reciteScreen from './screens/recite.js';
 import flashcardsScreen from './screens/flashcards.js';
 import accountScreen from './screens/account.js';
 import { openPage, closePage, libraryScreen } from './screens/page-view.js';
+import reviewScreen from './screens/review.js';
 
 defineRoutes({
   track: trackScreen,
@@ -29,6 +30,7 @@ defineRoutes({
   flashcards: flashcardsScreen,
   account: accountScreen,
   library: libraryScreen,
+  review: reviewScreen,
 });
 
 startClock();

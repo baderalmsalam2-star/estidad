@@ -2,7 +2,7 @@
 
 import * as data from '../data.js';
 import * as store from '../store.js';
-import { el, ar, pct, go, padNav, credit } from '../ui.js';
+import { el, ar, pct, go, padNav, credit, devMode } from '../ui.js';
 
 export default function accountScreen() {
   const track = store.get().track;
@@ -29,6 +29,17 @@ export default function accountScreen() {
           el('div.bar', el('i', { style: { width: `${Math.round(s.mastery * 100)}%` } })),
         ]))),
     ]),
+
+    devMode()
+      ? el('button.card.card--green', { onclick: () => go('review') }, [
+          el('div.row', [
+            el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'اعتماد التوثيق'),
+            el('span', { style: { fontSize: '18px', opacity: '0.7' } }, '‹'),
+          ]),
+          el('span', { style: { fontSize: '12.5px', lineHeight: '1.8', opacity: '0.88', textAlign: 'start' } },
+            'مرّ على الأسئلة غير الموثَّقة وأقرّها على صفحاتها. للمراجع لا للطالب.'),
+        ])
+      : null,
 
     el('button.card', { onclick: () => go('track') }, [
       el('div.row', [

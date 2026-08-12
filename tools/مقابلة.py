@@ -59,6 +59,21 @@ def keywords(q):
     return out
 
 
+# ألفاظ الأعداد — مكمن الخطأ الأكبر: «الأموال الزكوية خمسة لا أربعة».
+# فإن ذكرت الإجابة عدداً، وجب أن يظهر اللفظ نفسه في الصفحة المرشَّحة.
+COUNT_WORDS = ['اثنان', 'ثلاثه', 'اربعه', 'خمسه', 'سته', 'سبعه', 'ثمانيه', 'تسعه',
+               'عشره', 'ثلاث', 'اربع', 'خمس', 'ست', 'سبع', 'ثمان', 'تسع', 'عشر']
+
+
+def count_word(q):
+    """لفظ العدد في الإجابة إن وُجد."""
+    blob = norm(' '.join(q.get('keyPoints', []) or []) + ' ' + str(q.get('modelAnswer', '')))
+    for w in COUNT_WORDS:
+        if f' {w} ' in f' {blob} ':
+            return w
+    return None
+
+
 def best_page(pages, words):
     """أعلى صفحةٍ مطابقةً، ودرجةُ الثقة، والفارق عن التالية (يميّز الحسم)."""
     if not words:
@@ -97,10 +112,21 @@ def main():
                 continue
 
             hit = best_page(pages, keywords(q))
-            # عتبةٌ متحفّظة: ثقةٌ معقولة وفارقٌ يميّزها عن سواها
-            if hit and hit['confidence'] >= 0.45 and hit['margin'] >= 0.05:
+
+            # إشارةٌ إضافية: هل لفظ العدد في الإجابة موجودٌ في الصفحة نفسها؟
+            if hit:
+                cw = count_word(q)
+                hit['countWord'] = cw
+                hit['countAgrees'] = bool(cw and cw in pages.get(hit['page'], ''))
+
+            # عتبةٌ متحفّظة: ثقةٌ معقولة وفارقٌ يميّزها عن سواها.
+            # ومن ذكر عدداً ولم يوافقه العدد في الصفحة، رُفعت عتبتُه.
+            floor = 0.60 if (hit and hit.get('countWord') and not hit['countAgrees']) else 0.45
+            if hit and hit['confidence'] >= floor and hit['margin'] >= 0.05:
                 hints[q['id']] = {'book': book_id, 'subject': subject, **hit}
                 stats['مرشَّح'] += 1
+                if hit.get('countWord'):
+                    stats['فيه عددٌ موافق' if hit['countAgrees'] else 'فيه عددٌ مخالف'] += 1
             else:
                 stats['دون العتبة'] += 1
             if report:

@@ -56,11 +56,11 @@ export function openPage(ref) {
     img.addEventListener('error', () => {
       body.replaceChildren(el('div.card.card--sand', [
         el('span', { style: { fontSize: '13.5px', fontWeight: '600', color: 'var(--sand-ink)' } },
-          'هذه الصفحة غير مرسومة'),
+          hasPdf ? 'هذه الصفحة غير مرسومة' : `${bookTitle(ref.book)} غير مرفوعٍ داخل التطبيق`),
         el('span.fine', { style: { color: 'var(--sand-ink2)' } }, hasPdf
           ? 'افتح الكتاب كاملاً من الزرّ أدناه.'
-          : `ملفّ ${bookTitle(ref.book)} غير مرفوعٍ بعد، فلا تُعرَض صفحاته داخل التطبيق.`),
-      ]));
+          : `المطلوب صفحة ${ar(page)}. افتح الكتاب من مرجعه الرسميّ أدناه.`),
+      ]), bookRefCard(ref.book));
     });
 
     layer.replaceChildren(
@@ -105,15 +105,46 @@ export function openPage(ref) {
   paint();
 }
 
+/**
+ * بطاقة المرجع — البديل حين لا يكون الكتاب مرفوعاً.
+ * وهو ما أوصى به دليل الكتب: أَحِل الطالبَ على المصدر الرسميّ بدل رفع الملفّ.
+ */
+export function bookRefCard(bookId) {
+  const info = data.bookLink(bookId);
+  if (!info) return null;
+  return el('div.card', { style: { gap: '10px' } }, [
+    el('div.row', [
+      el('span', { style: { fontSize: '13px', fontWeight: '600', color: 'var(--green)' } }, 'مرجع الكتاب'),
+      el('span.fine', info.author || ''),
+    ]),
+    ...(info.links || []).map((l) =>
+      el('a', {
+        href: l.url, target: '_blank', rel: 'noopener',
+        style: {
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px',
+          background: l.best ? 'var(--green-tint)' : 'var(--paper)', borderRadius: '16px',
+          padding: '12px 15px', textDecoration: 'none', color: 'var(--ink)',
+          fontSize: '13.5px', lineHeight: '1.6',
+        },
+      }, [el('span', l.label), el('span', { style: { color: 'var(--ink-8)' } }, '↗')])),
+    info.warning ? el('p.fine', { style: { color: 'var(--sand-ink3)' } }, info.warning) : null,
+  ]);
+}
+
 /** فهرس الكتب الكاملة — مدخلٌ للتصفّح الحرّ من شاشة «الكتب». */
 export function libraryScreen() {
-  const books = Object.entries(TITLE).filter(([id]) => data.bookPageCount(id));
-  if (!books.length) return empty('لا كتبَ مرفوعة', 'ضع ملفات PDF في مجلّد books/.');
+  const inside = [], outside = [];
+  for (const [id, title] of Object.entries(TITLE)) {
+    (data.bookPageCount(id) ? inside : outside).push([id, title]);
+  }
 
   return el('div', { style: { display: 'flex', flexDirection: 'column', flex: '1', minHeight: '0' } }, [
-    el('div', { style: { padding: '22px 24px 8px' } }, el('h1.title', 'الكتب كاملةً')),
-    el('div', { style: { flex: '1', minHeight: '0', overflowY: 'auto', padding: '8px 24px 26px', display: 'flex', flexDirection: 'column', gap: '12px' } },
-      books.map(([id, title]) =>
+    el('div', { style: { padding: '22px 24px 8px', display: 'flex', flexDirection: 'column', gap: '6px' } }, [
+      el('h1.title', 'الكتب كاملةً'),
+      el('p.lede', 'ما كان داخل التطبيق يُفتَح بلا اتصال، وما سواه يُحال إلى مرجعه الرسميّ.'),
+    ]),
+    el('div', { style: { flex: '1', minHeight: '0', overflowY: 'auto', padding: '8px 24px 26px', display: 'flex', flexDirection: 'column', gap: '12px' } }, [
+      ...inside.map(([id, title]) =>
         el('a.card', {
           href: `books/${id}.pdf`, target: '_blank', rel: 'noopener',
           style: { textDecoration: 'none', color: 'inherit' },
@@ -122,7 +153,15 @@ export function libraryScreen() {
             el('span', { style: { fontFamily: 'var(--serif)', fontSize: '24px', fontWeight: '700', textAlign: 'start' } }, title),
             el('span', { style: { fontSize: '18px', color: 'var(--ink-8)' } }, '‹'),
           ]),
-          el('span.fine', `${ar(data.bookPageCount(id))} صفحة`),
-        ]))),
+          el('span.fine', `${ar(data.bookPageCount(id))} صفحة — داخل التطبيق`),
+        ])),
+
+      outside.length ? el('span.section-title', { style: { marginTop: '10px' } }, 'كتبٌ تُقرأ من مرجعها') : null,
+      ...outside.map(([id, title]) =>
+        el('div.card', { style: { gap: '12px' } }, [
+          el('span', { style: { fontFamily: 'var(--serif)', fontSize: '24px', fontWeight: '700' } }, title),
+          bookRefCard(id),
+        ])),
+    ]),
   ]);
 }
