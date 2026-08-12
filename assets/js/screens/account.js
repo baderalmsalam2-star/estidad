@@ -2,7 +2,7 @@
 
 import * as data from '../data.js';
 import * as store from '../store.js';
-import { el, ar, pct, go, padNav } from '../ui.js';
+import { el, ar, pct, go, padNav, credit } from '../ui.js';
 
 export default function accountScreen() {
   const track = store.get().track;
@@ -61,5 +61,7 @@ export default function accountScreen() {
 
     el('p.fine', { style: { textAlign: 'center' } },
       'إدارة الشؤون الفنية — قطاع المساجد، هاتف ٢٢٢٦٢٧٤٠'),
+
+    credit(),
   ]));
 }

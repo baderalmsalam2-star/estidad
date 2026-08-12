@@ -2,7 +2,7 @@
 
 import * as data from '../data.js';
 import * as store from '../store.js';
-import { el, ar, go, topbar, empty, pageCite } from '../ui.js';
+import { el, ar, go, empty, pageCite, devBadge } from '../ui.js';
 
 export default function flashcardsScreen() {
   const track = store.get().track;
@@ -60,7 +60,7 @@ export default function flashcardsScreen() {
       el('span.chip', `${q.subject}${q.topic ? ' · ' + q.topic : ''}`),
       el('span', { style: { fontFamily: 'var(--serif)', fontSize: '30px', fontWeight: '700', lineHeight: '1.5' } }, q.question),
       el('div', { style: { marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px', borderTop: '1px solid var(--hairline)' } }, [
-        pageCite(q) || el('span'),
+        el('span', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, [pageCite(q), devBadge(q)]),
         el('span.fine', 'اقلب البطاقة'),
       ]),
     ];
@@ -74,7 +74,7 @@ export default function flashcardsScreen() {
       // العدد المذكور أعلاه ويُعلّم الطالب خطأً. العدد وحده هو الحاكم.
       el('ol', items.map((t) => el('li', `— ${t}`))),
       el('div', { style: { marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px', borderTop: '1px solid var(--hairline)' } }, [
-        pageCite(q) || el('span'),
+        el('span', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, [pageCite(q), devBadge(q)]),
         el('span.fine', 'اقلبها ثانيةً'),
       ]),
     ];

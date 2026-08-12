@@ -354,3 +354,17 @@ button.card, a.card, .card[role="button"] { font: inherit; text-align: inherit; 
 @media (prefers-reduced-motion: reduce) {
   *, .screen > * { animation: none !important; transition: none !important; }
 }
+
+/* ─── سطر الاعتماد وشارة المطوّر ────────────────────────────────────────── */
+
+.credit {
+  font-size: 11.5px; line-height: 1.8; color: var(--ink-7);
+  text-align: center; padding: 6px 0 2px;
+}
+
+/* لا يراها الطالب — تُفعَّل بـ?dev=1 فقط */
+.devbadge {
+  font-size: 11px; color: var(--wrong); background: var(--wrong-tint);
+  border: 1px dashed var(--wrong); padding: 3px 9px; border-radius: var(--r-chip);
+  white-space: nowrap; flex-shrink: 0;
+}

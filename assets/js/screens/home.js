@@ -2,7 +2,7 @@
 
 import * as data from '../data.js';
 import * as store from '../store.js';
-import { el, ar, pct, go, padNav } from '../ui.js';
+import { el, ar, pct, go, padNav, credit } from '../ui.js';
 import { openTopic } from './books.js';
 
 export default function homeScreen() {
@@ -62,6 +62,8 @@ export default function homeScreen() {
         'tile--sand',
       ),
     ]),
+
+    credit(),
   ]));
 }
 

@@ -88,6 +88,29 @@ export function topbar({ onBack, title, right = null, icon = '→' } = {}) {
   ]);
 }
 
+/** سطر الاعتماد — صغيرٌ أسفل الصفحة، كما في رحلة المدينة والماهر. */
+export const credit = () =>
+  el('p.credit', 'تم تطوير التطبيق بواسطة بدر المسلم');
+
+/**
+ * شارةٌ للمطوّر وحده لا للطالب: تميّز السؤال الذي لم يُقابَل حرفاً بحرفٍ على
+ * الكتاب بعد، ليُكمل صاحب المشروع المقابلة على دفعات وهو يستعمل التطبيق.
+ * تُفعَّل بـ`?dev=1` وتُطفَأ بـ`?dev=0`، ولا يراها الطالب البتّة.
+ */
+export function devBadge(q) {
+  if (!devMode() || q.bookVerified) return null;
+  return el('span.devbadge', 'لم يُقابَل');
+}
+
+const DEV_KEY = 'awqaf-prep/dev';
+export const devMode = () => localStorage.getItem(DEV_KEY) === '1';
+export function setDevMode(on) {
+  try {
+    if (on) localStorage.setItem(DEV_KEY, '1');
+    else localStorage.removeItem(DEV_KEY);
+  } catch { /* لا شيء */ }
+}
+
 export function empty(title, note) {
   return el('div.empty', [el('span.head', title), note ? el('p.lede', note) : null]);
 }

@@ -5,7 +5,7 @@
 
 import * as data from '../data.js';
 import * as store from '../store.js';
-import { el, ar, pct, arTime, go, pageCite, empty } from '../ui.js';
+import { el, ar, pct, arTime, go, pageCite, devBadge, empty } from '../ui.js';
 
 export default function quizScreen({ questions, mode = 'study', title = '', back = null }) {
   if (!questions || !questions.length) {
@@ -98,7 +98,8 @@ function selfGradeView(host, session, q) {
     el('div.row', [
       el('span', { style: { fontSize: '13px', fontWeight: '600', color: 'var(--green)' } }, 'الإجابة النموذجية'),
       // شارة الصفحة — ورقة الثقة الوحيدة في تطبيقٍ فرديٍّ بلا جهة اعتماد.
-      pageCite(q),
+      // وبجانبها شارة المطوّر إن كان الوضع مفعَّلاً.
+      el('span', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, [pageCite(q), devBadge(q)]),
     ]),
     el('p', { style: { fontFamily: 'var(--serif)', fontSize: '18px', lineHeight: '1.9' } },
       q.modelAnswer || q.explanation || ''),
@@ -221,7 +222,7 @@ function explainCard(q, correct) {
       el('span', {
         style: { fontSize: '13px', fontWeight: '600', color: correct ? 'var(--green)' : 'var(--wrong)' },
       }, correct ? 'أصبتَ' : 'راجِعها'),
-      pageCite(q),
+      el('span', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, [pageCite(q), devBadge(q)]),
     ]),
     answerText && !correct
       ? el('p', { style: { fontFamily: 'var(--serif)', fontSize: '18px', lineHeight: '1.8' } }, answerText)

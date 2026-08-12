@@ -3,7 +3,7 @@
 import * as data from './data.js';
 import * as store from './store.js';
 import * as audio from './audio.js';
-import { defineRoutes, go, el, startClock } from './ui.js';
+import { defineRoutes, go, el, startClock, setDevMode } from './ui.js';
 
 import trackScreen from './screens/track.js';
 import homeScreen from './screens/home.js';
@@ -31,6 +31,11 @@ defineRoutes({
 
 startClock();
 audio.sweep();
+
+// وضع المطوّر: ?dev=1 يُظهر شارة «لم يُقابَل» على الأسئلة التي لم تُقابَل حرفياً
+// على الكتاب، و?dev=0 يُطفئها. لا يراها الطالب.
+const devParam = new URLSearchParams(location.search).get('dev');
+if (devParam !== null) setDevMode(devParam === '1');
 
 const screen = document.getElementById('screen');
 screen.append(el('div.empty', el('span.head', 'يُحمَّل المنهج…')));
