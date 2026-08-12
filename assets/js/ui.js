@@ -61,13 +61,38 @@ function append(node, children) {
 
 export const chip = (text, cls = '') => el(`span.chip${cls}`, text);
 
-/** شارة صفحة الكتاب — تُعرَض مع كل سؤالٍ موثَّق (README §٥.٢). */
-export const pageCite = (q) =>
-  q.bookPage ? el('span.pagecite', `${bookNameFor(q)} ${q.bookPage}`) : null;
+/**
+ * شارة صفحة الكتاب. تُعرَض مع كل سؤالٍ موثَّق (README §٥.٢)، وتصير زرّاً
+ * يفتح صورة الصفحة فوراً متى كان الكتاب مرفوعاً.
+ *
+ * وللسؤال غير الموثَّق تُعرَض «صفحةٌ مرشَّحة» بشكلٍ مختلفٍ عمداً: ترشيحُ بحثٍ
+ * آليٍّ أصاب ٨٧٪ في القياس، فهو معينٌ على التنقّل لا شهادةُ توثيق.
+ */
+export function pageCite(q) {
+  const ref = pageRef(q);
+  if (!ref) return q.bookPage ? el('span.pagecite', `${bookNameFor(q)} ${q.bookPage}`) : null;
+
+  const cls = ref.verified ? 'pagecite' : 'hintcite';
+  const text = ref.verified ? `${bookNameFor(q)} ${ref.label}` : `${bookNameFor(q)} ${ref.label}؟`;
+  if (!ref.hasImage) return el(`span.${cls}`, text);
+
+  return el(`button.${cls}`, {
+    style: { border: ref.verified ? 'none' : null, cursor: 'pointer', font: 'inherit' },
+    title: ref.verified ? 'اعرض الصفحة' : 'صفحةٌ مرشَّحةٌ آلياً — اعرضها للتأكّد',
+    onclick: (e) => { e.stopPropagation(); openPageLayer(ref); },
+  }, text);
+}
+
+// اسمٌ قصيرٌ يليق بشارةٍ صغيرة. حقل `book` في البنوك وصفيٌّ مطوَّل أحياناً
+// («الوثيقة المنظِّمة لعمل الإمام والخطيب والمؤذن») فلا يصلح هنا.
+const SHORT_BOOK = {
+  'الفقه': 'دليل الطالب', 'التجويد': 'غاية المريد', 'العقيدة': 'بريق الجمان',
+  'النحو': 'التحفة السنية', 'التفسير': 'زبدة التفسير', 'ميثاق المسجد': 'ميثاق المسجد',
+  'الحديث': 'الأربعون النووية',
+};
 
 function bookNameFor(q) {
-  if (q.book) return q.book;
-  return { الفقه: 'دليل الطالب', التجويد: 'غاية المريد', العقيدة: 'بريق الجمان', النحو: 'التحفة السنية', التفسير: 'زبدة التفسير' }[q.subject] || '';
+  return SHORT_BOOK[q.subject] || (q.book && q.book.length <= 24 ? q.book : '');
 }
 
 export function bar(value, { thin = false, onGreen = false, wrong = false } = {}) {
@@ -117,6 +142,14 @@ export function empty(title, note) {
 
 /* ── الملاحة ─────────────────────────────────────────────────────────── */
 
+let pageRef = () => null;
+let openPageLayer = () => {};
+let onNavigate = () => {};
+export const setNavigateHook = (fn) => { onNavigate = fn; };
+/** يحقنهما app.js تفادياً لدورة استيرادٍ بين ui وdata وscreens. */
+export const setPageRefResolver = (fn) => { pageRef = fn; };
+export const setPageOpener = (fn) => { openPageLayer = fn; };
+
 const host = () => document.getElementById('screen');
 const tabbarEl = () => document.getElementById('tabbar');
 
@@ -138,6 +171,7 @@ export function defineRoutes(map) {
 export function go(name, params = {}) {
   const view = routes[name];
   if (!view) throw new Error(`لا توجد شاشة باسم ${name}`);
+  onNavigate();
   current = name;
 
   const screen = host();

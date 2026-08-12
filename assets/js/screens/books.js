@@ -16,6 +16,15 @@ export function booksScreen() {
       el('p.lede', `${ar(subjects.length)} علومٍ في مسارك، على الكتب التي قرَّرتها إدارة الشؤون الفنية.`),
     ]),
 
+    el('button.card.card--green', { onclick: () => go('library') }, [
+      el('div.row', [
+        el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'الكتب كاملةً'),
+        el('span', { style: { fontSize: '18px', opacity: '0.7' } }, '‹'),
+      ]),
+      el('span', { style: { fontSize: '12.5px', lineHeight: '1.8', opacity: '0.88', textAlign: 'start' } },
+        'افتح أي كتابٍ مقرَّرٍ كاملاً بصيغة PDF.'),
+    ]),
+
     el('div.stack', subjects.map((s) => {
       const book = data.BOOK_OF_SUBJECT[s.subject] || {};
       const done = data.questionsIn(track, s.subject).filter((q) => store.scoreOf(q.id) !== null).length;

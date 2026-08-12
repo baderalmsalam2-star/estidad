@@ -3,7 +3,7 @@
 import * as data from './data.js';
 import * as store from './store.js';
 import * as audio from './audio.js';
-import { defineRoutes, go, el, startClock, setDevMode } from './ui.js';
+import { defineRoutes, go, el, startClock, setDevMode, setPageRefResolver, setPageOpener, setNavigateHook } from './ui.js';
 
 import trackScreen from './screens/track.js';
 import homeScreen from './screens/home.js';
@@ -14,6 +14,7 @@ import tajweedScreen, { surahsScreen } from './screens/tajweed.js';
 import reciteScreen from './screens/recite.js';
 import flashcardsScreen from './screens/flashcards.js';
 import accountScreen from './screens/account.js';
+import { openPage, closePage, libraryScreen } from './screens/page-view.js';
 
 defineRoutes({
   track: trackScreen,
@@ -27,6 +28,7 @@ defineRoutes({
   recite: reciteScreen,
   flashcards: flashcardsScreen,
   account: accountScreen,
+  library: libraryScreen,
 });
 
 startClock();
@@ -39,6 +41,11 @@ if (devParam !== null) setDevMode(devParam === '1');
 
 const screen = document.getElementById('screen');
 screen.append(el('div.empty', el('span.head', 'يُحمَّل المنهج…')));
+
+setPageRefResolver(data.pageRefOf);
+setPageOpener(openPage);
+// أي انتقالٍ بين الشاشات يُغلق طبقة الصفحة إن كانت مفتوحة.
+setNavigateHook(closePage);
 
 data.load()
   .then(() => {

@@ -39,7 +39,43 @@ const state = {
   questions: [],
   byId: new Map(),
   tajweed: null,
+  hints: {},        // ترشيحات الصفحات — مُرشِّحٌ لا حَكَم
+  pageIndex: {},    // أي صفحةٍ رُسمت صورتُها
 };
+
+// العلم → مُعرِّف كتابه في books/
+export const BOOK_ID = {
+  'الفقه': 'daleel-altalib', 'التجويد': 'ghayat-almureed',
+  'النحو': 'tuhfa-saniyya', 'ميثاق المسجد': 'meethaq-almasjid',
+  'العقيدة': 'bareeq-aljuman', 'التفسير': 'zubdat-altafseer',
+};
+
+const AR2EN = { '٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9' };
+
+/** «ص٢٨-٣١» → 28. أول صفحةٍ في الاستشهاد هي التي تُفتَح. */
+export function firstPageOf(label) {
+  const m = String(label || '').replace(/[٠-٩]/g, (d) => AR2EN[d]).match(/\d+/);
+  return m ? +m[0] : null;
+}
+
+/**
+ * أين يذهب الطالب من هذا السؤال؟
+ * `verified` يعني أن الصفحة قوبِلت حرفاً بحرف؛ وإلا فهي ترشيحُ بحثٍ آليّ.
+ */
+export function pageRefOf(q) {
+  const book = BOOK_ID[q.subject];
+  if (!book) return null;
+  if (q.bookPage) {
+    const page = firstPageOf(q.bookPage);
+    return page && { book, page, label: q.bookPage, verified: true, hasImage: hasImage(book, page) };
+  }
+  const h = state.hints[q.id];
+  return h && { book: h.book, page: h.page, label: `ص${h.page}`, verified: false,
+                confidence: h.confidence, hasImage: hasImage(h.book, h.page) };
+}
+
+const hasImage = (book, page) => !!state.pageIndex[book]?.pages?.includes(page);
+export const bookPageCount = (book) => state.pageIndex[book]?.count || null;
 
 async function getJSON(path) {
   const res = await fetch(path);
@@ -51,12 +87,16 @@ async function getJSON(path) {
 export async function load() {
   if (state.manifest) return state;
 
-  const [manifest, ...banks] = await Promise.all([
+  const [manifest, hints, pageIndex, ...banks] = await Promise.all([
     getJSON('data/manifest.json'),
+    getJSON('data/page-hints.json').catch(() => ({})),
+    getJSON('books/pages-index.json').catch(() => ({})),
     ...BANK_FILES.map((f) => getJSON(`data/banks/${f}`)),
   ]);
 
   state.manifest = manifest;
+  state.hints = hints;
+  state.pageIndex = pageIndex;
 
   banks.forEach((bank, i) => {
     const file = BANK_FILES[i];
