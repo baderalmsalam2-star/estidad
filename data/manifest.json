@@ -109,21 +109,21 @@
     {
       "file": "09_generated_fiqh.json",
       "subject": "الفقه",
-      "count": 60,
-      "bookVerified": 60,
-      "corrected": 0,
+      "count": 83,
+      "bookVerified": 83,
+      "corrected": 30,
       "provenance": "مولَّدٌ من صفحة الكتاب — موثَّقٌ بالبناء"
     }
   ],
   "totals": {
-    "questions": 496,
+    "questions": 519,
     "byTrack": {
-      "imam": 496,
-      "muezzin": 416,
-      "muezzin_retired": 119
+      "imam": 519,
+      "muezzin": 439,
+      "muezzin_retired": 142
     },
-    "verifiedAgainstSourceBook": 104,
-    "corrected": 41
+    "verifiedAgainstSourceBook": 127,
+    "corrected": 71
   },
   "verificationStatus": {
     "الكتب المقرَّرة": "خمسة من خمسة مُستخرَجة نصّاً — ١٢١٦ صفحة",
