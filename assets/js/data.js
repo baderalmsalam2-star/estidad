@@ -11,6 +11,7 @@ const BANK_FILES = [
   '07_meethaq.json',
   '08_fiqh_janaiz.json',
   '09_generated_fiqh.json',
+  '10_generated_meethaq.json',
 ];
 
 // الكتاب المقرَّر لكل علم — مصدره حقل `book` في البنوك و`sourceBooks` في المنيفست.
