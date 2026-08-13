@@ -1,0 +1,37 @@
+{
+ "_note": "الصفحات التي قُرئت بصرياً وولِّدت منها أسئلة. يُحدَّث مع كل دفعة، فيُستأنف العمل من حيث وقف.",
+ "books": {
+  "daleel-altalib": {
+   "pages": 396,
+   "done": [
+    33,
+    36,
+    37,
+    38,
+    39
+   ]
+  },
+  "ghayat-almureed": {
+   "pages": 304,
+   "done": []
+  },
+  "tuhfa-saniyya": {
+   "pages": 183,
+   "done": []
+  },
+  "meethaq-almasjid": {
+   "pages": 118,
+   "done": []
+  },
+  "bareeq-aljuman": {
+   "pages": 283,
+   "done": [],
+   "note": "بانتظار الملفّ"
+  },
+  "zubdat-altafseer": {
+   "pages": 50,
+   "done": [],
+   "note": "بانتظار الملفّ — المقرَّر ص٥٥٥-٦٠٤"
+  }
+ }
+}
