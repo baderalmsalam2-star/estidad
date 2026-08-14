@@ -133,20 +133,20 @@
     {
       "file": "12_generated_aqeedah.json",
       "subject": "العقيدة",
-      "count": 446,
-      "bookVerified": 446,
+      "count": 458,
+      "bookVerified": 458,
       "corrected": 0,
       "provenance": "مولَّدٌ من نصّ صفحة الكتاب (OCR) — لا صورةَ صفحةٍ له بعد"
     }
   ],
   "totals": {
-    "questions": 1189,
+    "questions": 1201,
     "byTrack": {
-      "imam": 1189,
-      "muezzin": 1109,
-      "muezzin_retired": 711
+      "imam": 1201,
+      "muezzin": 1121,
+      "muezzin_retired": 723
     },
-    "verifiedAgainstSourceBook": 797,
+    "verifiedAgainstSourceBook": 809,
     "corrected": 71
   },
   "verificationStatus": {
