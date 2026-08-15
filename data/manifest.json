@@ -125,8 +125,8 @@
     {
       "file": "11_generated_tajweed.json",
       "subject": "التجويد",
-      "count": 748,
-      "bookVerified": 748,
+      "count": 763,
+      "bookVerified": 763,
       "corrected": 0,
       "provenance": "مولَّدٌ من صفحة الكتاب — موثَّقٌ بالبناء"
     },
@@ -140,13 +140,13 @@
     }
   ],
   "totals": {
-    "questions": 1903,
+    "questions": 1918,
     "byTrack": {
-      "imam": 1903,
-      "muezzin": 1823,
+      "imam": 1918,
+      "muezzin": 1838,
       "muezzin_retired": 731
     },
-    "verifiedAgainstSourceBook": 1511,
+    "verifiedAgainstSourceBook": 1526,
     "corrected": 71
   },
   "verificationStatus": {
