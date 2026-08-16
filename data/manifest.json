@@ -117,9 +117,9 @@
     {
       "file": "10_generated_meethaq.json",
       "subject": "ميثاق المسجد",
-      "count": 56,
-      "bookVerified": 56,
-      "corrected": 0,
+      "count": 67,
+      "bookVerified": 67,
+      "corrected": 1,
       "provenance": "مولَّدٌ من صفحة الكتاب — موثَّقٌ بالبناء"
     },
     {
@@ -140,14 +140,14 @@
     }
   ],
   "totals": {
-    "questions": 2162,
+    "questions": 2173,
     "byTrack": {
-      "imam": 2162,
-      "muezzin": 2082,
-      "muezzin_retired": 772
+      "imam": 2173,
+      "muezzin": 2093,
+      "muezzin_retired": 783
     },
-    "verifiedAgainstSourceBook": 1770,
-    "corrected": 71
+    "verifiedAgainstSourceBook": 1781,
+    "corrected": 72
   },
   "verificationStatus": {
     "الكتب المقرَّرة": "خمسة من خمسة مُستخرَجة نصّاً — ١٢١٦ صفحة",
