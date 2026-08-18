@@ -61,7 +61,7 @@ export function bookScreen({ subject }) {
   const track = store.get().track;
   const book = data.BOOK_OF_SUBJECT[subject] || {};
   const all = data.questionsIn(track, subject);
-  const topics = [...new Set(all.map((q) => q.topic || 'عامّ'))];
+  const topics = tableOfContents(all);
   const documented = all.filter((q) => q.bookVerified).length;
 
   const wrap = el('div', { style: { display: 'flex', flexDirection: 'column', flex: '1', minHeight: '0' } });
@@ -86,15 +86,17 @@ export function bookScreen({ subject }) {
     ]),
 
     el('div', { style: { flex: '1', minHeight: '0', overflowY: 'auto', padding: '10px 24px 0' } }, [
-      el('div.list', topics.map((topic) => {
-        const qs = all.filter((q) => (q.topic || 'عامّ') === topic);
+      el('div.list', topics.map(({ topic, qs, range }) => {
         const done = qs.filter((q) => store.scoreOf(q.id) !== null).length;
         const imamOnly = qs.every((q) => (q.tracks || []).length === 1 && q.tracks[0] === 'imam');
 
         return el('button.list-item', { onclick: () => openTopic(subject, topic) }, [
-          el('span', { style: { fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' } }, [
-            topic,
-            imamOnly ? el('span.chip', { style: { fontSize: '11px', padding: '3px 9px' } }, 'للإمام') : null,
+          el('div', { style: { display: 'flex', flexDirection: 'column', gap: '3px', textAlign: 'start' } }, [
+            el('span', { style: { fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' } }, [
+              topic,
+              imamOnly ? el('span.chip', { style: { fontSize: '11px', padding: '3px 9px' } }, 'للإمام') : null,
+            ]),
+            range ? el('span.fine', { class: 'num' }, range) : null,
           ]),
           el('span.num', done ? `${ar(done)}/${ar(qs.length)}` : ar(qs.length)),
         ]);
@@ -124,6 +126,37 @@ export function bookScreen({ subject }) {
   );
 
   return wrap;
+}
+
+/**
+ * فهرسُ الكتاب — أبوابُه مرتَّبةً على صفحاتها لا على ترتيب دخولها البنوكَ.
+ *
+ * البنوك المكتوبة يدوياً سبقت المولَّدةَ من الصفحات، فكان بابُ البيع يسبق بابَ
+ * الطهارة في القائمة. والآن يُرتَّب كلُّ بابٍ على أوّلِ صفحةٍ وُثِّق عليها،
+ * ويُعرَض مداه — فتصير القائمةُ فهرساً يُشبه فهرسَ الكتاب المطبوع.
+ * وما لا صفحةَ له يُؤخَّر إلى آخرها، لأنّه لا موضعَ له يُرتَّب عليه.
+ */
+function tableOfContents(all) {
+  const map = new Map();
+  for (const q of all) {
+    const topic = q.topic || 'عامّ';
+    if (!map.has(topic)) map.set(topic, []);
+    map.get(topic).push(q);
+  }
+
+  return [...map.entries()]
+    .map(([topic, qs]) => {
+      const pages = qs.map((q) => data.firstPageOf(q.bookPage)).filter(Boolean);
+      const from = pages.length ? Math.min(...pages) : null;
+      const to = pages.length ? Math.max(...pages) : null;
+      return {
+        topic,
+        qs,
+        from,
+        range: from === null ? null : (from === to ? `ص${ar(from)}` : `ص${ar(from)}–${ar(to)}`),
+      };
+    })
+    .sort((a, b) => (a.from ?? Infinity) - (b.from ?? Infinity));
 }
 
 export function openTopic(subject, topic) {
