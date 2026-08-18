@@ -24,11 +24,18 @@ export default function homeScreen() {
         el('span.meta', `مسار ${label}`),
         el('span.title', 'أهلاً بك'),
       ]),
-      el('button.iconbtn', {
-        onclick: () => go('account'),
-        'aria-label': 'حسابي',
-        style: { background: 'var(--surface)' },
-      }, '⋯'),
+      el('div', { style: { display: 'flex', gap: '8px' } }, [
+        el('button.iconbtn', {
+          onclick: () => go('search'),
+          'aria-label': 'ابحث في المنهج',
+          style: { background: 'var(--surface)' },
+        }, '⌕'),
+        el('button.iconbtn', {
+          onclick: () => go('account'),
+          'aria-label': 'حسابي',
+          style: { background: 'var(--surface)' },
+        }, '⋯'),
+      ]),
     ]),
 
     // تقدّمك في المنهج

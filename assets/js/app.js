@@ -16,6 +16,7 @@ import flashcardsScreen from './screens/flashcards.js';
 import accountScreen from './screens/account.js';
 import { openPage, closePage, libraryScreen } from './screens/page-view.js';
 import reviewScreen from './screens/review.js';
+import searchScreen from './screens/search.js';
 
 defineRoutes({
   track: trackScreen,
@@ -31,6 +32,7 @@ defineRoutes({
   account: accountScreen,
   library: libraryScreen,
   review: reviewScreen,
+  search: searchScreen,
 });
 
 startClock();

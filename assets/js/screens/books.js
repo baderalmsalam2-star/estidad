@@ -16,6 +16,11 @@ export function booksScreen() {
       el('p.lede', `${ar(subjects.length)} علومٍ في مسارك، على الكتب التي قرَّرتها إدارة الشؤون الفنية.`),
     ]),
 
+    el('button.searchbar', {
+      onclick: () => go('search'),
+      style: { textAlign: 'start', cursor: 'pointer', color: 'var(--ink-7)' },
+    }, `⌕  ابحث في ${ar(data.forTrack(track).length)} سؤالاً…`),
+
     el('button.card.card--green', { onclick: () => go('library') }, [
       el('div.row', [
         el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'الكتب كاملةً'),

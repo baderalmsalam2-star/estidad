@@ -258,6 +258,23 @@ button.card, a.card, .card[role="button"] { font: inherit; text-align: inherit; 
 .tile--sand .h-card { color: var(--sand-ink); }
 .tile--sand .fine { color: var(--sand-ink2); }
 
+/* ─── البحث في المنهج ───────────────────────────────────────────────────── */
+
+.searchbar {
+  width: 100%; background: var(--surface); border: none; border-radius: 18px;
+  padding: 13px 18px; font: inherit; font-size: 15px; color: var(--ink);
+  caret-color: var(--green);
+}
+.searchbar::placeholder { color: var(--ink-7); }
+.searchbar:focus { outline: 2px solid var(--green-tint); outline-offset: 2px; }
+.searchbar::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+
+.hit-text {
+  font-size: 15px; line-height: 1.95;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;
+}
+mark.hit { background: var(--green-tint); color: inherit; border-radius: 4px; padding: 0 2px; }
+
 /* ─── الإجابة والتصحيح الذاتي ───────────────────────────────────────────── */
 
 .answerbox {
