@@ -258,6 +258,15 @@ button.card, a.card, .card[role="button"] { font: inherit; text-align: inherit; 
 .tile--sand .h-card { color: var(--sand-ink); }
 .tile--sand .fine { color: var(--sand-ink2); }
 
+/* ─── وِرد اليوم ────────────────────────────────────────────────────────── */
+
+.week { display: flex; justify-content: space-between; gap: 6px; }
+.week-day { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; }
+.week-day em { font-style: normal; font-size: 11px; color: var(--ink-6); }
+.week-day .dot { width: 100%; height: 26px; border-radius: 9px; background: var(--sunk); display: block; }
+.week-day .dot--some { background: var(--green-tint); }
+.week-day .dot--full { background: var(--green); }
+
 /* ─── البحث في المنهج ───────────────────────────────────────────────────── */
 
 .searchbar {

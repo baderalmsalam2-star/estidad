@@ -214,6 +214,44 @@ export function buildCustomExam(track, { subjects = [], count = 15, difficulty =
   return weightedSample(pool, Math.min(count, pool.length), mulberry32(Date.now()));
 }
 
+/**
+ * وِردُ اليوم — جلسةٌ قصيرةٌ يُلزِمها الطالبُ نفسَه كلَّ يوم.
+ *
+ * ثلثُها ممّا أخطأ فيه (فالخطأ أحقُّ بالمراجعة من الجديد)، وبقيّتُها ممّا لم
+ * يمرَّ عليه بعدُ. ثمّ تُوزَّع على العلوم بالتناوب حتى لا يقع الوِرد كلُّه في
+ * علمٍ واحد. والبذرة يومُ التقويم نفسُه، فالوِردُ ثابتٌ ما دام اليومُ قائماً
+ * ولو أغلق التطبيقَ وعاد.
+ *
+ * `scoreOf` تُمرَّر من store لئلّا يعتمد data على حالة الطالب.
+ */
+export function buildWird(track, n, scoreOf) {
+  const pool = forTrack(track);
+  const weak = pool
+    .filter((q) => { const s = scoreOf(q.id); return s !== null && s < 0.7; })
+    .sort((a, b) => scoreOf(a.id) - scoreOf(b.id));
+  const fresh = pool.filter((q) => scoreOf(q.id) === null);
+
+  const rand = mulberry32(Math.floor(Date.now() / 86_400_000));
+  const take = Math.min(weak.length, Math.floor(n / 3));
+  const chosen = [
+    ...weak.slice(0, take),
+    ...weightedSample(fresh, Math.max(0, n - take), rand),
+  ];
+
+  // تناوبٌ على العلوم: أوّلُ كلِّ علمٍ، ثمّ ثانيه، وهكذا.
+  const lanes = new Map();
+  for (const q of chosen) {
+    if (!lanes.has(q.subject)) lanes.set(q.subject, []);
+    lanes.get(q.subject).push(q);
+  }
+  const out = [];
+  const queues = [...lanes.values()];
+  while (out.length < chosen.length) {
+    for (const lane of queues) if (lane.length) out.push(lane.shift());
+  }
+  return out;
+}
+
 /* ── بطاقات الحفظ ────────────────────────────────────────────────────── */
 
 /**

@@ -13,6 +13,8 @@ const EMPTY = {
   exams: [],
   // قرارات اعتماد التوثيق — للمراجع لا للطالب
   reviews: {},
+  // وِرد اليوم: كم سؤالاً يلتزمه الطالب يومياً
+  dailyGoal: 20,
 };
 
 function read() {
@@ -106,6 +108,63 @@ export function bySubject(questions) {
     }
   }
   return [...map.values()].map((s) => ({ ...s, mastery: s.done ? s.sum / s.done : 0 }));
+}
+
+/* ── وِرد اليوم وسلسلة المواظبة ──────────────────────────────────────── */
+
+/**
+ * الاختبار موعدٌ لا يُؤجَّل، والمذاكرة على دفعاتٍ يوميةٍ أنفعُ من جلسةٍ واحدةٍ
+ * طويلة. والسلسلةُ كلُّها مُشتَقّةٌ من طوابع `answers[].at` — لا سجلَّ زائداً
+ * يُحفَظ، فلا شيءَ يفسد إن تغيّر شكلُ التخزين.
+ */
+const dayKey = (t) => {
+  const d = new Date(t);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+export const dailyGoal = () => Math.max(5, cache.dailyGoal || 20);
+
+export function setDailyGoal(n) {
+  cache.dailyGoal = Math.max(5, Math.min(100, Math.round(n)));
+  write();
+  return cache.dailyGoal;
+}
+
+function countsByDay() {
+  const map = new Map();
+  for (const a of Object.values(cache.answers)) {
+    if (!a || !a.at) continue;
+    const k = dayKey(a.at);
+    map.set(k, (map.get(k) || 0) + 1);
+  }
+  return map;
+}
+
+/**
+ * `{ today, goal, streak, week }`.
+ * السلسلة تُعَدُّ رجوعاً من اليوم، فإن لم يُذاكِر اليوم بَعدُ بُدئ من أمسِ —
+ * وإلا انقطعت سلسلةُ من يفتح التطبيق صباحاً قبل أن يبدأ.
+ */
+export function daily() {
+  const counts = countsByDay();
+  const now = new Date();
+  const at = (back) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() - back);
+    return { key: dayKey(d), date: d, count: counts.get(dayKey(d)) || 0 };
+  };
+
+  const today = at(0).count;
+  let streak = 0;
+  for (let back = today > 0 ? 0 : 1; back < 400; back += 1) {
+    if (at(back).count > 0) streak += 1;
+    else break;
+  }
+
+  const week = [];
+  for (let back = 6; back >= 0; back -= 1) week.push(at(back));
+
+  return { today, goal: dailyGoal(), streak, week };
 }
 
 /* ── اعتماد التوثيق ─────────────────────────────────────────────────── */

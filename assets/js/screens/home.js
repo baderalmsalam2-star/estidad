@@ -2,7 +2,7 @@
 
 import * as data from '../data.js';
 import * as store from '../store.js';
-import { el, ar, pct, go, padNav, credit } from '../ui.js';
+import { el, ar, pct, go, padNav, credit, MAGNIFIER } from '../ui.js';
 import { openTopic } from './books.js';
 
 export default function homeScreen() {
@@ -29,7 +29,10 @@ export default function homeScreen() {
           onclick: () => go('search'),
           'aria-label': 'ابحث في المنهج',
           style: { background: 'var(--surface)' },
-        }, '⌕'),
+          // لا خطَّ أيقوناتٍ في المشروع، ورمزُ العدسة ⌕ يخرج ضئيلاً في أكثر
+          // الخطوط، فرُسِمت العدسةُ متجهةً حتى تستوي في كل جهاز.
+          html: MAGNIFIER,
+        }),
         el('button.iconbtn', {
           onclick: () => go('account'),
           'aria-label': 'حسابي',
@@ -47,6 +50,8 @@ export default function homeScreen() {
       el('span', { style: { fontFamily: 'var(--serif)', fontSize: '52px', fontWeight: '700', lineHeight: '1' } }, pct(prog.pct)),
       el('div.bar.bar--onGreen', el('i', { style: { width: `${Math.round(prog.pct * 100)}%` } })),
     ]),
+
+    wirdCard(track),
 
     resume ? resumeCard(resume) : null,
 
@@ -72,6 +77,64 @@ export default function homeScreen() {
 
     credit(),
   ]));
+}
+
+/** تمييزُ العدد في العربية: مفردٌ، فمثنّى، فجمعُ قلَّةٍ مجرور، فمفردٌ منصوب. */
+function streakLabel(n) {
+  if (!n) return 'ابدأ سلسلتك اليوم';
+  if (n === 1) return 'يومٌ واحدٌ متَّصل';
+  if (n === 2) return 'يومانِ متَّصلانِ';
+  if (n <= 10) return `${ar(n)} أيامٍ متَّصلة`;
+  return `${ar(n)} يوماً متَّصلاً`;
+}
+
+/**
+ * وِردُ اليوم — الاختبارُ موعدٌ لا يُؤجَّل، والدفعةُ اليوميةُ الصغيرةُ أنفعُ من
+ * جلسةٍ واحدةٍ طويلة. والسلسلةُ تُعرَض لأنها أصدقُ حافزٍ على المواظبة.
+ */
+function wirdCard(track) {
+  const { today, goal, streak, week } = store.daily();
+  const left = Math.max(0, goal - today);
+  const done = left === 0;
+
+  const DAY_LETTERS = ['ح', 'ن', 'ث', 'ر', 'خ', 'ج', 'س'];
+
+  return el('div.card', { style: { gap: '14px' } }, [
+    el('div.row-base', [
+      el('span.section-title', 'وِرد اليوم'),
+      el('span.num', { style: { fontSize: '13px', color: 'var(--ink-5)' } },
+        `${ar(Math.min(today, goal))} / ${ar(goal)}`),
+    ]),
+
+    el('div.week', week.map((d) => {
+      const full = d.count >= goal;
+      return el('span.week-day', { title: `${ar(d.count)} سؤالاً` }, [
+        el('i', { class: d.count ? (full ? 'dot dot--full' : 'dot dot--some') : 'dot' }),
+        el('em', DAY_LETTERS[d.date.getDay()]),
+      ]);
+    })),
+
+    el('div.row-base', [
+      el('span.fine', streakLabel(streak)),
+      done
+        ? el('span.chip', { style: { background: 'var(--green-tint)', color: 'var(--green)' } }, 'تمَّ وِردُك')
+        : null,
+    ]),
+
+    el('div.bar', el('i', { style: { width: `${Math.round((Math.min(today, goal) / goal) * 100)}%` } })),
+
+    el('button.btn', {
+      onclick: () => {
+        const questions = data.buildWird(track, left || goal, store.scoreOf);
+        if (!questions.length) return;
+        go('quiz', {
+          questions,
+          mode: 'study',
+          title: done ? 'زيادةٌ على الوِرد' : 'وِرد اليوم',
+        });
+      },
+    }, done ? `زِدْ ${ar(goal)} سؤالاً` : `ابدأ — ${ar(left)} سؤالاً`),
+  ]);
 }
 
 function resumeCard(resume) {

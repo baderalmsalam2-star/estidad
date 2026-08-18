@@ -41,6 +41,8 @@ export default function accountScreen() {
         ])
       : null,
 
+    goalCard(),
+
     el('button.card', { onclick: () => go('track') }, [
       el('div.row', [
         el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'غيّر المسار'),
@@ -75,4 +77,38 @@ export default function accountScreen() {
 
     credit(),
   ]));
+}
+
+/**
+ * قَدرُ الوِرد اليوميّ. خِياراتٌ محدودةٌ لا حقلُ إدخالٍ حرّ: الطالب يختار عادةً
+ * قبل أن يعرف طاقتَه، فحصرُ الخيار أرفقُ به من تركه أمام خانةٍ فارغة.
+ */
+function goalCard() {
+  const OPTIONS = [10, 20, 30, 50];
+  const card = el('div.card', { style: { gap: '10px' } });
+
+  const draw = () => {
+    const goal = store.dailyGoal();
+    card.replaceChildren(
+      el('div.row-base', [
+        el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'وِرد اليوم'),
+        el('span.num', { style: { fontSize: '13px', color: 'var(--ink-5)' } }, `${ar(goal)} سؤالاً`),
+      ]),
+      el('span.fine', { style: { textAlign: 'start' } },
+        'كم سؤالاً تلتزمه كلَّ يوم؟ الدفعةُ الصغيرة المتَّصلة أنفعُ من جلسةٍ واحدةٍ طويلة.'),
+      el('div', { style: { display: 'flex', gap: '8px', paddingTop: '2px' } },
+        OPTIONS.map((n) => el('button.chip', {
+          onclick: () => { store.setDailyGoal(n); draw(); },
+          'aria-pressed': n === goal ? 'true' : 'false',
+          style: {
+            cursor: 'pointer', border: 'none', font: 'inherit', flex: '1',
+            background: n === goal ? 'var(--green)' : 'var(--surface)',
+            color: n === goal ? 'var(--paper)' : 'var(--ink-3)',
+          },
+        }, ar(n)))),
+    );
+  };
+
+  draw();
+  return card;
 }

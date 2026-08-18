@@ -62,6 +62,15 @@ function append(node, children) {
 export const chip = (text, cls = '') => el(`span.chip${cls}`, text);
 
 /**
+ * عدسةُ البحث. لا خطَّ أيقوناتٍ في المشروع — والاعتماد على رمز يونيكود ⌕ يخرج
+ * ضئيلاً مشوَّهاً في أكثر خطوط الأنظمة، فرُسِمت متجهةً لتستوي في كل جهاز.
+ */
+export const MAGNIFIER =
+  '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"'
+  + ' stroke-width="2.2" stroke-linecap="round" aria-hidden="true">'
+  + '<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.6 15.6 21 21"/></svg>';
+
+/**
  * شارة صفحة الكتاب. تُعرَض مع كل سؤالٍ موثَّق (README §٥.٢)، وتصير زرّاً
  * يفتح صورة الصفحة فوراً متى كان الكتاب مرفوعاً.
  *

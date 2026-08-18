@@ -2,7 +2,7 @@
 
 import * as data from '../data.js';
 import * as store from '../store.js';
-import { el, ar, go, padNav, topbar } from '../ui.js';
+import { el, ar, go, padNav, topbar, MAGNIFIER } from '../ui.js';
 
 /* ── قائمة الكتب ─────────────────────────────────────────────────────── */
 
@@ -18,8 +18,14 @@ export function booksScreen() {
 
     el('button.searchbar', {
       onclick: () => go('search'),
-      style: { textAlign: 'start', cursor: 'pointer', color: 'var(--ink-7)' },
-    }, `⌕  ابحث في ${ar(data.forTrack(track).length)} سؤالاً…`),
+      style: {
+        textAlign: 'start', cursor: 'pointer', color: 'var(--ink-7)',
+        display: 'flex', alignItems: 'center', gap: '10px',
+      },
+    }, [
+      el('span', { html: MAGNIFIER, style: { display: 'flex', flexShrink: '0' } }),
+      `ابحث في ${ar(data.forTrack(track).length)} سؤالاً…`,
+    ]),
 
     el('button.card.card--green', { onclick: () => go('library') }, [
       el('div.row', [
