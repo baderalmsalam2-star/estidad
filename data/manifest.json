@@ -109,8 +109,8 @@
     {
       "file": "09_generated_fiqh.json",
       "subject": "الفقه",
-      "count": 665,
-      "bookVerified": 665,
+      "count": 684,
+      "bookVerified": 684,
       "corrected": 31,
       "provenance": "مولَّدٌ من صفحة الكتاب — موثَّقٌ بالبناء"
     },
@@ -140,13 +140,13 @@
     }
   ],
   "totals": {
-    "questions": 2831,
+    "questions": 2850,
     "byTrack": {
-      "imam": 2831,
+      "imam": 2850,
       "muezzin": 2356,
       "muezzin_retired": 1046
     },
-    "verifiedAgainstSourceBook": 2439,
+    "verifiedAgainstSourceBook": 2458,
     "corrected": 73
   },
   "verificationStatus": {
