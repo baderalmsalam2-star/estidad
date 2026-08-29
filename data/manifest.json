@@ -137,16 +137,24 @@
       "bookVerified": 466,
       "corrected": 0,
       "provenance": "مولَّدٌ من نصّ صفحة الكتاب (OCR) — لا صورةَ صفحةٍ له بعد"
+    },
+    {
+      "file": "13_generated_nahw.json",
+      "subject": "النحو",
+      "count": 14,
+      "bookVerified": 14,
+      "corrected": 0,
+      "provenance": "مولَّدٌ من صورةِ صفحةِ الكتابِ، وكلُّ سؤالٍ يحملُ رقمَ صفحتِه المطبوعَ"
     }
   ],
   "totals": {
-    "questions": 3515,
+    "questions": 3529,
     "byTrack": {
-      "imam": 3515,
+      "imam": 3529,
       "muezzin": 2385,
       "muezzin_retired": 1075
     },
-    "verifiedAgainstSourceBook": 3123,
+    "verifiedAgainstSourceBook": 3137,
     "corrected": 73
   },
   "verificationStatus": {
