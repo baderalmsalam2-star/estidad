@@ -141,21 +141,21 @@
     {
       "file": "13_generated_nahw.json",
       "subject": "النحو",
-      "count": 112,
-      "bookVerified": 112,
-      "corrected": 0,
+      "count": 120,
+      "bookVerified": 120,
+      "corrected": 1,
       "provenance": "مولَّدٌ من صورةِ صفحةِ الكتابِ، وكلُّ سؤالٍ يحملُ رقمَ صفحتِه المطبوعَ"
     }
   ],
   "totals": {
-    "questions": 3627,
+    "questions": 3635,
     "byTrack": {
-      "imam": 3627,
+      "imam": 3635,
       "muezzin": 2385,
       "muezzin_retired": 1075
     },
-    "verifiedAgainstSourceBook": 3235,
-    "corrected": 73
+    "verifiedAgainstSourceBook": 3243,
+    "corrected": 74
   },
   "verificationStatus": {
     "الكتب المقرَّرة": "خمسة من خمسة مُستخرَجة نصّاً — ١٢١٦ صفحة",
