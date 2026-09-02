@@ -141,20 +141,20 @@
     {
       "file": "13_generated_nahw.json",
       "subject": "النحو",
-      "count": 485,
-      "bookVerified": 485,
+      "count": 495,
+      "bookVerified": 495,
       "corrected": 1,
       "provenance": "مولَّدٌ من صورةِ صفحةِ الكتابِ، وكلُّ سؤالٍ يحملُ رقمَ صفحتِه المطبوعَ"
     }
   ],
   "totals": {
-    "questions": 4000,
+    "questions": 4010,
     "byTrack": {
-      "imam": 4000,
+      "imam": 4010,
       "muezzin": 2385,
       "muezzin_retired": 1075
     },
-    "verifiedAgainstSourceBook": 3608,
+    "verifiedAgainstSourceBook": 3618,
     "corrected": 74
   },
   "verificationStatus": {
