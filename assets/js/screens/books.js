@@ -159,6 +159,25 @@ function tableOfContents(all) {
     .sort((a, b) => (a.from ?? Infinity) - (b.from ?? Infinity));
 }
 
+/**
+ * دفعةُ الجلسة: الجديدُ أوّلاً ثمّ ما ضعُفت درجتُه، بمقدار الوِرد اليوميّ.
+ * جلسةٌ تنتهي وتُثمِر خيرٌ من ألفِ سؤالٍ لا آخِرَ لها.
+ */
+function sessionBatch(questions) {
+  const size = store.dailyGoal();
+  const fresh = [];
+  const weak = [];
+  const rest = [];
+  for (const q of questions) {
+    const s = store.scoreOf(q.id);
+    if (s === null) fresh.push(q);
+    else if (s < 0.7) weak.push(q);
+    else rest.push(q);
+  }
+  const batch = [...fresh, ...weak, ...rest].slice(0, size);
+  return batch.length ? batch : questions.slice(0, size);
+}
+
 export function openTopic(subject, topic) {
   const track = store.get().track;
   const questions = data.questionsIn(track, subject, topic);
@@ -169,5 +188,13 @@ export function openTopic(subject, topic) {
     done: questions.filter((q) => store.scoreOf(q.id) !== null).length,
     total: questions.length,
   });
-  go('quiz', { questions, mode: 'study', title: topic || subject, back: () => go('book', { subject }) });
+  go('quiz', {
+    questions: sessionBatch(questions),
+    mode: 'study',
+    title: topic || subject,
+    back: () => go('book', { subject }),
+    // إعادةُ الجلسة تلتقط دفعةً جديدة، لا الدفعةَ نفسَها.
+    again: () => openTopic(subject, topic),
+    poolSize: questions.length,
+  });
 }

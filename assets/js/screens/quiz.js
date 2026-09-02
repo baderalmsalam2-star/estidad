@@ -7,7 +7,7 @@ import * as data from '../data.js';
 import * as store from '../store.js';
 import { el, ar, pct, arTime, go, pageCite, devBadge, empty } from '../ui.js';
 
-export default function quizScreen({ questions, mode = 'study', title = '', back = null }) {
+export default function quizScreen({ questions, mode = 'study', title = '', back = null, again = null, poolSize = 0 }) {
   if (!questions || !questions.length) {
     return empty('لا أسئلة هنا', 'جرّب باباً آخر أو غيّر شروط الاختبار.');
   }
@@ -17,6 +17,8 @@ export default function quizScreen({ questions, mode = 'study', title = '', back
     mode,
     title,
     back: back || (() => go('home')),
+    again,                 // يلتقط دفعةً جديدة من البابِ نفسِه
+    poolSize,              // عدد أسئلة الباب كلِّه — لبيان الموقع منه
     index: 0,
     results: [],           // { q, score }
     startedAt: Date.now(),
@@ -312,13 +314,29 @@ function resultView(session, result) {
         : null,
     ]),
 
-    el('div', { style: { padding: '14px 24px 26px', display: 'flex', gap: '10px', flexShrink: '0' } }, [
-      el('button.btn', {
-        style: { flex: '1', fontSize: '15px' },
-        disabled: !wrongOnes.length,
-        onclick: () => go('quiz', { questions: wrongOnes, mode: 'review', title: 'مراجعة الأخطاء' }),
-      }, wrongOnes.length ? 'راجع أخطاءك' : 'لا أخطاء'),
-      el('button.btn.btn--ghost', { onclick: () => go('home') }, 'الرئيسية'),
+    el('div', { style: { padding: '14px 24px 26px', display: 'flex', flexDirection: 'column', gap: '10px', flexShrink: '0' } }, [
+      // موقعُ الطالب من البابِ كلِّه — يُطمئنه أنّ الجلسة جزءٌ من طريقٍ لا كلُّه.
+      session.poolSize
+        ? el('span.fine', { style: { textAlign: 'center', color: 'var(--ink-4)' } },
+            (() => {
+              const seen = session.questions.filter((q) => store.scoreOf(q.id) !== null).length;
+              return `${ar(seen)} من ${ar(session.poolSize)} سؤالاً في هذا الباب`;
+            })())
+        : null,
+      el('div', { style: { display: 'flex', gap: '10px' } }, [
+        wrongOnes.length
+          ? el('button.btn', {
+              style: { flex: '1', fontSize: '15px' },
+              onclick: () => go('quiz', { questions: wrongOnes, mode: 'review', title: 'مراجعة الأخطاء' }),
+            }, 'راجع أخطاءك')
+          : session.again
+            ? el('button.btn', { style: { flex: '1', fontSize: '15px' }, onclick: session.again }, 'جلسةٌ أخرى')
+            : el('button.btn', { style: { flex: '1', fontSize: '15px' }, disabled: true }, 'لا أخطاء'),
+        session.again && wrongOnes.length
+          ? el('button.btn.btn--ghost', { onclick: session.again }, 'جلسةٌ أخرى')
+          : null,
+        el('button.btn.btn--ghost', { onclick: () => go('home') }, 'الرئيسية'),
+      ]),
     ]),
   ]);
 }
