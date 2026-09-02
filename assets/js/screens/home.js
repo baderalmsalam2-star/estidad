@@ -9,6 +9,7 @@ export default function homeScreen() {
   const track = store.get().track;
   const pool = data.forTrack(track);
   const mistakes = store.mistakes(pool);
+  const kept = store.correctOnes(pool).length;
   const resume = store.get().resume;
   const label = data.manifest().tracks[track].label;
 
@@ -66,6 +67,18 @@ export default function homeScreen() {
           : null,
         'tile--sand',
       ),
+    ]),
+
+    // ما أصابه الطالبُ خرج من الدورة إلى ههنا، فلا بدَّ من بابٍ ظاهرٍ يدخل منه.
+    el('button.card', { onclick: () => go('mastered'), style: { gap: '6px' } }, [
+      el('div.row-base', { style: { width: '100%' } }, [
+        el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'صندوق المراجعة'),
+        el('span.num', { style: { fontSize: '13px', color: 'var(--ink-5)' } }, ar(kept)),
+      ]),
+      el('span.fine', { style: { textAlign: 'start', width: '100%' } },
+        kept
+          ? `${ar(kept)} سؤالاً أصبتَه فرُفِع من دورةِ الأسئلة. افتحه متى شئت.`
+          : 'ما تُصيبه يُرفَع من دورةِ الأسئلة ويُحفَظ ههنا، فلا يُعاد عليك إلا أن تطلبه.'),
     ]),
 
     credit(),

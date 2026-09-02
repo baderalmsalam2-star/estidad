@@ -17,6 +17,7 @@ import accountScreen from './screens/account.js';
 import { openPage, closePage, libraryScreen } from './screens/page-view.js';
 import reviewScreen from './screens/review.js';
 import searchScreen from './screens/search.js';
+import masteredScreen from './screens/mastered.js';
 
 defineRoutes({
   track: trackScreen,
@@ -33,6 +34,7 @@ defineRoutes({
   library: libraryScreen,
   review: reviewScreen,
   search: searchScreen,
+  mastered: masteredScreen,
 });
 
 startClock();

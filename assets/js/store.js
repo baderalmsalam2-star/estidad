@@ -88,8 +88,22 @@ export function mistakes(questions) {
   });
 }
 
-/** السؤالُ متقَنٌ إذا أُجيب عنه بثمانين في المائة فأكثر. */
-const MASTERED = 0.8;
+/**
+ * الحدُّ الفاصلُ بين الصوابِ والخطأ — سبعون في المائة، وهو حدٌّ **واحدٌ** في
+ * التطبيق كلِّه: به يُعَدُّ السؤالُ صواباً فيخرج من دورةِ الأسئلة إلى صندوقِ
+ * المراجعة، وبه يُعَدُّ خطأً فيُعاد على الطالب حتى يُصيبه.
+ */
+export const CORRECT = 0.7;
+
+/** أصابه: فلا يُعرَض عليه في جلسةٍ تلقائيةٍ بعدُ، إلا أن يفتح صندوقَ المراجعة. */
+export const isCorrect = (id) => (cache.answers[id]?.score ?? -1) >= CORRECT;
+
+/** ما أصابه الطالبُ — مادّةُ «صندوق المراجعة»، الأحدثُ إصابةً أوّلاً. */
+export function correctOnes(questions) {
+  return questions
+    .filter((q) => isCorrect(q.id))
+    .sort((a, b) => (cache.answers[b.id]?.at || 0) - (cache.answers[a.id]?.at || 0));
+}
 
 /**
  * إتقانُ الأبواب — المقياسُ الذي يتحرَّك.
@@ -98,7 +112,7 @@ const MASTERED = 0.8;
  * أسبوعاً كاملاً وهو مجتهد. والأبوابُ نحوٌ من مائةٍ وخمسين، فجلسةٌ واحدةٌ
  * تُقلِّب باباً من «قيدَ الدرس» إلى «مُتقَن» — رقمٌ يراه في يومه.
  *
- * والبابُ متقَنٌ إذا أُتقن ثلثا أسئلته، لا كلُّها: اشتراطُ الكلِّ في بابٍ فيه
+ * والبابُ متقَنٌ إذا أُصيب ثلثا أسئلته، لا كلُّها: اشتراطُ الكلِّ في بابٍ فيه
  * مائةُ سؤالٍ يجعل الإتقانَ بعيداً كبُعدِ المقياسِ الأوّل.
  */
 export function chapters(questions) {
@@ -111,7 +125,7 @@ export function chapters(questions) {
     const a = cache.answers[q.id];
     if (a) {
       c.done += 1;
-      if (a.score >= MASTERED) c.good += 1;
+      if (a.score >= CORRECT) c.good += 1;
     }
   }
   const list = [...map.values()].map((c) => ({ ...c, ratio: c.total ? c.good / c.total : 0 }));

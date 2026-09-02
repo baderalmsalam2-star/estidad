@@ -7,20 +7,22 @@ import * as data from '../data.js';
 import * as store from '../store.js';
 import { el, ar, pct, arTime, go, pageCite, devBadge, empty } from '../ui.js';
 
-export default function quizScreen({ questions, mode = 'study', title = '', back = null, again = null, poolSize = 0 }) {
+export default function quizScreen({ questions, mode = 'study', title = '', back = null, again = null, pool = null }) {
   if (!questions || !questions.length) {
     return empty('لا أسئلة هنا', 'جرّب باباً آخر أو غيّر شروط الاختبار.');
   }
 
   const session = {
-    questions,
+    // نسخةٌ خاصّة: الجلسةُ تُلحِق بها ما أخطأ فيه، فلا تُمَسُّ قائمةُ المُنادي.
+    questions: [...questions],
     mode,
     title,
     back: back || (() => go('home')),
     again,                 // يلتقط دفعةً جديدة من البابِ نفسِه
-    poolSize,              // عدد أسئلة الباب كلِّه — لبيان الموقع منه
+    pool,                  // أسئلةُ الباب كلِّه — لبيان موقعِ الطالب منه
     index: 0,
-    results: [],           // { q, score }
+    results: [],           // { q, score } — قد يتكرّر السؤالُ إن أُعيد
+    retried: new Set(),    // ما أُعيد مرّةً، فلا يُعاد ثانيةً
     startedAt: Date.now(),
   };
 
@@ -90,9 +92,14 @@ function selfGradeView(host, session, q) {
   const ticked = new Set();
 
   const tally = el('span.num', { style: { fontSize: '15px', color: 'var(--green)' } });
+
+  // آخِرُ سؤالٍ في الجلسة قد لا يكون آخِرَها: الخطأُ يُعاد. فلا يقول الزرُّ
+  // «أنهِ الجلسة» ثمّ يأتي بسؤالٍ جديد — بل يتبدّل مع الدرجة قبل الضغط.
+  const nextBtn = el('button.btn', { style: { flex: '1', fontSize: '15.5px' } });
+  const scoreNow = () => (points ? ticked.size / points.length : 1);
   const updateTally = () => {
-    if (!points) return;
-    tally.textContent = `${ar(ticked.size)} / ${ar(points.length)} — ${pct(ticked.size / points.length)}`;
+    if (points) tally.textContent = `${ar(ticked.size)} / ${ar(points.length)} — ${pct(ticked.size / points.length)}`;
+    nextBtn.textContent = lastLabel(session, scoreNow());
   };
   updateTally();
 
@@ -137,10 +144,7 @@ function selfGradeView(host, session, q) {
       list,
     ]),
     el('div', { style: { padding: '14px 24px 26px', display: 'flex', gap: '10px', alignItems: 'center', flexShrink: '0' } }, [
-      el('button.btn', {
-        style: { flex: '1', fontSize: '15.5px' },
-        onclick: () => finish(points ? ticked.size / points.length : 1),
-      }, session.index + 1 < session.questions.length ? 'السؤال التالي' : 'أنهِ الجلسة'),
+      Object.assign(nextBtn, { onclick: () => finish(scoreNow()) }),
       el('button.btn.btn--ghost', { onclick: () => finish(0) }, 'لاحقاً'),
     ]),
   ]);
@@ -161,13 +165,14 @@ function objectiveView(host, session, q) {
   const nextBtn = el('button.btn', {
     disabled: true,
     onclick: () => advance(host, session),
-  }, session.index + 1 < session.questions.length ? 'السؤال التالي' : 'أنهِ الجلسة');
+  }, lastLabel(session, 1));
 
   const settle = (correct) => {
     answered = true;
     store.record(q, correct ? 1 : 0);
     session.results.push({ q, score: correct ? 1 : 0 });
     nextBtn.disabled = false;
+    nextBtn.textContent = lastLabel(session, correct ? 1 : 0);
     explainSlot.replaceChildren(explainCard(q, correct));
   };
 
@@ -234,9 +239,34 @@ function explainCard(q, correct) {
   ]);
 }
 
+/** نصُّ زرِّ الانتقال: أيبقى بعدَه سؤالٌ — أصليٌّ أو مُعادٌ — أم هي الخاتمة؟ */
+function lastLabel(session, score) {
+  const more = session.index + 1 < session.questions.length;
+  const willRepeat = session.mode !== 'exam'
+    && score < store.CORRECT
+    && !session.retried.has(session.questions[session.index].id);
+  return more || willRepeat ? 'السؤال التالي' : 'أنهِ الجلسة';
+}
+
 /* ── الانتقال والنتيجة ──────────────────────────────────────────────── */
 
+/**
+ * الخطأُ يُعاد في الجلسةِ نفسِها — بعدَ أن قرأ جوابَه، فيَعلَق.
+ *
+ * ولا يُعاد إلا مرّةً واحدةً، وإلا دارت الجلسةُ على سؤالٍ لا يُصيبه فلا تنتهي.
+ * والاختبارُ مُستثنًى: لا تُعاد فيه مسألةٌ، وإلا لم يكن اختباراً.
+ */
+function requeueIfWrong(session) {
+  if (session.mode === 'exam') return;
+  const last = session.results[session.results.length - 1];
+  if (!last || last.score >= store.CORRECT) return;
+  if (session.retried.has(last.q.id)) return;
+  session.retried.add(last.q.id);
+  session.questions.push(last.q);
+}
+
 function advance(host, session) {
+  requeueIfWrong(session);
   session.index += 1;
   if (session.index < session.questions.length) {
     renderQuestion(host, session);
@@ -248,11 +278,17 @@ function advance(host, session) {
 
 function finishSession(host, session) {
   const seconds = Math.round((Date.now() - session.startedAt) / 1000);
+
+  // السؤالُ المُعادُ يُحسَب بآخرِ محاولةٍ لا بأوّلها — وإلا عوقب على خطأٍ صحّحه.
+  const latest = new Map();
+  for (const r of session.results) latest.set(r.q.id, r);
+  session.final = [...latest.values()];
+
   const result = {
     title: session.title,
     at: Date.now(),
     seconds,
-    items: session.results.map((r) => ({ id: r.q.id, subject: r.q.subject, score: r.score })),
+    items: session.final.map((r) => ({ id: r.q.id, subject: r.q.subject, score: r.score })),
   };
   if (session.mode !== 'study') store.saveExam(result);
   host.replaceChildren(resultView(session, result));
@@ -276,7 +312,7 @@ function resultView(session, result) {
   const rows = [...bySubject.values()].sort((a, b) => b.sum / b.n - a.sum / a.n);
   const weakest = rows[rows.length - 1];
 
-  const wrongOnes = session.results.filter((r) => r.score < 0.7).map((r) => r.q);
+  const wrongOnes = (session.final || session.results).filter((r) => r.score < store.CORRECT).map((r) => r.q);
 
   // ثمرةُ الجلسةِ نقاطاً — تُحسَب كما تُحسَب في المخزن: عشرٌ للمتقَن وما دونه بحسابه.
   const earned = result.items.reduce((a, r) => a + Math.round(10 * r.score), 0);
@@ -333,11 +369,11 @@ function resultView(session, result) {
 
     el('div', { style: { padding: '14px 24px 26px', display: 'flex', flexDirection: 'column', gap: '10px', flexShrink: '0' } }, [
       // موقعُ الطالب من البابِ كلِّه — يُطمئنه أنّ الجلسة جزءٌ من طريقٍ لا كلُّه.
-      session.poolSize
+      session.pool && session.pool.length
         ? el('span.fine', { style: { textAlign: 'center', color: 'var(--ink-4)' } },
             (() => {
-              const seen = session.questions.filter((q) => store.scoreOf(q.id) !== null).length;
-              return `${ar(seen)} من ${ar(session.poolSize)} سؤالاً في هذا الباب`;
+              const done = session.pool.filter((q) => store.isCorrect(q.id)).length;
+              return `أصبتَ ${ar(done)} من ${ar(session.pool.length)} سؤالاً في هذا الباب`;
             })())
         : null,
       el('div', { style: { display: 'flex', gap: '10px' } }, [

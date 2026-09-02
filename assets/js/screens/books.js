@@ -38,7 +38,8 @@ export function booksScreen() {
 
     el('div.stack', subjects.map((s) => {
       const book = data.BOOK_OF_SUBJECT[s.subject] || {};
-      const done = data.questionsIn(track, s.subject).filter((q) => store.scoreOf(q.id) !== null).length;
+      // العدُّ على ما أُصيب لا على ما مرَّ: الخطأ يعودُ، فلا يُحسَب تقدُّماً.
+      const done = data.questionsIn(track, s.subject).filter((q) => store.isCorrect(q.id)).length;
 
       return el('button.card', { onclick: () => go('book', { subject: s.subject }) }, [
         el('div.row', { style: { alignItems: 'flex-start' } }, [
@@ -87,7 +88,7 @@ export function bookScreen({ subject }) {
 
     el('div', { style: { flex: '1', minHeight: '0', overflowY: 'auto', padding: '10px 24px 0' } }, [
       el('div.list', topics.map(({ topic, qs, range }) => {
-        const done = qs.filter((q) => store.scoreOf(q.id) !== null).length;
+        const done = qs.filter((q) => store.isCorrect(q.id)).length;
         const imamOnly = qs.every((q) => (q.tracks || []).length === 1 && q.tracks[0] === 'imam');
 
         return el('button.list-item', { onclick: () => openTopic(subject, topic) }, [
@@ -105,7 +106,8 @@ export function bookScreen({ subject }) {
       el('div.card', { style: { marginTop: '20px' } }, [
         el('span', { style: { fontSize: '13px', fontWeight: '600', color: 'var(--green)' } }, 'وضع الدراسة'),
         el('span', { style: { fontSize: '13px', lineHeight: '1.8', color: 'var(--ink-3)' } },
-          'يُعرَض الشرح والإجابة النموذجية فوراً مع كل سؤال — بلا اختبارٍ ولا درجة.'),
+          'يُعرَض الشرح والإجابة النموذجية فوراً مع كل سؤال، وتُصحّح لنفسك. '
+          + 'فما أصبتَه رُفِع إلى صندوق المراجعة فلا يُعاد عليك، وما أخطأتَ فيه أُعيد حتى تُصيبه.'),
       ]),
 
       // التجويد وحده له محرّكٌ يطبّق أحكامه على المصحف كلمةً كلمة.
@@ -160,41 +162,48 @@ function tableOfContents(all) {
 }
 
 /**
- * دفعةُ الجلسة: الجديدُ أوّلاً ثمّ ما ضعُفت درجتُه، بمقدار الوِرد اليوميّ.
- * جلسةٌ تنتهي وتُثمِر خيرٌ من ألفِ سؤالٍ لا آخِرَ لها.
+ * دفعةُ الجلسة: ما أخطأ فيه أوّلاً — فالخطأ أحقُّ بالإعادة — ثمّ ما لم يمرَّ
+ * عليه، بمقدار الوِرد اليوميّ.
+ *
+ * وما أصابه الطالبُ **لا يُعاد عليه** ههنا البتّة: يخرج من الدورةِ إلى صندوق
+ * المراجعة، فلا يُعرَض إلا أن يفتحه بنفسِه. وإلا ضاع وقتُه في سؤالٍ يعرفه.
  */
 function sessionBatch(questions) {
   const size = store.dailyGoal();
   const fresh = [];
-  const weak = [];
-  const rest = [];
+  const wrong = [];
   for (const q of questions) {
     const s = store.scoreOf(q.id);
     if (s === null) fresh.push(q);
-    else if (s < 0.7) weak.push(q);
-    else rest.push(q);
+    else if (s < store.CORRECT) wrong.push(q);
   }
-  const batch = [...fresh, ...weak, ...rest].slice(0, size);
-  return batch.length ? batch : questions.slice(0, size);
+  // الأضعفُ درجةً أوّلَ الخطأ.
+  wrong.sort((a, b) => store.scoreOf(a.id) - store.scoreOf(b.id));
+  return [...wrong, ...fresh].slice(0, size);
 }
 
 export function openTopic(subject, topic) {
   const track = store.get().track;
   const questions = data.questionsIn(track, subject, topic);
   if (!questions.length) return;
+
+  const batch = sessionBatch(questions);
+  // فرغَ البابُ: كلُّ أسئلته أُصيبت. فيُفتَح صندوقُ المراجعة بدل شاشةٍ خالية.
+  if (!batch.length) return go('mastered', { subject, topic });
+
   store.setResume({
     subject,
     topic: topic || 'الكتاب كاملاً',
-    done: questions.filter((q) => store.scoreOf(q.id) !== null).length,
+    done: questions.filter((q) => store.isCorrect(q.id)).length,
     total: questions.length,
   });
   go('quiz', {
-    questions: sessionBatch(questions),
+    questions: batch,
     mode: 'study',
     title: topic || subject,
     back: () => go('book', { subject }),
     // إعادةُ الجلسة تلتقط دفعةً جديدة، لا الدفعةَ نفسَها.
     again: () => openTopic(subject, topic),
-    poolSize: questions.length,
+    pool: questions,
   });
 }
