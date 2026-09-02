@@ -88,10 +88,79 @@ export function mistakes(questions) {
   });
 }
 
-/** التقدّم في المنهج: كم سؤالاً من أسئلة المسار مرّ عليه الطالب. */
-export function progress(questions) {
-  const done = questions.filter((q) => cache.answers[q.id]).length;
-  return { done, total: questions.length, pct: questions.length ? done / questions.length : 0 };
+/** السؤالُ متقَنٌ إذا أُجيب عنه بثمانين في المائة فأكثر. */
+const MASTERED = 0.8;
+
+/**
+ * إتقانُ الأبواب — المقياسُ الذي يتحرَّك.
+ *
+ * كان التقدّمُ يُقاس بـ«كم سؤالاً من أربعة آلافٍ»، فيبقى الطالبُ على الصفرِ
+ * أسبوعاً كاملاً وهو مجتهد. والأبوابُ نحوٌ من مائةٍ وخمسين، فجلسةٌ واحدةٌ
+ * تُقلِّب باباً من «قيدَ الدرس» إلى «مُتقَن» — رقمٌ يراه في يومه.
+ *
+ * والبابُ متقَنٌ إذا أُتقن ثلثا أسئلته، لا كلُّها: اشتراطُ الكلِّ في بابٍ فيه
+ * مائةُ سؤالٍ يجعل الإتقانَ بعيداً كبُعدِ المقياسِ الأوّل.
+ */
+export function chapters(questions) {
+  const map = new Map();
+  for (const q of questions) {
+    const key = `${q.subject}|${q.topic || 'عامّ'}`;
+    if (!map.has(key)) map.set(key, { subject: q.subject, topic: q.topic || 'عامّ', total: 0, done: 0, good: 0 });
+    const c = map.get(key);
+    c.total += 1;
+    const a = cache.answers[q.id];
+    if (a) {
+      c.done += 1;
+      if (a.score >= MASTERED) c.good += 1;
+    }
+  }
+  const list = [...map.values()].map((c) => ({ ...c, ratio: c.total ? c.good / c.total : 0 }));
+  const mastered = list.filter((c) => c.ratio >= 2 / 3).length;
+  const started = list.filter((c) => c.done > 0 && c.ratio < 2 / 3).length;
+  return { list, mastered, started, total: list.length, pct: list.length ? mastered / list.length : 0 };
+}
+
+/* ── النقاط والرُّتَب ────────────────────────────────────────────────── */
+
+/**
+ * النقاطُ مشتقّةٌ من الإجاباتِ نفسِها ومن السلسلة، لا تُخزَّن في حقلٍ مستقلّ —
+ * فلا تنكسر إن تغيّر شكلُ التخزين، ولا تُزوَّر بتحريرِ رقمٍ واحد.
+ * عشرُ نقاطٍ للسؤالِ المتقَن، وما دونه بحسابِ درجته، وخمسٌ لكلِّ يومٍ مُتَّصل.
+ */
+export function points() {
+  let n = 0;
+  for (const a of Object.values(cache.answers)) n += Math.round(10 * (a?.score ?? 0));
+  return n + daily().streak * 5;
+}
+
+/**
+ * الرُّتَبُ أوصافُ اجتهادٍ في الطلب، لا ألقابَ علمٍ ولا إجازاتٍ شرعية —
+ * كي لا يُفهَم من التطبيق تزكيةٌ لا يملكها.
+ */
+const RANKS = [
+  { at: 0, name: 'مبتدئ' },
+  { at: 200, name: 'مُتعلِّم' },
+  { at: 600, name: 'طالبُ علمٍ' },
+  { at: 1200, name: 'مُلازِم' },
+  { at: 2500, name: 'ضابِط' },
+  { at: 5000, name: 'مُتقِن' },
+  { at: 9000, name: 'مُبرِّز' },
+];
+
+export function rank(p = points()) {
+  let i = 0;
+  while (i + 1 < RANKS.length && p >= RANKS[i + 1].at) i += 1;
+  const cur = RANKS[i];
+  const next = RANKS[i + 1] || null;
+  return {
+    points: p,
+    name: cur.name,
+    level: i + 1,
+    levels: RANKS.length,
+    next: next ? next.name : null,
+    toNext: next ? next.at - p : 0,
+    pct: next ? Math.min(1, (p - cur.at) / (next.at - cur.at)) : 1,
+  };
 }
 
 /** نسبة الإتقان لكل علم — تُستخدم في الرئيسية وفي تحليل النتيجة. */

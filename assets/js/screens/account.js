@@ -7,14 +7,25 @@ import { el, ar, pct, go, padNav, credit, devMode } from '../ui.js';
 export default function accountScreen() {
   const track = store.get().track;
   const pool = data.forTrack(track);
-  const prog = store.progress(pool);
   const subjects = store.bySubject(pool).sort((a, b) => b.mastery - a.mastery);
   const label = data.manifest().tracks[track].label;
+  const r = store.rank();
+  const ch = store.chapters(pool);
 
   return padNav(el('div.pane', [
     el('div.stack', { style: { gap: '6px' } }, [
       el('h1.title', 'حسابي'),
-      el('p.lede', `مسار ${label} — ${ar(prog.done)} من ${ar(prog.total)} سؤالاً`),
+      el('p.lede', `مسار ${label} — أجبتَ عن ${ar(store.seenCount())} سؤالاً.`),
+    ]),
+
+    el('div.card', { style: { gap: '10px' } }, [
+      el('div.row-base', [
+        el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, r.name),
+        el('span.num', { style: { fontSize: '13px', color: 'var(--ink-5)' } }, `${ar(r.points)} نقطة`),
+      ]),
+      el('div.bar', el('i', { style: { width: `${Math.round(r.pct * 100)}%` } })),
+      el('span.fine', { style: { textAlign: 'start' } },
+        `${r.next ? `${ar(r.toNext)} نقطةً إلى «${r.next}» — ` : ''}أتقنتَ ${ar(ch.mastered)} من ${ar(ch.total)} باباً.`),
     ]),
 
     el('div.stack', [

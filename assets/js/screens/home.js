@@ -2,13 +2,12 @@
 
 import * as data from '../data.js';
 import * as store from '../store.js';
-import { el, ar, pct, go, padNav, credit, MAGNIFIER } from '../ui.js';
+import { el, ar, go, padNav, credit, MAGNIFIER } from '../ui.js';
 import { openTopic } from './books.js';
 
 export default function homeScreen() {
   const track = store.get().track;
   const pool = data.forTrack(track);
-  const prog = store.progress(pool);
   const mistakes = store.mistakes(pool);
   const resume = store.get().resume;
   const label = data.manifest().tracks[track].label;
@@ -41,15 +40,9 @@ export default function homeScreen() {
       ]),
     ]),
 
-    // تقدّمك في المنهج
-    el('div.card.card--lg.card--green', { style: { gap: '16px' } }, [
-      el('div.row-base', [
-        el('span', { style: { fontSize: '14px', opacity: '0.85' } }, 'تقدّمك في المنهج'),
-        el('span.num', { style: { fontSize: '14px' } }, `${ar(prog.done)} / ${ar(prog.total)}`),
-      ]),
-      el('span', { style: { fontFamily: 'var(--serif)', fontSize: '52px', fontWeight: '700', lineHeight: '1' } }, pct(prog.pct)),
-      el('div.bar.bar--onGreen', el('i', { style: { width: `${Math.round(prog.pct * 100)}%` } })),
-    ]),
+    rankCard(),
+
+    masteryCard(pool),
 
     wirdCard(track),
 
@@ -77,6 +70,47 @@ export default function homeScreen() {
 
     credit(),
   ]));
+}
+
+/**
+ * الرُّتبةُ والنقاطُ — صدرُ الشاشة.
+ *
+ * كان هنا «تقدّمك في المنهج ٠٪ — ٠/٤٠١٠»، وهو رقمٌ لا يتحرَّك: عشرون سؤالاً
+ * في اليوم لا تُزحزح الكسرَ عن الصِّفر، فيَقنَط المجتهدُ من أوّلِ أسبوع.
+ * والنقطةُ تُرى في جلسةٍ واحدة، والرُّتبةُ غايةٌ قريبةٌ تُطلَب.
+ */
+function rankCard() {
+  const r = store.rank();
+
+  return el('div.card.card--lg.card--green', { style: { gap: '14px' } }, [
+    el('div.row-base', [
+      el('span', { style: { fontSize: '14px', opacity: '0.85' } }, 'رتبتك'),
+      el('span.num', { style: { fontSize: '14px' } }, `${ar(r.points)} نقطة`),
+    ]),
+    el('span', { style: { fontFamily: 'var(--serif)', fontSize: '46px', fontWeight: '700', lineHeight: '1.15' } }, r.name),
+    el('div.bar.bar--onGreen', el('i', { style: { width: `${Math.round(r.pct * 100)}%` } })),
+    el('span', { style: { fontSize: '12.5px', opacity: '0.85' } },
+      r.next ? `${ar(r.toNext)} نقطةً إلى رتبة «${r.next}»` : 'بلغتَ أعلى الرُّتَب'),
+  ]);
+}
+
+/** إتقانُ الأبواب — بديلُ الكسرِ الكبير: رقمٌ يُقلِّبه بابٌ واحدٌ في اليوم. */
+function masteryCard(pool) {
+  const ch = store.chapters(pool);
+
+  return el('button.card', { onclick: () => go('books'), style: { gap: '12px' } }, [
+    el('div.row-base', { style: { width: '100%' } }, [
+      el('span.section-title', 'إتقانُ الأبواب'),
+      el('span.num', { style: { fontSize: '13px', color: 'var(--ink-5)' } },
+        `${ar(ch.mastered)} / ${ar(ch.total)}`),
+    ]),
+    el('div.bar', { style: { width: '100%' } }, el('i', { style: { width: `${Math.round(ch.pct * 100)}%` } })),
+    // لا نسبةَ مئويةٌ هنا: بابٌ من ثلاثمائةٍ يُقرَأ «٠٪»، فيعود المقياسُ إلى ما هربنا منه.
+    el('span.fine', { style: { textAlign: 'start', width: '100%' } },
+      ch.started
+        ? `${ar(ch.started)} باباً قيدَ الدرس. والبابُ متقَنٌ إذا أتقنتَ ثلثَي أسئلته.`
+        : 'البابُ يُعَدُّ متقَناً إذا أتقنتَ ثلثَي أسئلته. ابدأ من الكتب.'),
+  ]);
 }
 
 /** تمييزُ العدد في العربية: مفردٌ، فمثنّى، فجمعُ قلَّةٍ مجرور، فمفردٌ منصوب. */
@@ -124,17 +158,22 @@ function wirdCard(track) {
     el('div.bar', el('i', { style: { width: `${Math.round((Math.min(today, goal) / goal) * 100)}%` } })),
 
     el('button.btn', {
-      onclick: () => {
-        const questions = data.buildWird(track, left || goal, store.scoreOf);
-        if (!questions.length) return;
-        go('quiz', {
-          questions,
-          mode: 'study',
-          title: done ? 'زيادةٌ على الوِرد' : 'وِرد اليوم',
-        });
-      },
+      // «جلسةٌ أخرى» تُعيد بناءَ الوِرد لا تُعيد أسئلتَه — وإلا كُرّر ما أُتقن.
+      onclick: () => openWird(track, left || goal),
     }, done ? `زِدْ ${ar(goal)} سؤالاً` : `ابدأ — ${ar(left)} سؤالاً`),
   ]);
+}
+
+function openWird(track, n) {
+  const questions = data.buildWird(track, n, store.scoreOf);
+  if (!questions.length) return;
+  const { today, goal } = store.daily();
+  go('quiz', {
+    questions,
+    mode: 'study',
+    title: today >= goal ? 'زيادةٌ على الوِرد' : 'وِرد اليوم',
+    again: () => openWird(track, store.dailyGoal()),
+  });
 }
 
 function resumeCard(resume) {

@@ -278,6 +278,12 @@ function resultView(session, result) {
 
   const wrongOnes = session.results.filter((r) => r.score < 0.7).map((r) => r.q);
 
+  // ثمرةُ الجلسةِ نقاطاً — تُحسَب كما تُحسَب في المخزن: عشرٌ للمتقَن وما دونه بحسابه.
+  const earned = result.items.reduce((a, r) => a + Math.round(10 * r.score), 0);
+  const now = store.rank();
+  const before = store.rank(Math.max(0, now.points - earned));
+  const roseUp = before.name !== now.name;
+
   return el('div', { style: { display: 'flex', flexDirection: 'column', flex: '1', minHeight: '0' } }, [
     el('div', { style: { flex: '1', minHeight: '0', overflowY: 'auto', padding: '26px 24px 0', display: 'flex', flexDirection: 'column', gap: '22px' } }, [
       el('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '14px 0' } }, [
@@ -286,7 +292,18 @@ function resultView(session, result) {
         // المقاليّ يُعطي درجةً جزئية، فالمجموع كسريّ — يُقرَّب للعرض حتى لا يُقرأ «١٦٫٨ من ٣٤».
         el('span', { style: { fontSize: '14px', color: 'var(--ink-3)' } },
           `أصبتَ ما يعادل ${ar(Math.round(sum))} من ${ar(total)} في ${arTime(result.seconds)}`),
+        el('span.chip', {
+          style: { background: 'var(--green-tint)', color: 'var(--green)', fontWeight: '600', marginTop: '4px' },
+          // لا علامةَ زائدٍ: تنقلب في العربية إلى يمين الرقم فتُقرأ «٢٠٠+».
+        }, `${ar(earned)} نقطةً جديدة`),
       ]),
+
+      roseUp
+        ? el('div.card.card--green', { style: { gap: '6px', alignItems: 'center' } }, [
+            el('span', { style: { fontSize: '13px', opacity: '0.85' } }, 'ارتفعت رتبتُك'),
+            el('span', { style: { fontFamily: 'var(--serif)', fontSize: '30px', fontWeight: '700' } }, now.name),
+          ])
+        : null,
 
       el('div.stack', [
         el('span.section-title', 'التوزيع حسب العلم'),
