@@ -1,20 +1,6 @@
 // تحميل بنوك الأسئلة والمنهج، وبناء الفهارس التي تعتمد عليها الشاشات.
 
-const BANK_FILES = [
-  '00_verified_fiqh.json',
-  '01_tajweed.json',
-  '02_hadeeth.json',
-  '03_tafseer.json',
-  '04_aqeedah.json',
-  '05_fiqh_muamalat.json',
-  '06_nahw.json',
-  '07_meethaq.json',
-  '08_fiqh_janaiz.json',
-  '09_generated_fiqh.json',
-  '10_generated_meethaq.json',
-  '11_generated_tajweed.json',
-  '12_generated_aqeedah.json',
-];
+// قائمة البنوك تُقرأ من `data/manifest.json` نفسِه، فلا تنفصل عنه إذا أُضيف بنكٌ جديد.
 
 // الكتاب المقرَّر لكل علم — مصدره حقل `book` في البنوك و`sourceBooks` في المنيفست.
 export const BOOK_OF_SUBJECT = {
@@ -96,12 +82,14 @@ async function getJSON(path) {
 export async function load() {
   if (state.manifest) return state;
 
-  const [manifest, hints, pageIndex, bookLinks, ...banks] = await Promise.all([
-    getJSON('data/manifest.json'),
+  const manifest = await getJSON('data/manifest.json');
+  const bankFiles = (manifest.banks || []).map((b) => b.file);
+
+  const [hints, pageIndex, bookLinks, ...banks] = await Promise.all([
     getJSON('data/page-hints.json').catch(() => ({})),
     getJSON('books/pages-index.json').catch(() => ({})),
     getJSON('data/book-links.json').catch(() => ({})),
-    ...BANK_FILES.map((f) => getJSON(`data/banks/${f}`)),
+    ...bankFiles.map((f) => getJSON(`data/banks/${f}`)),
   ]);
 
   state.manifest = manifest;
@@ -110,7 +98,7 @@ export async function load() {
   state.bookLinks = bookLinks;
 
   banks.forEach((bank, i) => {
-    const file = BANK_FILES[i];
+    const file = bankFiles[i];
     for (const q of bank.questions || []) {
       // بعض البنوك تضع العلم على مستوى البنك لا على مستوى السؤال.
       const subject = q.subject || bank.subject;
