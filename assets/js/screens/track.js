@@ -4,6 +4,26 @@ import * as data from '../data.js';
 import * as store from '../store.js';
 import { el, ar, go } from '../ui.js';
 
+/**
+ * شعارُ التطبيق — محرابٌ مرسوم، لا حرفاً في مربَّع.
+ *
+ * كان حرفَ «و» فبدا كأنّه اختصارُ جهةٍ رسمية، والتطبيقُ ليس جهةً ولا يمثّلها.
+ * والمحرابُ يدلُّ على موضعِ الإمامِ من غيرِ ادِّعاءِ صفةٍ، ويُرسَم متجهاً فيستوي
+ * على كلِّ شاشةٍ ولا يقعُ في تفاوتِ الخطوط. وقوسُه من قوسِ حرفِ الحاءِ في أميري.
+ */
+const MARK = () => el('span', {
+  style: { display: 'flex', width: '54px', height: '54px' },
+  'aria-hidden': 'true',
+  html: `<svg viewBox="0 0 54 54" width="54" height="54" fill="none">
+    <rect width="54" height="54" rx="18" fill="var(--green)"/>
+    <path d="M27 12.5c-5.6 0-10 4.3-10 9.8V39h20V22.3c0-5.5-4.4-9.8-10-9.8z"
+          stroke="var(--paper)" stroke-width="2.3" stroke-linejoin="round"/>
+    <path d="M27 25.2c-1.7 0-2.9 1.3-2.9 3V39h5.8v-10.8c0-1.7-1.2-3-2.9-3z"
+          fill="var(--paper)"/>
+    <path d="M13 42.5h28" stroke="var(--paper)" stroke-width="2.3" stroke-linecap="round"/>
+  </svg>`,
+});
+
 const BLURB = {
   imam: 'ثمانية علوم · بالنحو وفقه المعاملات',
   muezzin: 'لا نحوَ ولا معاملات',
@@ -22,13 +42,7 @@ export default function trackScreen() {
   const render = () => {
     pane.replaceChildren(
       el('div.stack', { style: { gap: '14px' } }, [
-        el('div', {
-          style: {
-            width: '50px', height: '50px', borderRadius: '17px', background: 'var(--green)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'var(--paper)', fontFamily: 'var(--serif)', fontSize: '27px', fontWeight: '700',
-          },
-        }, 'و'),
+        MARK(),
         el('h1.display', { style: { marginTop: '8px' } }, 'اختر مسارك'),
         el('p.lede', { style: { maxWidth: '300px' } }, 'يُفلتَر المنهج كلّه على مسارك: الكتب، والأسئلة، ومقدار الحفظ.'),
       ]),

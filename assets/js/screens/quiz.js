@@ -117,9 +117,10 @@ function selfGradeView(host, session, q) {
       : null,
   ]);
 
+  const buttons = [];
   const list = points
-    ? el('div.stack-sm', points.map((p, i) =>
-        el('button.point', {
+    ? el('div.stack-sm', points.map((p, i) => {
+        const b = el('button.point', {
           'aria-pressed': 'false',
           onclick: (e) => {
             const btn = e.currentTarget;
@@ -128,8 +129,38 @@ function selfGradeView(host, session, q) {
             if (on) ticked.delete(i); else ticked.add(i);
             updateTally();
           },
-        }, [el('span.box', '✓'), el('span', p)])))
+        }, [el('span.box', '✓'), el('span', p)]);
+        buttons.push(b);
+        return b;
+      }))
     : el('p.lede', 'هذا السؤال بلا نقاطِ تحقُّقٍ مفصَّلة — قابِل إجابتك بالنصّ أعلاه واحكم لنفسك.');
+
+  /**
+   * طرفا التصحيح في ضغطةٍ واحدة.
+   *
+   * أكثرُ الأجوبةِ في الطرفين: إمّا أصابها كلَّها فيؤشّر على تسعِ نقاطٍ واحدةً
+   * واحدة، وإمّا لم يُجب بشيءٍ فلا يجد ما يقوله إلا زرَّ «لاحقاً» المبهم.
+   * فصار للطرفين زرّاهما، وتبقى التأشيرةُ لما بينهما.
+   */
+  const setAll = (on) => {
+    ticked.clear();
+    if (on && points) points.forEach((_, i) => ticked.add(i));
+    buttons.forEach((b) => b.setAttribute('aria-pressed', String(!!on)));
+    updateTally();
+  };
+
+  const ends = points
+    ? el('div', { style: { display: 'flex', gap: '8px' } }, [
+        el('button.chip', {
+          onclick: () => setAll(true),
+          style: { cursor: 'pointer', border: 'none', font: 'inherit', flex: '1', textAlign: 'center', alignSelf: 'stretch', padding: '10px 12px' },
+        }, 'أصبتُ الكلَّ'),
+        el('button.chip.chip--muted', {
+          onclick: () => setAll(false),
+          style: { cursor: 'pointer', border: 'none', font: 'inherit', flex: '1', textAlign: 'center', alignSelf: 'stretch', padding: '10px 12px' },
+        }, 'لم أُجِبْ بشيء'),
+      ])
+    : null;
 
   const finish = (score) => {
     store.record(q, score);
@@ -141,11 +172,13 @@ function selfGradeView(host, session, q) {
     el('div', { style: { flex: '1', minHeight: '0', overflowY: 'auto', padding: '16px 24px 0', display: 'flex', flexDirection: 'column', gap: '12px' } }, [
       model,
       points ? el('div.row-base', [el('span.section-title', 'أشِّر على ما أصبتَه'), tally]) : null,
+      ends,
       list,
     ]),
     el('div', { style: { padding: '14px 24px 26px', display: 'flex', gap: '10px', alignItems: 'center', flexShrink: '0' } }, [
       Object.assign(nextBtn, { onclick: () => finish(scoreNow()) }),
-      el('button.btn.btn--ghost', { onclick: () => finish(0) }, 'لاحقاً'),
+      // «لاحقاً» كان يُسجَّل صفراً في صمت، فيُظنّ تأجيلاً وهو خطأٌ يُحسَب.
+      el('button.btn.btn--ghost', { onclick: () => finish(0) }, 'أجِّلْه'),
     ]),
   ]);
 }

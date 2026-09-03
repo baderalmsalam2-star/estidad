@@ -42,6 +42,17 @@ export default function accountScreen() {
     ]),
 
     devMode()
+      ? el('button.card.card--green', { onclick: () => go('admin'), style: { marginBottom: '-4px' } }, [
+          el('div.row', [
+            el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'لوحة المشرف'),
+            el('span', { style: { fontSize: '18px', opacity: '0.7' } }, '‹'),
+          ]),
+          el('span', { style: { fontSize: '12.5px', lineHeight: '1.8', opacity: '0.88', textAlign: 'start' } },
+            'صحّةُ بنك الأسئلة وثغراتُه، وأرقامُ هذا الجهاز. للمشرف لا للطالب.'),
+        ])
+      : null,
+
+    devMode()
       ? el('button.card.card--green', { onclick: () => go('review') }, [
           el('div.row', [
             el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'اعتماد التوثيق'),
@@ -83,10 +94,45 @@ export default function accountScreen() {
       }, 'امسح تقدّمي'),
     ]),
 
-    el('p.fine', { style: { textAlign: 'center' } },
-      'إدارة الشؤون الفنية — قطاع المساجد، هاتف ٢٢٢٦٢٧٤٠'),
+    contactCard(),
   ]));
 }
+
+/**
+ * التواصل مع صاحب التطبيق.
+ *
+ * كان ههنا هاتفُ إدارةِ الشؤون الفنية، فحُذف: التطبيقُ ليس جهةً رسميةً ولا
+ * يتكلّم باسمها، ونشرُ هاتفِها فيه يوهم الطالبَ أنّه قناتُها.
+ *
+ * والرقمُ في `CONTACT` رقمُ صاحبِ المشروع، فلا يُخمَّن ولا يُملأ إلا من فمه.
+ * وما دام فارغاً فلا زرَّ أصلاً — لا زرٌّ يفتح محادثةً مع لا أحد.
+ */
+const CONTACT = {
+  // رقمٌ دوليٌّ بلا + ولا فراغات، مثل: '96550000000'
+  whatsapp: '',
+  message: 'السلام عليكم، عندي ملاحظةٌ على تطبيق الاستعداد:',
+};
+
+function contactCard() {
+  if (!CONTACT.whatsapp) return null;
+  const href = `https://wa.me/${CONTACT.whatsapp}?text=${encodeURIComponent(CONTACT.message)}`;
+
+  return el('a.card', {
+    href, target: '_blank', rel: 'noopener',
+    style: { textDecoration: 'none', color: 'inherit', gap: '8px' },
+  }, [
+    el('div.row', [
+      el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'راسِلنا على واتساب'),
+      el('span', { style: { display: 'flex', color: 'var(--green)' }, html: WHATSAPP_MARK }),
+    ]),
+    el('span.fine', { style: { textAlign: 'start' } },
+      'خطأٌ في سؤالٍ، أو اقتراحٌ، أو صفحةٌ لم تُفتَح — اكتبها لنا مباشرةً.'),
+  ]);
+}
+
+// أيقونة واتساب مرسومةٌ متجهةً — لا صورةَ خارجيةً تُحمَّل من طرفٍ ثالث.
+const WHATSAPP_MARK = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'
+  + '<path d="M12.04 2a9.9 9.9 0 0 0-8.5 14.95L2 22.5l5.7-1.5A9.9 9.9 0 1 0 12.04 2zm0 1.9a8 8 0 1 1-4.1 14.86l-.29-.17-3.38.89.9-3.3-.19-.3A8 8 0 0 1 12.04 3.9zm4.6 10.1c-.25-.13-1.47-.72-1.7-.8-.23-.09-.4-.13-.56.12-.17.25-.64.8-.79.97-.14.16-.29.18-.54.06-.25-.13-1.05-.39-2-1.24a7.5 7.5 0 0 1-1.38-1.72c-.15-.25-.02-.38.11-.5.11-.12.25-.29.37-.44.12-.15.16-.25.25-.42.08-.16.04-.31-.02-.44-.06-.12-.56-1.35-.77-1.85-.2-.48-.4-.42-.55-.42h-.47c-.16 0-.42.06-.64.31-.22.25-.84.82-.84 2s.86 2.32.98 2.48c.13.16 1.7 2.6 4.12 3.64.57.25 1.02.4 1.37.51.58.18 1.1.16 1.52.1.46-.07 1.42-.58 1.62-1.15.2-.56.2-1.05.14-1.15-.06-.1-.22-.16-.47-.29z"/></svg>';
 
 /**
  * قَدرُ الوِرد اليوميّ. خِياراتٌ محدودةٌ لا حقلُ إدخالٍ حرّ: الطالب يختار عادةً

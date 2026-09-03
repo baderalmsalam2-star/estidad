@@ -244,8 +244,10 @@ export function daily() {
     else break;
   }
 
+  // اليومُ أوّلُ الشريط، فيقع في اليمين — وتمتدُّ الأيامُ الماضيةُ عنه شمالاً،
+  // كما تُقرأ العربية. وكان أوّلُه أقدمَ الأيام فيقع اليومُ في أقصى اليسار.
   const week = [];
-  for (let back = 6; back >= 0; back -= 1) week.push(at(back));
+  for (let back = 0; back <= 6; back += 1) week.push(at(back));
 
   return { today, goal: dailyGoal(), streak, week };
 }
