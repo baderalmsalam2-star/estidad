@@ -2,7 +2,7 @@
 
 import * as data from '../data.js';
 import * as store from '../store.js';
-import { el, ar, go, credit } from '../ui.js';
+import { el, ar, go } from '../ui.js';
 
 const BLURB = {
   imam: 'ثمانية علوم · بالنحو وفقه المعاملات',
@@ -74,7 +74,6 @@ export default function trackScreen() {
         el('button.btn', {
           onclick: () => { store.setTrack(picked); go('home'); },
         }, 'متابعة'),
-        credit(),
       ]),
     );
   };

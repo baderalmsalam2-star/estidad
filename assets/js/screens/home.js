@@ -2,7 +2,7 @@
 
 import * as data from '../data.js';
 import * as store from '../store.js';
-import { el, ar, go, padNav, credit, MAGNIFIER } from '../ui.js';
+import { el, ar, go, padNav, MAGNIFIER } from '../ui.js';
 import { openTopic } from './books.js';
 
 export default function homeScreen() {
@@ -80,8 +80,6 @@ export default function homeScreen() {
           ? `${ar(kept)} سؤالاً أصبتَه فرُفِع من دورةِ الأسئلة. افتحه متى شئت.`
           : 'ما تُصيبه يُرفَع من دورةِ الأسئلة ويُحفَظ ههنا، فلا يُعاد عليك إلا أن تطلبه.'),
     ]),
-
-    credit(),
   ]));
 }
 

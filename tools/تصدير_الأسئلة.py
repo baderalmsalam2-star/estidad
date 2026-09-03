@@ -94,7 +94,8 @@ def main():
            f"**{ar(len(qs))} سؤالاً** · موثَّقٌ على الكتاب: **{ar(verified)}** · "
            f"مولَّدٌ من صفحة الكتاب: **{ar(generated)}**", '',
            '> الأسئلة اجتهادٌ تدريبيٌّ مبنيٌّ على الكتب المقرَّرة، لا أسئلةَ اختباراتٍ رسمية.',
-           '> والفقه على المذهب الحنبليّ: الصواب ما في دليل الطالب.', '', '---', '']
+           '> والفقه على المذهب الحنبليّ: الصواب ما في دليل الطالب.', '',
+           'تم تطوير التطبيق بواسطة بدر المسلم', '', '---', '']
 
     for subject in sorted(by_subject, key=lambda s: -sum(len(v) for v in by_subject[s].values())):
         topics = by_subject[subject]
@@ -107,6 +108,9 @@ def main():
                 seal = ' ✅' if q.get('bookVerified') else ''
                 out += [f"**{q['id']}** — {TYPE_NAME.get(q.get('type'), '')}{badge}{seal}", '',
                         f"**{q['question']}**", '', answer_block(q), '---', '']
+
+    # يُختم التصديرُ بالتوقيعِ كما يُفتَح به — لا صفحةَ ولا تصديرَ بلا اسمِ صاحبه.
+    out += ['---', '', 'تم تطوير التطبيق بواسطة بدر المسلم', '']
 
     path = ROOT / 'الأسئلة-كاملة.md'
     path.write_text('\n'.join(out), encoding='utf-8')

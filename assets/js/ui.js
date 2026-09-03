@@ -193,11 +193,25 @@ export function go(name, params = {}) {
   if (node) screen.appendChild(node);
 
   renderTabs(params.tab ?? name);
+  stampCredit(screen, node);
   screen.focus({ preventScroll: true });
   return node;
 }
 
 export const currentRoute = () => current;
+
+/**
+ * سطرُ الاعتماد على **كلِّ** شاشة — يُلحَق من مكانٍ واحد، فلا تُنسى شاشةٌ إذا
+ * أُضيفت، ولا يُنسى حذفُه إذا حُذفت.
+ *
+ * ويُعلَّق على الشاشةِ لا على اللوحِ الذي تُرجِعه الشاشة، لأنّ شاشةَ الأسئلة
+ * تُعيد رسمَ لوحِها مع كلِّ سؤال، فلو عُلِّق عليه لمُحي عند أوّلِ انتقال.
+ * ومن أثبته في لوحِه (الرئيسيةُ وحسابي والمسار) لا يُكرَّر عليه.
+ */
+function stampCredit(screen, node) {
+  if (node && node.querySelector && node.querySelector('.credit')) return;
+  screen.appendChild(credit());
+}
 
 function renderTabs(active) {
   const nav = tabbarEl();
@@ -205,9 +219,12 @@ function renderTabs(active) {
   if (!tab) {
     nav.hidden = true;
     nav.replaceChildren();
+    host().classList.remove('has-nav');
     return;
   }
   nav.hidden = false;
+  // يعرفه سطرُ الاعتماد ليترك للشريطِ العائم فراغَه فلا يحجبه.
+  host().classList.add('has-nav');
   nav.replaceChildren(
     ...TABS.map((t) =>
       el('button', {
@@ -229,6 +246,7 @@ export function hideTabs() {
   const nav = tabbarEl();
   nav.hidden = true;
   nav.replaceChildren();
+  host().classList.remove('has-nav');
 }
 
 /* ── الساعة في شريط الحالة ───────────────────────────────────────────── */

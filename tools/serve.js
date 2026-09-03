@@ -17,6 +17,9 @@ const TYPES = {
   '.md': 'text/markdown; charset=utf-8',
   '.woff2': 'font/woff2',
   '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.pdf': 'application/pdf',
+  '.webmanifest': 'application/manifest+json; charset=utf-8',
 };
 
 createServer(async (req, res) => {

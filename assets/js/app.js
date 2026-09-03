@@ -53,10 +53,22 @@ setPageOpener(openPage);
 // أي انتقالٍ بين الشاشات يُغلق طبقة الصفحة إن كانت مفتوحة.
 setNavigateHook(closePage);
 
+/**
+ * عاملُ الخدمة — يُسجَّل بعدَ إقلاعِ التطبيقِ لا قبلَه، فلا يزاحمُ أوّلَ رسمٍ على
+ * شبكةٍ ضعيفة. ولا يُسجَّل على `file://` لأنّ المتصفّحَ يمنعه ثَمّ.
+ */
+function registerWorker() {
+  if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
+  navigator.serviceWorker.register(new URL('sw.js', document.baseURI)).catch(() => {
+    /* لا شبكةَ أو منعٌ من المتصفّح — التطبيقُ يعملُ بلا تخزينٍ للعمل بلا شبكة */
+  });
+}
+
 data.load()
   .then(() => {
     // أول شاشةٍ في التطبيق اختيارُ المسار، ولا يُتجاوَز إلا بعد اختياره.
     go(store.get().track ? 'home' : 'track');
+    registerWorker();
   })
   .catch((err) => {
     screen.replaceChildren(el('div.empty', [
