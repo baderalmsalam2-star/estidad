@@ -21,6 +21,13 @@ const TITLE = {
 
 export const bookTitle = (id) => TITLE[id] || 'الكتاب';
 
+/**
+ * النسخةُ ذاتُ الملفِّ الواحد (`tools/بناء_نسخة_واحدة.py`) لا تحمل الكتبَ PDF
+ * (٢٧ م.ب) ولا صورَ الصفحات (١٢ م.ب). فيُصرَّح بذلك للطالبِ في موضعه، ولا
+ * يُترَك رابطاً مكسوراً ولا زرّاً يَعِدُ بما لا يفي به.
+ */
+const PREVIEW = typeof window !== 'undefined' && window.__PREVIEW === true;
+
 let layer = null;
 
 export function closePage() {
@@ -56,10 +63,12 @@ export function openPage(ref) {
     img.addEventListener('error', () => {
       body.replaceChildren(el('div.card.card--sand', [
         el('span', { style: { fontSize: '13.5px', fontWeight: '600', color: 'var(--sand-ink)' } },
-          hasPdf ? 'هذه الصفحة غير مرسومة' : `${bookTitle(ref.book)} غير مرفوعٍ داخل التطبيق`),
-        el('span.fine', { style: { color: 'var(--sand-ink2)' } }, hasPdf
-          ? 'افتح الكتاب كاملاً من الزرّ أدناه.'
-          : `المطلوب صفحة ${ar(page)}. افتح الكتاب من مرجعه الرسميّ أدناه.`),
+          PREVIEW ? 'صور الصفحات ليست في النسخة التجريبية'
+                  : hasPdf ? 'هذه الصفحة غير مرسومة' : `${bookTitle(ref.book)} غير مرفوعٍ داخل التطبيق`),
+        el('span.fine', { style: { color: 'var(--sand-ink2)' } },
+          PREVIEW ? `المطلوب صفحة ${ar(page)} من ${bookTitle(ref.book)} — وهي في النسخة المنشورة كاملةً.`
+                  : hasPdf ? 'افتح الكتاب كاملاً من الزرّ أدناه.'
+                           : `المطلوب صفحة ${ar(page)}. افتح الكتاب من مرجعه الرسميّ أدناه.`),
       ]), bookRefCard(ref.book));
     });
 
@@ -141,11 +150,13 @@ export function libraryScreen() {
   return el('div', { style: { display: 'flex', flexDirection: 'column', flex: '1', minHeight: '0' } }, [
     el('div', { style: { padding: '22px 24px 8px', display: 'flex', flexDirection: 'column', gap: '6px' } }, [
       el('h1.title', 'الكتب كاملةً'),
-      el('p.lede', 'ما كان داخل التطبيق يُفتَح بلا اتصال، وما سواه يُحال إلى مرجعه الرسميّ.'),
+      el('p.lede', PREVIEW
+        ? 'هذه نسخةٌ تجريبيةٌ في ملفٍّ واحد، والكتبُ فيها ليست محمولةً. وهي في النسخة المنشورة تُفتَح بلا اتصال.'
+        : 'ما كان داخل التطبيق يُفتَح بلا اتصال، وما سواه يُحال إلى مرجعه الرسميّ.'),
     ]),
     el('div', { style: { flex: '1', minHeight: '0', overflowY: 'auto', padding: '8px 24px 26px', display: 'flex', flexDirection: 'column', gap: '12px' } }, [
       ...inside.map(([id, title]) =>
-        el('a.card', {
+        el(PREVIEW ? 'div.card' : 'a.card', PREVIEW ? { style: { gap: '10px' } } : {
           href: `books/${id}.pdf`, target: '_blank', rel: 'noopener',
           style: { textDecoration: 'none', color: 'inherit' },
         }, [
@@ -153,7 +164,9 @@ export function libraryScreen() {
             el('span', { style: { fontFamily: 'var(--serif)', fontSize: '24px', fontWeight: '700', textAlign: 'start' } }, title),
             el('span', { style: { fontSize: '18px', color: 'var(--ink-8)' } }, '‹'),
           ]),
-          el('span.fine', `${ar(data.bookPageCount(id))} صفحة — داخل التطبيق`),
+          el('span.fine', PREVIEW
+            ? `${ar(data.bookPageCount(id))} صفحة — في النسخة المنشورة`
+            : `${ar(data.bookPageCount(id))} صفحة — داخل التطبيق`),
         ])),
 
       outside.length ? el('span.section-title', { style: { marginTop: '10px' } }, 'كتبٌ تُقرأ من مرجعها') : null,
