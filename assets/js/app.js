@@ -19,6 +19,7 @@ import reviewScreen from './screens/review.js';
 import searchScreen from './screens/search.js';
 import masteredScreen from './screens/mastered.js';
 import adminScreen from './screens/admin.js';
+import sheetScreen from './screens/sheet.js';
 
 defineRoutes({
   track: trackScreen,
@@ -37,6 +38,7 @@ defineRoutes({
   search: searchScreen,
   mastered: masteredScreen,
   admin: adminScreen,
+  sheet: sheetScreen,
 });
 
 startClock();

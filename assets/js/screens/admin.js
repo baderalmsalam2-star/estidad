@@ -27,6 +27,7 @@ export default function adminScreen() {
     el('div.pane', { style: { gap: '18px' } }, [
       bankHealth(all),
       difficultySpread(all),
+      measured(pool),
       gaps(all),
       deviceStats(pool),
       el('div.card.card--sand', { style: { gap: '8px' } }, [
@@ -118,12 +119,74 @@ function difficultySpread(all) {
   ]);
 }
 
+/* ── الصعوبة المقيسة ────────────────────────────────────────────────── */
+
+/**
+ * الصعوبةُ المقيسةُ من الإجابات، تُقابَل بالمعلَنةِ فيَبِينُ ما أُخطئ تقديرُه.
+ *
+ * الصعوبةُ المعلنةُ (١–٩) حكمٌ كُتب مع السؤال، وقد يُخطئ. والمقيسةُ حكمُ
+ * الواقع: `١ − متوسّطُ الدرجة`، مضروبةً في تسعةٍ لتُقابَل بها على سُلَّمها.
+ *
+ * وقياسُ سؤالٍ من إجابةٍ واحدةٍ ليس قياساً — لكنّ هذا الجهازَ لا يحمل غيرَها،
+ * فيُقال ذلك صراحةً ويُعرَض أشدُّ التفاوتِ وحدَه، ولا يُبدَّل به المعلَن.
+ */
+function measured(pool) {
+  const rows = [];
+  for (const q of pool) {
+    const s = store.scoreOf(q.id);
+    if (s === null || !q.difficulty) continue;
+    const seen = Math.round((1 - s) * 8) + 1;         // ١..٩
+    rows.push({ q, seen, gap: seen - q.difficulty });
+  }
+  if (!rows.length) {
+    return el('div.stack', [
+      el('span.section-title', 'الصعوبة المقيسة'),
+      el('div.card', el('span.fine',
+        'تُقاس من إجاباتك على هذا الجهاز، وتُقابَل بالصعوبة المعلنة. أجِبْ عن أسئلةٍ ثمّ عُدْ.')),
+    ]);
+  }
+
+  const off = rows.filter((r) => Math.abs(r.gap) >= 3)
+    .sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap))
+    .slice(0, 6);
+
+  return el('div.stack', [
+    el('span.section-title', 'الصعوبة المقيسة'),
+    el('div.card', { style: { gap: '10px' } }, [
+      el('div.row', { style: { fontSize: '13.5px' } }, [
+        el('span', 'أسئلةٌ قِيست'), el('span.num', { style: { color: 'var(--ink-4)' } }, ar(rows.length)),
+      ]),
+      el('div.row', { style: { fontSize: '13.5px' } }, [
+        el('span', 'تفاوتٌ بيّنٌ عن المعلَن'),
+        el('span.num', { style: { color: off.length ? 'var(--wrong)' : 'var(--green)' } },
+          ar(rows.filter((r) => Math.abs(r.gap) >= 3).length)),
+      ]),
+      el('span.fine', { style: { textAlign: 'start' } },
+        'مقيسةٌ من إجابةٍ واحدةٍ لكلِّ سؤالٍ على هذا الجهاز — دلالةٌ لا حكم. '
+        + 'والقياسُ الذي يُعتمَد عليه يحتاج إجاباتِ طلابٍ كثيرين، وذلك يحتاج خادماً.'),
+    ]),
+    off.length
+      ? el('div.card', { style: { gap: '12px' } }, [
+          el('span', { style: { fontSize: '13.5px', fontWeight: '600' } }, 'أبعدُها عن تقديرها'),
+          ...off.map(({ q, seen, gap }) => el('div', { style: { display: 'flex', flexDirection: 'column', gap: '4px' } }, [
+            el('span', { style: { fontSize: '13.5px', lineHeight: '1.7' } }, q.question),
+            el('span.fine', { style: { textAlign: 'start' } },
+              `أُعلِن ${ar(q.difficulty)} وقِيس ${ar(seen)} — ${gap > 0 ? 'أصعبُ' : 'أسهلُ'} ممّا قُدِّر`
+              + `${q.bookPage ? ` · ${q.bookPage}` : ''}`),
+          ])),
+        ])
+      : null,
+  ]);
+}
+
 /* ── ثغراتٌ تُصلَح ───────────────────────────────────────────────────── */
 
 /** ما ينقص البنكَ فعلاً — قائمةُ عملٍ لا زينةَ أرقام. */
 function gaps(all) {
   const noPage = all.filter((q) => !q.bookPage).length;
-  const noKeys = all.filter((q) => !(q.keyPoints || []).length).length;
+  // المقاليُّ وحدَه يحتاج نقاطَ تصحيح؛ والموضوعيُّ يُصحَّح آلياً من جوابه،
+  // فعَدُّه في النقص إنذارٌ كاذبٌ يُشغِل عن نقصٍ حقيقيّ.
+  const noKeys = all.filter((q) => q.type === 'essay' && !(q.keyPoints || []).length).length;
 
   const bySubject = new Map();
   for (const q of all) {
@@ -139,10 +202,12 @@ function gaps(all) {
         el('span', 'بلا رقم صفحة'), el('span.num', { style: { color: 'var(--ink-4)' } }, ar(noPage)),
       ]),
       el('div.row', { style: { fontSize: '13.5px' } }, [
-        el('span', 'بلا نقاط تصحيحٍ ذاتيّ'), el('span.num', { style: { color: 'var(--ink-4)' } }, ar(noKeys)),
+        el('span', 'مقاليٌّ بلا نقاط تصحيح'),
+        el('span.num', { style: { color: noKeys ? 'var(--wrong)' : 'var(--green)' } }, ar(noKeys)),
       ]),
-      el('span.fine', { style: { textAlign: 'start' } },
-        'السؤال بلا نقاطٍ لا يُصحَّح إلا بالنظر، فدرجتُه تُحتسَب كاملةً — وذلك يرفع درجةَ الطالب بلا وجه.'),
+      el('span.fine', { style: { textAlign: 'start' } }, noKeys
+        ? 'المقاليُّ بلا نقاطٍ تُحتسَب درجتُه كاملةً، وذلك يرفع درجةَ الطالب بلا وجه.'
+        : 'كلُّ سؤالٍ مقاليٍّ في البنك له نقاطُ تصحيحٍ ذاتيّ. والموضوعيُّ يُصحَّح آلياً فلا يحتاجها.'),
     ]),
     rows.length
       ? el('div.card', { style: { gap: '10px' } }, [

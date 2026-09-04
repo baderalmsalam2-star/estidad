@@ -5,9 +5,10 @@
 
 import * as data from '../data.js';
 import * as store from '../store.js';
-import { el, ar, pct, arTime, go, pageCite, devBadge, empty } from '../ui.js';
+import { el, ar, pct, arTime, go, pageCite, devBadge, empty, reportLink } from '../ui.js';
+import { resultCard, shareCard, shareText } from '../share.js';
 
-export default function quizScreen({ questions, mode = 'study', title = '', back = null, again = null, pool = null }) {
+export default function quizScreen({ questions, mode = 'study', title = '', back = null, again = null, pool = null, minutes = 0 }) {
   if (!questions || !questions.length) {
     return empty('لا أسئلة هنا', 'جرّب باباً آخر أو غيّر شروط الاختبار.');
   }
@@ -24,9 +25,15 @@ export default function quizScreen({ questions, mode = 'study', title = '', back
     results: [],           // { q, score } — قد يتكرّر السؤالُ إن أُعيد
     retried: new Set(),    // ما أُعيد مرّةً، فلا يُعاد ثانيةً
     startedAt: Date.now(),
+    // مُهلةُ الاختبار بالدقائق (صفرٌ = بلا مُهلة). تُحسَب من لحظة البدء لا من
+    // لحظة السؤال، فالوقتُ الضائع في سؤالٍ يُنقِص من بقيّةِ الأسئلة كما في القاعة.
+    endsAt: minutes ? Date.now() + minutes * 60_000 : 0,
+    over: false,
   };
 
   const host = el('div', { style: { display: 'flex', flexDirection: 'column', flex: '1', minHeight: '0' } });
+  // نفادُ الوقت يختم الجلسةَ على ما أُجيب — وما لم يُجَب لا يُسجَّل ولا يُحسَب.
+  session.onTimeout = () => finishSession(host, session);
   renderQuestion(host, session);
   return host;
 }
@@ -35,12 +42,54 @@ export default function quizScreen({ questions, mode = 'study', title = '', back
 
 function header(session, onClose) {
   const n = session.questions.length;
-  return el('div', { style: { padding: '16px 24px 0', display: 'flex', alignItems: 'center', gap: '14px', flexShrink: '0' } }, [
+  const counter = el('span.num', { style: { fontSize: '13px', color: 'var(--ink-5)' } },
+    `${ar(session.index + 1)}/${ar(n)}`);
+
+  const row = el('div', { style: { padding: '16px 24px 0', display: 'flex', alignItems: 'center', gap: '14px', flexShrink: '0' } }, [
     el('button.iconbtn', { onclick: onClose, 'aria-label': 'إنهاء' }, '✕'),
     el('div.bar', { style: { flex: '1' } },
       el('i', { style: { width: `${Math.round((session.index / n) * 100)}%` } })),
-    el('span.num', { style: { fontSize: '13px', color: 'var(--ink-5)' } }, `${ar(session.index + 1)}/${ar(n)}`),
+    counter,
   ]);
+
+  if (session.endsAt) row.insertBefore(clock(session), counter);
+  return row;
+}
+
+/**
+ * عدّادُ الاختبار النازل.
+ *
+ * الاختبارُ موعدٌ بوقتٍ محدود، والتدرُّبُ عليه بلا وقتٍ يُعلِّم نصفَه. فإذا نفد
+ * الوقتُ خُتِمت الجلسةُ على ما أُجيب، ويُحسَب ما لم يُجَب صفراً — كما في القاعة.
+ *
+ * والمؤقّتُ يُوقَف عند أوّلِ انتقالٍ عن الشاشة كي لا يبقى يعملُ بعد انتهائها.
+ */
+function clock(session) {
+  const box = el('span.num', {
+    // الوقتُ «د:ث» يقلبه اتجاهُ الصفحة فيُقرأ «٠٠:٧٠» بدل «٧٠:٠٠»، فيُعزَل
+    // اتجاهُه عن اتجاهِ ما حوله.
+    style: {
+      fontSize: '13px', fontWeight: '600', padding: '4px 10px', borderRadius: 'var(--r-chip)',
+      direction: 'ltr', unicodeBidi: 'isolate',
+    },
+  });
+
+  const tick = () => {
+    const left = Math.max(0, session.endsAt - Date.now());
+    const secs = Math.round(left / 1000);
+    box.textContent = `${ar(Math.floor(secs / 60))}:${ar(String(secs % 60).padStart(2, '0'))}`;
+    const low = secs <= 60;
+    box.style.background = low ? 'var(--wrong-tint)' : 'var(--surface)';
+    box.style.color = low ? 'var(--wrong)' : 'var(--ink-3)';
+    if (left <= 0) {
+      clearInterval(id);
+      if (!session.over) { session.over = true; session.timedOut = true; session.onTimeout?.(); }
+    }
+  };
+
+  const id = setInterval(() => (box.isConnected ? tick() : clearInterval(id)), 1000);
+  tick();
+  return box;
 }
 
 /* ── السؤال ─────────────────────────────────────────────────────────── */
@@ -115,6 +164,8 @@ function selfGradeView(host, session, q) {
     q.correctionNote
       ? el('p.fine', { style: { color: 'var(--sand-ink3)' } }, `تصحيح: ${q.correctionNote}`)
       : null,
+    // الطالبُ أوّلُ من يقع على الخطأ، فله قناةٌ يُبلِّغ بها من موضع السؤال.
+    reportLink(q),
   ]);
 
   const buttons = [];
@@ -269,7 +320,46 @@ function explainCard(q, correct) {
       : null,
     el('p', { style: { fontSize: '14.5px', lineHeight: '1.95', color: '#4a4238' } },
       q.explanation || q.modelAnswer || ''),
+    reportLink(q),
   ]);
+}
+
+/**
+ * زرُّ مشاركةِ النتيجة صورةً.
+ *
+ * الحماسُ يتعدَّى: طالبٌ يبعث بطاقتَه في مجموعته فيُذكِّر عشرةً بوِردهم. ولا
+ * يُكتَب في البطاقة اسمٌ ولا شيءٌ عن صاحبها — التطبيقُ لا يعرف عنه شيئاً.
+ *
+ * ويُخبِر الزرُّ بما وقع فعلاً: شُورِكت، أو نُزِّلت، أو تعذّرت.
+ */
+function shareButton(session, result, overall, sum, total) {
+  const btn = el('button.btn.btn--ghost', { style: { width: '100%', fontSize: '14px' } }, 'شارِك نتيجتك صورةً');
+
+  btn.onclick = async () => {
+    const was = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'تُرسَم…';
+    try {
+      const blob = await resultCard({
+        title: session.title || 'جلسة',
+        score: overall,
+        right: Math.round(sum),
+        total,
+        seconds: result.seconds,
+        rank: store.rank().name,
+      });
+      const how = await shareCard(blob, shareText(session.title || 'جلسة', overall));
+      btn.textContent = how === 'shared' ? 'شُورِكت ✓'
+        : how === 'downloaded' ? 'حُفِظت في جهازك ✓'
+        : was;
+    } catch {
+      btn.textContent = 'تعذّرت المشاركة';
+    }
+    btn.disabled = false;
+    setTimeout(() => { if (btn.isConnected) btn.textContent = was; }, 4000);
+  };
+
+  return btn;
 }
 
 /** نصُّ زرِّ الانتقال: أيبقى بعدَه سؤالٌ — أصليٌّ أو مُعادٌ — أم هي الخاتمة؟ */
@@ -357,6 +447,10 @@ function resultView(session, result) {
     el('div', { style: { flex: '1', minHeight: '0', overflowY: 'auto', padding: '26px 24px 0', display: 'flex', flexDirection: 'column', gap: '22px' } }, [
       el('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '14px 0' } }, [
         el('span.meta', `${session.title} — ${ar(total)} سؤالاً`),
+        session.timedOut
+          ? el('span.chip', { style: { background: 'var(--wrong-tint)', color: 'var(--wrong)' } },
+              'نفد الوقت')
+          : null,
         el('span', { style: { fontFamily: 'var(--serif)', fontSize: '68px', fontWeight: '700', color: 'var(--green)', lineHeight: '1' } }, pct(overall)),
         // المقاليّ يُعطي درجةً جزئية، فالمجموع كسريّ — يُقرَّب للعرض حتى لا يُقرأ «١٦٫٨ من ٣٤».
         el('span', { style: { fontSize: '14px', color: 'var(--ink-3)' } },
@@ -409,6 +503,7 @@ function resultView(session, result) {
               return `أصبتَ ${ar(done)} من ${ar(session.pool.length)} سؤالاً في هذا الباب`;
             })())
         : null,
+      shareButton(session, result, overall, sum, total),
       el('div', { style: { display: 'flex', gap: '10px' } }, [
         wrongOnes.length
           ? el('button.btn', {

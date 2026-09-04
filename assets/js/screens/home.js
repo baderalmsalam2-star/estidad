@@ -50,11 +50,7 @@ export default function homeScreen() {
     resume ? resumeCard(resume) : null,
 
     el('div.grid2', [
-      tile('اختبار شامل', `${ar(exam)} سؤالاً · محاكاة`, () => go('quiz', {
-        questions: data.buildFullExam(track),
-        mode: 'exam',
-        title: 'اختبار شامل محاكٍ',
-      })),
+      tile('اختبار شامل', `${ar(exam)} سؤالاً · بوقت`, () => openExam(track, exam)),
       tile('التسميع', 'القرآن والأذان', () => go('recite')),
       tile('بطاقات الحفظ', 'التعدادات', () => go('flashcards')),
       tile('اختبار مخصّص', 'اختر العلوم والصعوبة', () => go('custom')),
@@ -173,6 +169,36 @@ function wirdCard(track) {
       onclick: () => openWird(track, left || goal),
     }, done ? `زِدْ ${ar(goal)} سؤالاً` : `ابدأ — ${ar(left)} سؤالاً`),
   ]);
+}
+
+/**
+ * الاختبارُ الشاملُ بوقت.
+ *
+ * **مدّةُ الاختبارِ الرسميِّ غيرُ معلومةٍ لنا**، والوزارةُ لا تنشرها. فلا تُختلَق
+ * مدّةٌ ويُقال إنّها الرسمية؛ بل يختار الطالبُ مُهلتَه، والافتراضُ دقيقتانِ
+ * للسؤالِ المقاليّ — وهو تقديرُ تدريبٍ لا نقلٌ عن أحد.
+ */
+function openExam(track, count) {
+  const suggested = Math.max(15, Math.round((count * 2) / 5) * 5);
+  const start = (minutes) => go('quiz', {
+    questions: data.buildFullExam(track),
+    mode: 'exam',
+    title: minutes ? `اختبار شامل — ${ar(minutes)} دقيقة` : 'اختبار شامل بلا وقت',
+    minutes,
+  });
+
+  go('sheet', {
+    title: 'اختبار شامل محاكٍ',
+    note: `${ar(count)} سؤالاً. ومدّةُ الاختبار الرسميّ غير معلومةٍ لنا، فاختر مُهلتَك — `
+      + `والمقترَح دقيقتان للسؤال.`,
+    back: () => go('home'),
+    options: [
+      [`${ar(suggested)} دقيقة — المقترَح`, () => start(suggested)],
+      [`${ar(Math.round(suggested / 2 / 5) * 5)} دقيقة — أضيق`, () => start(Math.max(10, Math.round(suggested / 2 / 5) * 5))],
+      [`${ar(suggested * 2)} دقيقة — أوسع`, () => start(suggested * 2)],
+      ['بلا وقت', () => start(0)],
+    ],
+  });
 }
 
 function openWird(track, n) {
