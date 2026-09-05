@@ -3,6 +3,7 @@
 import * as data from './data.js';
 import * as store from './store.js';
 import * as audio from './audio.js';
+import * as sync from './sync.js';
 import { defineRoutes, go, el, startClock, setDevMode, setPageRefResolver, setPageOpener, setNavigateHook } from './ui.js';
 
 import trackScreen from './screens/track.js';
@@ -73,6 +74,8 @@ data.load()
     // أول شاشةٍ في التطبيق اختيارُ المسار، ولا يُتجاوَز إلا بعد اختياره.
     go(store.get().track ? 'home' : 'track');
     registerWorker();
+    // ما بقي في طابور جلسةٍ سابقةٍ يُرسَل الآن — بعد ظهور الشاشة لا قبلها.
+    sync.flush(store.get().track);
   })
   .catch((err) => {
     screen.replaceChildren(el('div.empty', [

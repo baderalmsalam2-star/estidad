@@ -1,0 +1,24 @@
+# خادمُ إحصاءِ منصة الاستعداد — Cloudflare Workers + D1.
+#
+# الطبقةُ المجانيةُ تكفيه سعةً: مائةُ ألفِ طلبٍ في اليوم، وخمسةُ ملايينِ قراءةٍ
+# من D1 — وأسئلةُ بضعِ مئاتٍ من الطلاب لا تبلغ عُشرَ ذلك. فيبقى «كلفةُ تشغيله
+# صفر» صادقاً كما كُتب في README.
+
+name = "awqaf-stats"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# ضَعْ ههنا نطاقَ التطبيق بعد نشره على Pages. والفاصلةُ تفصل بين أكثرَ من أصل.
+# مثال: "https://baderalmsalam2-star.github.io"
+[vars]
+ALLOWED_ORIGIN = ""
+
+# يُنشَأ بـ:  npx wrangler d1 create awqaf-stats
+# ثم يُنسَخ الـ database_id الذي يطبعه إلى ههنا.
+[[d1_databases]]
+binding = "DB"
+database_name = "awqaf-stats"
+database_id = ""
+
+# مفتاحُ المشرف لا يُكتَب في هذا الملفّ ولا يُرفَع إلى git — يُوضَع سرّاً:
+#   npx wrangler secret put ADMIN_KEY

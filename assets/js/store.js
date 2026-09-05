@@ -1,5 +1,7 @@
 // تقدّم الطالب — محليٌّ على الجهاز وحده. لا حساب، ولا خادم، ولا بيانات شخصية.
 
+import * as sync from './sync.js';
+
 const KEY = 'awqaf-prep/v1';
 
 const EMPTY = {
@@ -45,13 +47,16 @@ export function setTrack(track) {
 
 /** score من ٠ إلى ١ — للمقاليّ نسبةُ النقاط التي أشّر عليها، وللموضوعيّ ٠ أو ١. */
 export function record(question, score) {
+  const s = Math.max(0, Math.min(1, score));
   cache.answers[question.id] = {
-    score: Math.max(0, Math.min(1, score)),
+    score: s,
     at: Date.now(),
     subject: question.subject,
     type: question.type,
   };
   write();
+  // يُقيَّد في طابورٍ محلّيٍّ لا يُرسَل الآن — والإرسالُ لا يُؤثّر في شيءٍ ههنا.
+  sync.record(question, s);
 }
 
 export function scoreOf(id) {
@@ -269,4 +274,6 @@ export function reset() {
   } catch {
     /* لا شيء */
   }
+  // مسحُ التقدُّم يمحو معرِّفَ الجهاز أيضاً، فيُولَّد غيرُه ولا يوصَل بالقديم.
+  sync.reset();
 }

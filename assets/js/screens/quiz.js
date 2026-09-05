@@ -7,6 +7,7 @@ import * as data from '../data.js';
 import * as store from '../store.js';
 import { el, ar, pct, arTime, go, pageCite, devBadge, empty, reportLink } from '../ui.js';
 import { resultCard, shareCard, shareText } from '../share.js';
+import * as sync from '../sync.js';
 
 export default function quizScreen({ questions, mode = 'study', title = '', back = null, again = null, pool = null, minutes = 0 }) {
   if (!questions || !questions.length) {
@@ -414,6 +415,8 @@ function finishSession(host, session) {
     items: session.final.map((r) => ({ id: r.q.id, subject: r.q.subject, score: r.score })),
   };
   if (session.mode !== 'study') store.saveExam(result);
+  // ختمُ الجلسة موضعُ الإرسال: الشبكةُ لا تُزاحم سؤالاً، ولا يُنتظَر ردُّها.
+  sync.flush(store.get().track);
   host.replaceChildren(resultView(session, result));
 }
 

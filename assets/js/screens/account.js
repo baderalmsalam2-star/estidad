@@ -3,6 +3,7 @@
 import * as data from '../data.js';
 import * as store from '../store.js';
 import { el, ar, pct, go, padNav, devMode, waLink, WHATSAPP_MARK } from '../ui.js';
+import * as sync from '../sync.js';
 
 export default function accountScreen() {
   const track = store.get().track;
@@ -82,7 +83,11 @@ export default function accountScreen() {
 
     el('div.card', { style: { gap: '8px' } }, [
       el('span', { style: { fontSize: '13.5px', fontWeight: '600' } }, 'بياناتك'),
-      el('span.fine', 'تقدّمك محفوظٌ على جهازك وحده. لا حساب، ولا خادم، ولا بياناتٍ شخصية. وتسجيلات التسميع تُحذف تلقائياً بعد ٣٠ يوماً.'),
+      // الوعدُ يُكتَب على ما هو كائنٌ فعلاً. فإن نُشِر خادمُ الإحصاء تبدّل نصُّه،
+      // ولم يبقَ «لا خادم» مكتوباً وفي التطبيق خادم.
+      el('span.fine', sync.available()
+        ? 'تقدّمك محفوظٌ على جهازك وحده، ولا حسابَ لك ولا كلمةَ سرّ. وتسجيلات التسميع تُحذف تلقائياً بعد ٣٠ يوماً.'
+        : 'تقدّمك محفوظٌ على جهازك وحده. لا حساب، ولا خادم، ولا بياناتٍ شخصية. وتسجيلات التسميع تُحذف تلقائياً بعد ٣٠ يوماً.'),
       el('button', {
         onclick: () => {
           if (confirm('سيُمحى تقدّمك كلّه من هذا الجهاز. أمتأكّد؟')) { store.reset(); go('track'); }
@@ -94,8 +99,52 @@ export default function accountScreen() {
       }, 'امسح تقدّمي'),
     ]),
 
+    shareStatsCard(),
+
     contactCard(),
   ]));
+}
+
+/**
+ * مشاركةُ الإحصاء — تُعرَض إن نُشِر خادمٌ، وتُخفى إن لم يُنشَر.
+ *
+ * ويُقال للطالب **ما يُرسَل بعينه** لا كلامٌ مجمَل، ويُترَك له المفتاح. وما
+ * دام لا خادمَ فلا بطاقةَ ولا كلامَ عن مشاركةٍ لا تقع.
+ */
+function shareStatsCard() {
+  if (!sync.available()) return null;
+
+  const card = el('div.card', { style: { gap: '10px' } });
+
+  const draw = () => {
+    const on = sync.enabled();
+    const waiting = sync.pending();
+    card.replaceChildren(
+      el('div.row-base', [
+        el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'مشاركة الإحصاء'),
+        el('button.chip', {
+          onclick: () => { sync.setEnabled(!on); draw(); },
+          'aria-pressed': on ? 'true' : 'false',
+          style: {
+            cursor: 'pointer', border: 'none', font: 'inherit', padding: '7px 16px',
+            background: on ? 'var(--green)' : 'var(--surface)',
+            color: on ? 'var(--paper)' : 'var(--ink-3)',
+          },
+        }, on ? 'مفعَّلة' : 'مُطفأة'),
+      ]),
+      el('span.fine', { style: { textAlign: 'start' } },
+        'تُرسَل درجاتُك على الأسئلة مجهولةً ليُعرَف أيُّ سؤالٍ يصعب على الناس فيُراجَع. '
+        + 'يُرسَل: رقمُ السؤال، والدرجة، والمسار، والوقت، ورقمٌ عشوائيٌّ يولّده جهازك لنفسه. '
+        + 'ولا يُرسَل اسمٌ ولا هاتفٌ ولا بريدٌ ولا موضع. ومسحُ تقدّمك يمحو ذلك الرقمَ فيُولَّد غيرُه.'),
+      waiting
+        ? el('span.fine', { style: { textAlign: 'start', color: 'var(--ink-5)' } },
+            `${ar(waiting)} إجابةً في جهازك لم تُرسَل بعدُ.`)
+        : null,
+    );
+  };
+
+  draw();
+  return card;
 }
 
 /**

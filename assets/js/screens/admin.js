@@ -1,21 +1,20 @@
-// ١٢ — لوحةُ المشرف. أرقامُ هذا الجهاز وصحّةُ البنك، لا أرقامَ الطلاب.
+// ١٢ — لوحةُ المشرف. أرقامُ الطلاب إن نُشِر خادم، وصحّةُ البنك، وأرقامُ الجهاز.
 
 import * as data from '../data.js';
 import * as store from '../store.js';
 import { el, ar, pct, go, topbar } from '../ui.js';
+import * as sync from '../sync.js';
 
 /**
- * لوحةُ المشرف — وحدُّها الذي لا تتجاوزه.
+ * لوحةُ المشرف — ثلاثةُ أصنافٍ من الأرقام، كلُّ صنفٍ مُعنوَنٌ بما هو.
  *
- * التطبيقُ بلا خادمٍ ولا حساب، وتقدّمُ كلِّ طالبٍ محبوسٌ في جهازه، وهذا مكتوبٌ
- * له في «حسابي». فلا سبيلَ ههنا إلى «كم طالباً دخل» ولا «كم أصابوا» — تلك
- * تحتاج خادماً يجمعُ الإجابات، وهو قرارٌ آخَر.
- *
- * فما تعرضه هذه اللوحةُ صنفان لا ثالثَ لهما، وكلاهما صادقٌ اليوم:
- *   • **صحّةُ البنك** — عن الأسئلة نفسِها، لا عن أحد: توثيقُها، وتصحيحاتُها،
- *     وتوزيعُ صعوبتها، وثغراتُها. وهذه أرقامٌ عن عملك أنت، وهي التي تُصلِح.
- *   • **أرقامُ هذا الجهاز** — إجاباتُك أنت على هذا الجهاز وحدَه: أصعبُ ما
- *     أخطأتَ فيه، وأضعفُ الأبواب. وتُعنوَن بذلك صراحةً فلا تُقرأ إحصاءَ طلاب.
+ *   • **أرقامُ الطلاب** — من خادم الإحصاء إن نُشِر، بمفتاحِ المشرف. مجاميعُ
+ *     فقط، ولا يظهر سؤالٌ أجاب عنه أقلُّ من خمسةِ أجهزة. وإن لم يُنشَر خادمٌ
+ *     لم تظهر هذه الكتلةُ أصلاً، وقيل السببُ بدل صندوقٍ فارغ.
+ *   • **صحّةُ البنك** — عن الأسئلة نفسِها لا عن أحد: توثيقُها، وتصحيحاتُها،
+ *     وتوزيعُ صعوبتها، وثغراتُها. أرقامٌ عن عملك أنت، وهي التي تُصلِح.
+ *   • **أرقامُ هذا الجهاز** — إجاباتُك أنت وحدَك. وتُعنوَن بذلك صراحةً فلا
+ *     تُقرأ إحصاءَ طلاب.
  */
 export default function adminScreen() {
   const track = store.get().track;
@@ -25,20 +24,130 @@ export default function adminScreen() {
   return el('div', { style: { display: 'flex', flexDirection: 'column', flex: '1', minHeight: '0' } }, [
     topbar({ onBack: () => go('account'), title: 'لوحة المشرف' }),
     el('div.pane', { style: { gap: '18px' } }, [
+      studentStats(all),
       bankHealth(all),
       difficultySpread(all),
       measured(pool),
       gaps(all),
       deviceStats(pool),
-      el('div.card.card--sand', { style: { gap: '8px' } }, [
-        el('span', { style: { fontSize: '13.5px', fontWeight: '600', color: 'var(--sand-ink)' } },
-          'لماذا لا ترى أرقام الطلاب'),
-        el('span.fine', { style: { color: 'var(--sand-ink2)' } },
-          'التطبيق بلا خادمٍ ولا حساب، وتقدّم كل طالبٍ محبوسٌ في جهازه — وهذا وعدٌ مكتوبٌ له في «حسابي». '
-          + 'وجمعُ إجاباتهم في لوحةٍ واحدةٍ يحتاج خادماً ونقضَ ذلك الوعد صراحةً، لا في صمت.'),
-      ]),
+      sync.available()
+        ? null
+        : el('div.card.card--sand', { style: { gap: '8px' } }, [
+            el('span', { style: { fontSize: '13.5px', fontWeight: '600', color: 'var(--sand-ink)' } },
+              'لماذا لا ترى أرقام الطلاب'),
+            el('span.fine', { style: { color: 'var(--sand-ink2)' } },
+              'لم يُنشَر خادمُ الإحصاء بعدُ (`assets/js/sync.js` ← `SERVER` فارغ)، '
+              + 'فتقدّمُ كلِّ طالبٍ محبوسٌ في جهازه. وخطواتُ النشر في `server/اقرأني.md`.'),
+          ]),
     ]),
   ]);
+}
+
+/* ── أرقامُ الطلاب ───────────────────────────────────────────────────── */
+
+const KEY_STORE = 'awqaf-prep/adminKey';
+
+/**
+ * أرقامُ الطلاب المجمَّعة — تُجلَب من الخادم بمفتاحِ المشرف.
+ *
+ * والمفتاحُ يُحفَظ في هذا الجهاز وحدَه ولا يُرسَل إلا إلى الخادم. وإن لم يُنشَر
+ * خادمٌ فلا تظهر هذه الكتلةُ أصلاً — ولا يُرسَم للمشرف صندوقٌ فارغٌ يوهمه أنّ
+ * ثَمّ أرقاماً تنقصها ضغطةٌ وهي غيرُ موجودةٍ من أصلها.
+ *
+ * ولا يعرض الخادمُ سؤالاً أجاب عنه أقلُّ من خمسةِ أجهزة، فالعرضُ ههنا يتبع ذلك
+ * ويُبيّنه — لئلّا يُبنى على نسبةٍ من إجابةٍ واحدة.
+ */
+function studentStats(all) {
+  if (!sync.available()) return null;
+
+  const byId = new Map(all.map((q) => [q.id, q]));
+  const box = el('div.card', el('span.fine', 'تُجلَب…'));
+
+  const ask = () => {
+    box.replaceChildren(
+      el('span.fine', { style: { textAlign: 'start' } },
+        'أرقامُ الطلاب محفوظةٌ على الخادم، ولا تُفتَح إلا بمفتاح المشرف.'),
+      (() => {
+        const input = el('input.searchbar', {
+          type: 'password', placeholder: 'مفتاح المشرف', 'aria-label': 'مفتاح المشرف',
+        });
+        const go_ = () => {
+          if (!input.value.trim()) return;
+          try { localStorage.setItem(KEY_STORE, input.value.trim()); } catch { /* لا شيء */ }
+          load();
+        };
+        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') go_(); });
+        const wrap = el('div', { style: { display: 'flex', flexDirection: 'column', gap: '10px' } }, [
+          input,
+          el('button.btn', { onclick: go_ }, 'افتح'),
+        ]);
+        return wrap;
+      })(),
+    );
+  };
+
+  const load = async () => {
+    let key = '';
+    try { key = localStorage.getItem(KEY_STORE) || ''; } catch { /* لا شيء */ }
+    if (!key) return ask();
+
+    box.replaceChildren(el('span.fine', 'تُجلَب…'));
+    try {
+      const d = await sync.stats(key);
+      box.replaceChildren(...rows(d, byId));
+    } catch (e) {
+      box.replaceChildren(
+        el('span.fine', { style: { color: 'var(--wrong)', textAlign: 'start' } },
+          String(e.message || e)),
+        el('button.btn.btn--ghost', {
+          onclick: () => { try { localStorage.removeItem(KEY_STORE); } catch { /* لا شيء */ } ask(); },
+        }, 'غيّر المفتاح'),
+      );
+    }
+  };
+
+  load();
+
+  return el('div.stack', [
+    el('span.section-title', 'أرقام الطلاب'),
+    box,
+  ]);
+}
+
+function rows(d, byId) {
+  const line = (label, v, color) => el('div.row', { style: { fontSize: '13.5px' } }, [
+    el('span', label),
+    el('span.num', { style: { color: color || 'var(--ink-4)' } }, v),
+  ]);
+
+  const list = (title, items, tone) => (items.length
+    ? el('div', { style: { display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '6px' } }, [
+        el('span', { style: { fontSize: '13.5px', fontWeight: '600' } }, title),
+        ...items.map((r) => {
+          const q = byId.get(r.id);
+          return el('div', { style: { display: 'flex', flexDirection: 'column', gap: '4px' } }, [
+            el('span', { style: { fontSize: '13.5px', lineHeight: '1.7' } },
+              q ? q.question : r.id),
+            el('span.fine', { style: { textAlign: 'start', color: tone } },
+              `أصابه ${pct(r.avg)} من ${ar(r.n)} طالباً`
+              + `${q && q.difficulty ? ` · أُعلِن ${ar(q.difficulty)}` : ''}`
+              + `${q && q.bookPage ? ` · ${q.bookPage}` : ''}`),
+          ]);
+        }),
+      ])
+    : null);
+
+  return [
+    line('أجهزةٌ دخلت', ar(d.devices)),
+    line('نشِطةٌ في سبعة أيام', ar(d.devices7d), 'var(--green)'),
+    line('إجاباتٌ وصلت', ar(d.answers)),
+    line('أصابوا', `${ar(d.right)} — ${pct(d.answers ? d.right / d.answers : 0)}`, 'var(--green)'),
+    line('أسئلةٌ مرَّ عليها أحد', `${ar(d.questionsSeen)} / ${ar(byId.size)}`),
+    el('span.fine', { style: { textAlign: 'start' } },
+      `لا يظهر ههنا سؤالٌ أجاب عنه أقلُّ من ${ar(d.minAnswers)} أجهزة — نسبةٌ من إجابةٍ أو اثنتين ليست إحصاءً.`),
+    list('أصعبُها على الطلاب', d.hardest || [], 'var(--wrong)'),
+    list('أسهلُها عليهم', d.easiest || [], 'var(--green)'),
+  ].filter(Boolean);
 }
 
 /* ── صحّةُ البنك ─────────────────────────────────────────────────────── */
