@@ -96,8 +96,8 @@
       "file": "07_meethaq.json",
       "subject": "ميثاق المسجد",
       "count": 25,
-      "bookVerified": 0,
-      "corrected": 0
+      "bookVerified": 25,
+      "corrected": 2
     },
     {
       "file": "08_fiqh_janaiz.json",
@@ -154,8 +154,8 @@
       "muezzin": 2385,
       "muezzin_retired": 1075
     },
-    "verifiedAgainstSourceBook": 3618,
-    "corrected": 74
+    "verifiedAgainstSourceBook": 3643,
+    "corrected": 76
   },
   "verificationStatus": {
     "الكتب المقرَّرة": "خمسة من خمسة مُستخرَجة نصّاً — ١٢١٦ صفحة",
