@@ -68,11 +68,15 @@ body {
 
 /* ─── إطار الجهاز ───────────────────────────────────────────────────────── */
 
-.stage { min-height: 100dvh; display: flex; align-items: center; justify-content: center; }
+/* dvh لا تعرفها سفاري قبل ١٥٫٤، فيُسبَق بـvh: المتصفّحُ القديم يأخذ الأوّل
+   ويتجاهل ما لا يفهم، والحديثُ يأخذ الأخير. وبلا هذا يسقط ارتفاعُ الشاشة
+   كلَّه على آيفونَ قديم فتنهار الصفحة. */
+.stage { min-height: 100vh; min-height: 100dvh; display: flex; align-items: center; justify-content: center; }
 
 .device {
   width: 390px;
   height: 844px;
+  max-height: 100vh;
   max-height: 100dvh;
   background: var(--paper);
   border-radius: var(--r-phone);
@@ -87,7 +91,7 @@ body {
 @media (max-width: 480px), (max-height: 880px) {
   body { background: var(--paper); }
   .device {
-    width: 100%; height: 100dvh; max-height: none;
+    width: 100%; height: 100vh; height: 100dvh; max-height: none;
     border-radius: 0; border: none;
   }
 }

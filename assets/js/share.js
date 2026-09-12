@@ -11,6 +11,26 @@ import { ar, pct, CONTACT } from './ui.js';
  *
  * ولا يُكتَب فيها اسمُ الطالبِ ولا شيءٌ عنه — التطبيقُ لا يعرف عنه شيئاً أصلاً.
  */
+/**
+ * مستطيلٌ مستديرُ الأركان.
+ *
+ * `ctx.roundRect` لا تعرفه سفاري قبل ١٦٫٤، ولو نوديت هناك سقطت البطاقةُ كلُّها
+ * بخطأٍ غامضٍ في جهازٍ لا نراه. فتُرسَم بالأقواس، وهي في كلِّ متصفّح.
+ */
+function roundedRect(x, left, top, w, h, r) {
+  x.beginPath();
+  if (typeof x.roundRect === 'function') {
+    x.roundRect(left, top, w, h, r);
+    return;
+  }
+  x.moveTo(left + r, top);
+  x.arcTo(left + w, top, left + w, top + h, r);
+  x.arcTo(left + w, top + h, left, top + h, r);
+  x.arcTo(left, top + h, left, top, r);
+  x.arcTo(left, top, left + w, top, r);
+  x.closePath();
+}
+
 export function resultCard({ title, score, right, total, seconds, rank }) {
   const S = 1080;
   const c = document.createElement('canvas');
@@ -61,8 +81,7 @@ export function resultCard({ title, score, right, total, seconds, rank }) {
   if (rank) {
     // الحوضُ أوسعُ من سطرَيه: خطُّ أميري له نزولاتٌ تُقطَع إن ضُيِّق عليها.
     x.fillStyle = GREEN;
-    x.beginPath();
-    x.roundRect(S / 2 - 260, 706, 520, 132, 26);
+    roundedRect(x, S / 2 - 260, 706, 520, 132, 26);
     x.fill();
     x.fillStyle = PAPER;
     x.font = sans(30);

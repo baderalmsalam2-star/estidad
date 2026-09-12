@@ -89,7 +89,7 @@
       "file": "06_nahw.json",
       "subject": "النحو",
       "count": 40,
-      "bookVerified": 3,
+      "bookVerified": 12,
       "corrected": 3
     },
     {
@@ -154,7 +154,7 @@
       "muezzin": 2385,
       "muezzin_retired": 1075
     },
-    "verifiedAgainstSourceBook": 3643,
+    "verifiedAgainstSourceBook": 3652,
     "corrected": 76
   },
   "verificationStatus": {
