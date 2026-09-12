@@ -12,9 +12,19 @@
  * تقدُّمَه وُلِّد غيرُه فانقطع الوصلُ بالقديم.
  */
 
-// عنوانُ الخادم بعد نشره (انظر `server/اقرأني.md`). وما دام فارغاً فلا إرسالَ
-// أصلاً، ولا يظهر للطالب خيارٌ ولا كلامٌ عن مشاركة.
+/**
+ * عنوانُ خادم الإحصاء بعد نشره. وما دام فارغاً فلا إرسالَ أصلاً، ولا يظهر
+ * للطالب خيارٌ ولا كلامٌ عن مشاركة، ولا للمشرف كتلةُ «أرقام الطلاب».
+ *
+ * ويُقبَل نوعان، ويُعرَفان من الرابط نفسِه فلا يُضبَط شيءٌ آخَر:
+ *   • **عاملُ Cloudflare** (`server/worker.js`) — أسرعُ وأقوى، ويحتاج طرفيّةً.
+ *   • **جدولُ جوجل** (`server/جوجل-شيت/الكود.gs`) — رابطُه ينتهي بـ`/exec`،
+ *     لا يحتاج إلا نسخاً ولصقاً، والبياناتُ تنزل في جدولٍ يُفتَح من الجوّال.
+ */
 export const SERVER = '';
+
+/** جدولُ جوجل يُعرَف برابطه، ويختلف عن العامل في مسارِ الطلب وشكلِ جسمه. */
+const isSheet = () => /script\.google\.com/.test(SERVER);
 
 const KEY = 'awqaf-prep/sync';
 
@@ -87,11 +97,14 @@ export async function flush(track) {
   if (!enabled() || !cache.queue.length || !navigator.onLine) return false;
 
   const batch = cache.queue.slice(0, 500);
+  const payload = JSON.stringify({ device: deviceId(), track, answers: batch });
   try {
-    const res = await fetch(`${SERVER}/answers`, {
+    // جدولُ جوجل لا يُجيب فحصَ CORS المسبق، والفحصُ يُطلَب لأيِّ نوعٍ غيرِ
+    // `text/plain`. فيُرسَل إليه نصّاً بسيطاً — وهو يُحوّله إلى JSON عنده.
+    const res = await fetch(isSheet() ? SERVER : `${SERVER}/answers`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ device: deviceId(), track, answers: batch }),
+      headers: { 'content-type': isSheet() ? 'text/plain;charset=utf-8' : 'application/json' },
+      body: payload,
       keepalive: true,
     });
     if (!res.ok) return false;
@@ -123,8 +136,16 @@ export async function stats(adminKey) {
   if (!/^[\x20-\x7e]+$/.test(adminKey || '')) {
     throw new Error('المفتاح يكون بحروفٍ وأرقامٍ لاتينية، لا عربية');
   }
-  const res = await fetch(`${SERVER}/stats`, { headers: { 'x-admin-key': adminKey } });
+  // الجدولُ يأخذ المفتاحَ في الرابط (ترويساتُه لا تصل عبر إعادةِ التوجيه)،
+  // والعاملُ يأخذه في ترويسةٍ فلا يُسجَّل في سجلّاتِ الوسائط.
+  const res = await (isSheet()
+    ? fetch(`${SERVER}?key=${encodeURIComponent(adminKey)}`)
+    : fetch(`${SERVER}/stats`, { headers: { 'x-admin-key': adminKey } }));
+  if (res.ok) {
+    const d = await res.json();
+    if (d && d.error) throw new Error(d.error);
+    return d;
+  }
   if (res.status === 401) throw new Error('المفتاح غير صحيح');
-  if (!res.ok) throw new Error('تعذّر الوصول إلى الخادم');
-  return res.json();
+  throw new Error('تعذّر الوصول إلى الخادم');
 }

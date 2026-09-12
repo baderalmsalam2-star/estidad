@@ -2,7 +2,7 @@
 
 import * as data from '../data.js';
 import * as store from '../store.js';
-import { el, ar, pct, go, padNav, devMode, waLink, WHATSAPP_MARK } from '../ui.js';
+import { el, ar, pct, go, padNav, devMode, setDevMode, waLink, WHATSAPP_MARK } from '../ui.js';
 import * as sync from '../sync.js';
 
 export default function accountScreen() {
@@ -15,7 +15,7 @@ export default function accountScreen() {
 
   return padNav(el('div.pane', [
     el('div.stack', { style: { gap: '6px' } }, [
-      el('h1.title', 'حسابي'),
+      gate(),
       el('p.lede', `مسار ${label} — أجبتَ عن ${ar(store.seenCount())} سؤالاً.`),
     ]),
 
@@ -145,6 +145,40 @@ function shareStatsCard() {
 
   draw();
   return card;
+}
+
+/**
+ * بابُ لوحة المشرف: سبعُ نقراتٍ على العنوان.
+ *
+ * كانت اللوحةُ خلفَ `?dev=1` يُكتَب في شريطِ العنوان، وهذا لا يُفعَل على جوّالٍ
+ * ولا يُتذكَّر، فكانت اللوحةُ كأنّها غيرُ موجودة. فصار لها بابٌ في التطبيق.
+ *
+ * وليست هذه حِمايةً ولا تُدَّعى: المفتاحُ في كودٍ مقروءٍ لمن قرأه. وإنّما هي
+ * سِترٌ عن الطالب كي لا تُشوِّش عليه صفحةٌ ليست له — واللوحةُ لا تعرض عن أحدٍ
+ * شيئاً خاصّاً أصلاً، فلا سرَّ يُحمى.
+ */
+function gate() {
+  const h = el('h1.title', { style: { cursor: 'default', WebkitUserSelect: 'none', userSelect: 'none' } }, 'حسابي');
+  let taps = 0;
+  let last = 0;
+
+  h.addEventListener('click', () => {
+    const now = Date.now();
+    taps = now - last < 900 ? taps + 1 : 1;
+    last = now;
+    if (taps < 7) return;
+    taps = 0;
+    const on = devMode();
+    if (on) {
+      setDevMode(false);
+      go('account');
+      return;
+    }
+    setDevMode(true);
+    go('admin');
+  });
+
+  return h;
 }
 
 /**
