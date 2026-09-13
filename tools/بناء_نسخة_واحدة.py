@@ -38,7 +38,22 @@ def data_map():
         f = ROOT / p
         if f.exists():
             out[p] = f.read_text(encoding='utf-8')
+
+    # الأغلفةُ تُحمَل معها، بخلافِ صورِ الصفحاتِ والكتب: ثلاثُ صورٍ صغيرةٍ لا
+    # تزيد الملفَّ إلا عُشرَ ميغابايت، وبدونها تظهر شاشةُ الكتبِ بصورٍ مكسورة.
+    covers = ROOT / 'data/covers.json'
+    if covers.exists():
+        out['data/covers.json'] = json.dumps(
+            {k: to_data_uri(ROOT / v) for k, v in
+             json.loads(covers.read_text(encoding='utf-8')).items()
+             if (ROOT / v).exists()},
+            ensure_ascii=False)
     return out
+
+
+def to_data_uri(path):
+    b64 = base64.b64encode(path.read_bytes()).decode()
+    return f'data:image/jpeg;base64,{b64}'
 
 
 # ── الخطوط: تُحوَّل إلى data: داخل fonts.css ─────────────────────────────

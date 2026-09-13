@@ -12,7 +12,7 @@
  * وكلُّ تغييرٍ في الملفاتِ يُوجِب رفعَ CACHE — وإلا بقي الطالبُ على نسخةٍ قديمة.
  */
 
-const CACHE = 'awqaf-prep-v6';
+const CACHE = 'awqaf-prep-v7';
 
 /** الهيكلُ الذي لا يقومُ التطبيقُ بدونه — يُجلَب كلُّه عند التنصيب. */
 const SHELL = [
@@ -71,11 +71,26 @@ async function bankUrls() {
   }
 }
 
+/**
+ * أغلفةُ الكتب تُخزَّن مسبقاً أيضاً — وهي بضعُ عشراتٍ من الكيلوبايت لا أكثر،
+ * وبقاؤها بلا تخزينٍ يجعل شاشةَ الكتبِ فارغةَ المواضع في مسجدٍ لا شبكةَ فيه.
+ * وقائمتُها تُقرأ من `data/covers.json` كما يقرؤها التطبيق، فلا تنفصل عنه.
+ */
+async function coverUrls() {
+  try {
+    const res = await fetch('data/covers.json', { cache: 'reload' });
+    return Object.values(await res.json());
+  } catch {
+    return [];
+  }
+}
+
 self.addEventListener('install', (e) => {
   e.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    const extra = ['data/page-hints.json', 'books/pages-index.json', 'data/book-links.json'];
-    const all = [...SHELL, ...extra, ...(await bankUrls())];
+    const extra = ['data/page-hints.json', 'books/pages-index.json', 'data/book-links.json',
+      'data/covers.json'];
+    const all = [...SHELL, ...extra, ...(await bankUrls()), ...(await coverUrls())];
     // ملفٌّ واحدٌ يسقط لا يُبطِل التنصيبَ كلَّه — يُجلَب لاحقاً عند طلبه.
     await Promise.allSettled(all.map((u) => cache.add(u)));
     self.skipWaiting();

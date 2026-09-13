@@ -4,6 +4,28 @@ import * as data from '../data.js';
 import * as store from '../store.js';
 import { el, ar, go, padNav, topbar, MAGNIFIER } from '../ui.js';
 
+/* ── غلافُ الكتاب ────────────────────────────────────────────────────── */
+
+/**
+ * صورةُ الغلاف إن رُسمت، وإلّا غلافٌ يُكتَب بالخطِّ في التطبيق.
+ *
+ * وكان ههنا مربّعٌ مخطَّطٌ واحدٌ للكتب كلِّها، لا يدلُّ على كتابٍ بعينه — يمرُّ
+ * الطالبُ على السبعةِ فلا يميّز واحداً منها بنظرة. وثلاثةٌ من الكتب لم تُرفَع
+ * ملفّاتُها بعدُ، ورابعٌ نسختُه بلا غلاف، فهذه أربعةٌ يُكتَب عنوانُها في
+ * مكان الصورة — لا يُترَك موضعُها فارغاً ولا يُختلَق لها غلافٌ ليس لها.
+ */
+export function bookCover(subject, w = 62) {
+  const box = { width: `${w}px`, height: `${Math.round(w * 1.4)}px` };
+  const src = data.bookCoverSrc(data.BOOK_ID[subject]);
+  if (src) {
+    return el('img.cover', { src, alt: '', loading: 'lazy', style: box });
+  }
+  const title = (data.BOOK_OF_SUBJECT[subject] || {}).title || subject;
+  return el('div.cover.cover--text', {
+    style: { ...box, fontSize: `${Math.max(9, Math.round(w * 0.17))}px` },
+  }, title);
+}
+
 /* ── قائمة الكتب ─────────────────────────────────────────────────────── */
 
 export function booksScreen() {
@@ -42,9 +64,10 @@ export function booksScreen() {
       const done = data.questionsIn(track, s.subject).filter((q) => store.isCorrect(q.id)).length;
 
       return el('button.card', { onclick: () => go('book', { subject: s.subject }) }, [
-        el('div.row', { style: { alignItems: 'flex-start' } }, [
-          el('div', { style: { display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'start' } }, [
-            el('span', { style: { fontFamily: 'var(--serif)', fontSize: '26px', fontWeight: '700', lineHeight: '1.3' } }, book.title || s.subject),
+        el('div.row', { style: { alignItems: 'flex-start', gap: '13px' } }, [
+          bookCover(s.subject, 54),
+          el('div', { style: { display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'start', flex: '1', minWidth: '0' } }, [
+            el('span', { style: { fontFamily: 'var(--serif)', fontSize: '24px', fontWeight: '700', lineHeight: '1.3' } }, book.title || s.subject),
             el('span.meta', `${s.subject}${book.note ? ' · ' + book.note : ''}`),
           ]),
           el('span.num', { style: { fontSize: '12.5px', color: 'var(--ink-5)', flexShrink: '0' } }, ar(s.total)),
@@ -71,13 +94,7 @@ export function bookScreen({ subject }) {
     topbar({ onBack: () => go('books'), title: 'الكتب المقرَّرة' }),
 
     el('div', { style: { padding: '18px 24px 4px', display: 'flex', gap: '14px', alignItems: 'flex-start' } }, [
-      el('div', {
-        style: {
-          width: '62px', height: '84px', borderRadius: '10px', flexShrink: '0',
-          background: 'repeating-linear-gradient(135deg, #ece4d6 0 6px, #e3d9c8 6px 12px)',
-          border: '1px solid var(--line)',
-        },
-      }),
+      bookCover(subject, 66),
       el('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px', flex: '1' } }, [
         el('span', { style: { fontFamily: 'var(--serif)', fontSize: '27px', fontWeight: '700', lineHeight: '1.3' } }, book.title || subject),
         el('span.meta', `${book.note || subject}${book.pages ? ' — ' + ar(book.pages) + ' صفحة' : ''}`),

@@ -32,6 +32,7 @@ const state = {
   hints: {},        // ترشيحات الصفحات — مُرشِّحٌ لا حَكَم
   pageIndex: {},    // أي صفحةٍ رُسمت صورتُها
   bookLinks: {},    // مراجع الكتب غير المرفوعة
+  covers: {},       // الكتب التي رُسم غلافُها صورةً
 };
 
 // العلم → مُعرِّف كتابه في books/
@@ -72,6 +73,14 @@ export const bookPageCount = (book) => state.pageIndex[book]?.count || null;
 export const bookLink = (book) => state.bookLinks[book] || null;
 export const allBookLinks = () => state.bookLinks;
 
+/**
+ * مسارُ غلاف الكتاب صورةً، أو `null` لمن لا غلافَ له فيُكتَب غلافُه بالخطّ.
+ *
+ * ويُقرأ من فهرسٍ لا يُجرَّب الرابطُ رأساً: ثلاثةٌ من الكتبِ السبعةِ لم تُرفَع
+ * ملفّاتُها، وطلبُ غلافٍ لها يرجع ٤٠٤ في كلِّ فتحةٍ ويُخزَّن في عامل الخدمة.
+ */
+export const bookCoverSrc = (book) => state.covers[book] || null;
+
 async function getJSON(path) {
   const res = await fetch(path);
   if (!res.ok) throw new Error(`تعذّر تحميل ${path} (${res.status})`);
@@ -85,10 +94,11 @@ export async function load() {
   const manifest = await getJSON('data/manifest.json');
   const bankFiles = (manifest.banks || []).map((b) => b.file);
 
-  const [hints, pageIndex, bookLinks, ...banks] = await Promise.all([
+  const [hints, pageIndex, bookLinks, covers, ...banks] = await Promise.all([
     getJSON('data/page-hints.json').catch(() => ({})),
     getJSON('books/pages-index.json').catch(() => ({})),
     getJSON('data/book-links.json').catch(() => ({})),
+    getJSON('data/covers.json').catch(() => ({})),
     ...bankFiles.map((f) => getJSON(`data/banks/${f}`)),
   ]);
 
@@ -96,6 +106,7 @@ export async function load() {
   state.hints = hints;
   state.pageIndex = pageIndex;
   state.bookLinks = bookLinks;
+  state.covers = covers;
 
   banks.forEach((bank, i) => {
     const file = bankFiles[i];

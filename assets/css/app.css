@@ -222,6 +222,33 @@ button.card, a.card, .card[role="button"] { font: inherit; text-align: inherit; 
 }
 .iconbtn--lg { width: 46px; height: 46px; background: var(--ink); color: var(--paper); font-size: 15px; }
 
+/* ─── أغلفة الكتب ───────────────────────────────────────────────────────── */
+
+/* صورةُ الغلاف حيث وُجدت، وإلّا كُتب الغلافُ بالخطِّ — والشكلُ واحدٌ فيهما
+   حتى لا يبدوَ المكتوبُ نقصاً في الصفّ. */
+.cover {
+  flex-shrink: 0;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--sunk);
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(28, 25, 23, 0.10);
+}
+
+img.cover { display: block; object-fit: cover; }
+
+.cover--text {
+  display: flex; align-items: center; justify-content: center;
+  padding: 7px 6px;
+  background: linear-gradient(155deg, var(--sand) 0%, #e4d6b9 100%);
+  color: var(--sand-ink);
+  font-family: var(--serif); font-weight: 700;
+  text-align: center; line-height: 1.25;
+  /* كعبُ المجلَّد — وهو في الكتاب العربيِّ يمينُه، فيُوضَع ببداية السطر لا بيمينٍ
+     مكتوبة، ليصحَّ لو عُرِض الوجهُ بلغةٍ تُكتَب من اليسار. */
+  border-inline-start: 3px solid rgba(95, 82, 48, 0.26);
+}
+
 /* ─── أشرطة التقدّم ─────────────────────────────────────────────────────── */
 
 .bar { height: 6px; border-radius: var(--r-chip); background: var(--sunk); overflow: hidden; display: flex; }
