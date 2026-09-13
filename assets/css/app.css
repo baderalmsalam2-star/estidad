@@ -85,6 +85,11 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
+  /* كان ههنا شريطُ حالةٍ مُقلَّد — ساعةٌ وبطاريةٌ مرسومتان — بقيّةً من شاشات
+     التصميم. وفي الجوّال يكرّران ساعةَ النظامِ وبطاريّتَه فوقهما مباشرةً،
+     والبطاريةُ خطٌّ فارغٌ لا يمتلئ أبداً. فحُذِفا، وبقي ما كانا يصنعانه من
+     فسحةٍ تحت النتوء (notch) لئلّا يلتصقَ العنوانُ بحافّة الشاشة. */
+  padding-top: max(16px, env(safe-area-inset-top));
 }
 
 /* على الجوال: ملء الشاشة بلا إطار */
@@ -96,13 +101,6 @@ body {
   }
 }
 
-.statusbar {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: max(18px, env(safe-area-inset-top)) 32px 2px;
-  font-size: 13.5px; font-weight: 600; color: var(--ink-2);
-  flex-shrink: 0;
-}
-.battery { width: 18px; height: 9px; border: 1px solid #a89e90; border-radius: 3px; display: block; }
 
 .screen {
   flex: 1;

@@ -4,7 +4,7 @@ import * as data from './data.js';
 import * as store from './store.js';
 import * as audio from './audio.js';
 import * as sync from './sync.js';
-import { defineRoutes, go, el, startClock, setDevMode, setPageRefResolver, setPageOpener, setNavigateHook } from './ui.js';
+import { defineRoutes, go, el, setDevMode, setPageRefResolver, setPageOpener, setNavigateHook } from './ui.js';
 
 import trackScreen from './screens/track.js';
 import homeScreen from './screens/home.js';
@@ -42,7 +42,6 @@ defineRoutes({
   sheet: sheetScreen,
 });
 
-startClock();
 audio.sweep();
 
 // وضع المطوّر: ?dev=1 يُظهر شارة «لم يُقابَل» على الأسئلة التي لم تُقابَل حرفياً

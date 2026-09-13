@@ -289,16 +289,3 @@ export function hideTabs() {
   nav.replaceChildren();
   host().classList.remove('has-nav');
 }
-
-/* ── الساعة في شريط الحالة ───────────────────────────────────────────── */
-
-export function startClock() {
-  const node = document.getElementById('clock');
-  const tick = () => {
-    const d = new Date();
-    const h = d.getHours() % 12 || 12;
-    node.textContent = `${ar(h)}:${ar(String(d.getMinutes()).padStart(2, '0'))}`;
-  };
-  tick();
-  setInterval(tick, 20_000);
-}
