@@ -143,6 +143,19 @@ body {
   padding: 8px 2px;
 }
 .tabbar button[aria-current="page"] { color: var(--paper); font-weight: 600; }
+.tabbar .tab-icon { display: flex; align-items: center; padding: 8px 6px; }
+.tabbar .tab-icon svg { width: 19px; height: 19px; }
+
+/* ─── مقاس الخطّ: خيارٌ لا أصل ──────────────────────────────────────────── */
+
+/* الأصلُ بلا سمةٍ أصلاً، فمن لم يختر شيئاً رأى ما صُمِّم بلا زيادةٍ ولا نقص.
+   و`zoom` تُكبِّر اللوحَ كلَّه — الحرفَ والزرَّ وموضعَ اللمس — فلا يضيق زرٌّ
+   عن حرفٍ كبُر فيه. والشريطُ السفليُّ يُكبَّر حرفُه وحدَه: عرضُه محكومٌ
+   بالشاشة، فتكبيرُه كلِّه يُخرِجه عنها. */
+body[data-text="1.15"] .screen { zoom: 1.15; }
+body[data-text="1.3"]  .screen { zoom: 1.3; }
+body[data-text="1.15"] .tabbar button { font-size: 14.5px; }
+body[data-text="1.3"]  .tabbar button { font-size: 15.5px; }
 
 /* ─── التخطيط العام داخل الشاشة ─────────────────────────────────────────── */
 
@@ -333,13 +346,16 @@ mark.hit { background: var(--green-tint); color: inherit; border-radius: 4px; pa
 .answerbox::placeholder { color: var(--ink-7); }
 .answerbox:focus { outline: 2px solid var(--green-tint); outline-offset: 2px; }
 
+/* صفُّ النقطةِ يُضغَط عشراتِ المرّاتِ في الجلسة الواحدة، وكان ارتفاعُه نحو
+   ٤٠ بكسلاً — دون الحدِّ المتعارَف للمسِ الإبهام (٤٤). فوُسِّع الصفُّ كلُّه لا
+   الدائرةُ وحدَها: الضغطُ يقع على السطرِ أينما وقع. */
 .point {
-  display: flex; gap: 12px; align-items: center;
-  background: var(--surface); border-radius: 18px; padding: 9px 16px;
+  display: flex; gap: 14px; align-items: center;
+  background: var(--surface); border-radius: 18px; padding: 14px 18px;
   font: inherit; text-align: inherit; border: none; cursor: pointer; width: 100%;
-  color: var(--ink-4); font-size: 14px; line-height: 1.6;
+  color: var(--ink-4); font-size: 15px; line-height: 1.65; min-height: 52px;
 }
-.point .box { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid #c5bbaa; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; color: transparent; }
+.point .box { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid #c5bbaa; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; color: transparent; }
 .point[aria-pressed="true"] { background: var(--green-tint); color: var(--ink); }
 .point[aria-pressed="true"] .box { background: var(--green); border-color: var(--green); color: #fff; }
 

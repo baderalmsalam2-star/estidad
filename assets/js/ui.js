@@ -207,9 +207,12 @@ export const setOverlayProbe = (fn) => { overlayOpen = fn; };
 const host = () => document.getElementById('screen');
 const tabbarEl = () => document.getElementById('tabbar');
 
+// البحثُ بينها بأيقونةٍ لا بكلمة: خمسُ كلماتٍ تتزاحم في عرضِ جوّالٍ صغير،
+// والعدسةُ تُفهَم بلا قراءة. وكان البحثُ محبوساً في شاشةِ «الكتب» وحدَها.
 const TABS = [
   { id: 'home', label: 'الرئيسية' },
   { id: 'books', label: 'الكتب' },
+  { id: 'search', label: 'بحث', icon: MAGNIFIER },
   { id: 'recite', label: 'التسميع' },
   { id: 'account', label: 'حسابي' },
 ];
@@ -221,7 +224,7 @@ const TABS = [
  * وورقةُ الاختيار، ومراجعةُ البنك، وأوّلُ شاشةٍ يُختار فيها المسار.
  */
 const TAB_OF = {
-  book: 'books', search: 'books', mastered: 'books', library: 'books',
+  book: 'books', mastered: 'books', library: 'books',
   custom: 'home', flashcards: 'home', tajweed: 'home', surahs: 'home',
   admin: 'account', owner: 'account', ownerKey: 'account',
 };
@@ -326,7 +329,10 @@ function renderTabs(active) {
       el('button', {
         onclick: () => go(t.id),
         'aria-current': t.id === active ? 'page' : null,
-      }, t.label),
+        'aria-label': t.icon ? t.label : null,
+        html: t.icon || null,
+        class: t.icon ? 'tab-icon' : null,
+      }, t.icon ? null : t.label),
     ),
   );
 }

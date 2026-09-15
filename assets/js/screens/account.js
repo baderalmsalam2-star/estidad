@@ -5,6 +5,7 @@ import * as store from '../store.js';
 import { el, ar, pct, go, waLink, WHATSAPP_MARK } from '../ui.js';
 import * as sync from '../sync.js';
 import * as owner from '../owner.js';
+import * as reminder from '../reminder.js';
 
 export default function accountScreen() {
   const track = store.get().track;
@@ -49,6 +50,10 @@ export default function accountScreen() {
     ownerCard(),
 
     goalCard(),
+
+    textSizeCard(),
+
+    reminderCard(),
 
     el('button.card', { onclick: () => go('track') }, [
       el('div.row', [
@@ -199,6 +204,102 @@ function contactCard() {
  * قَدرُ الوِرد اليوميّ. خِياراتٌ محدودةٌ لا حقلُ إدخالٍ حرّ: الطالب يختار عادةً
  * قبل أن يعرف طاقتَه، فحصرُ الخيار أرفقُ به من تركه أمام خانةٍ فارغة.
  */
+/**
+ * مقاسُ الخطّ — **خيارٌ لا أصل**.
+ *
+ * كثيرٌ من الأئمة كبارُ سنّ، وقياساتُ التطبيق كلُّها بالبكسل فلا تتبع مقاسَ
+ * خطِّ النظام. ويُكبَّر اللوحُ كلُّه لا الحروفُ وحدَها، فلا يضيق زرٌّ عن حرفٍ
+ * كبُر فيه. والمعاينةُ تقع فوراً: يضغط فيرى، لا يُصدِّق وصفاً.
+ */
+/**
+ * تنبيهُ الوِرد اليوميّ — عبر تقويم الجهاز.
+ *
+ * ولا يُدَّعى أنّ التطبيقَ هو الذي يُنبِّه: صفحةُ الوِبّ لا توقظ جهازاً مغلقاً،
+ * والدفعُ يحتاج خادماً لا وجودَ له. فيُقال للطالب ما يجري فعلاً — يدخل الحدثُ
+ * تقويمَه فيُوقِظه التقويم — ولا يُضبَط زرٌّ يَعِدُ بما لا يأتي.
+ */
+function reminderCard() {
+  const card = el('div.card', { style: { gap: '10px' } });
+  const TIMES = ['06:00', '13:00', '19:00', '21:00'];
+
+  const draw = () => {
+    const at = store.reminderAt();
+    card.replaceChildren(
+      el('div.row-base', [
+        el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'تنبيه الوِرد'),
+        el('span.fine', at ? reminder.readable(at) : 'غير مضبوط'),
+      ]),
+      el('span.fine', { style: { textAlign: 'start' } },
+        'اختر وقتاً، ثمّ أضِفْه إلى تقويم جهازك — فهو الذي يُنبِّهك كلَّ يوم، '
+        + 'ويعمل بلا إنترنت. والتطبيقُ صفحةُ وِبّ لا توقظ جهازاً مغلقاً.'),
+      el('div', { style: { display: 'flex', gap: '8px', paddingTop: '2px' } },
+        TIMES.map((tm) => el('button.chip', {
+          onclick: () => { store.setReminderAt(tm); draw(); },
+          'aria-pressed': tm === at ? 'true' : 'false',
+          style: {
+            cursor: 'pointer', border: 'none', font: 'inherit', flex: '1',
+            fontSize: '12px', padding: '9px 6px', textAlign: 'center',
+            background: tm === at ? 'var(--green)' : 'var(--surface)',
+            color: tm === at ? 'var(--paper)' : 'var(--ink-3)',
+          },
+        }, reminder.readable(tm)))),
+      at
+        ? el('button.btn', {
+            style: { fontSize: '14.5px', minHeight: '48px' },
+            onclick: () => reminder.download(at, { url: location.origin + location.pathname }),
+          }, 'أضِفْه إلى التقويم')
+        : null,
+      at
+        ? el('button', {
+            onclick: () => { store.setReminderAt(null); draw(); },
+            style: {
+              font: 'inherit', fontSize: '12.5px', color: 'var(--ink-6)', background: 'none',
+              border: 'none', cursor: 'pointer', textAlign: 'start', padding: '2px 0 0',
+            },
+          }, 'ألغِ الوقت')
+        : null,
+    );
+  };
+
+  draw();
+  return card;
+}
+
+function textSizeCard() {
+  const OPTIONS = [
+    { v: 1, label: 'الأصل' },
+    { v: 1.15, label: 'أكبر' },
+    { v: 1.3, label: 'الأكبر' },
+  ];
+  const card = el('div.card', { style: { gap: '10px' } });
+
+  const draw = () => {
+    const cur = store.textScale();
+    card.replaceChildren(
+      el('div.row-base', [
+        el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'مقاس الخطّ'),
+        el('span.fine', (OPTIONS.find((o) => o.v === cur) || OPTIONS[0]).label),
+      ]),
+      el('span.fine', { style: { textAlign: 'start' } },
+        'يُكبَّر معه كلُّ شيء — الحروفُ والأزرارُ ومواضعُ اللمس. ويبقى على جهازك هذا.'),
+      el('div', { style: { display: 'flex', gap: '8px', paddingTop: '2px' } },
+        OPTIONS.map((o) => el('button.chip', {
+          onclick: () => { store.setTextScale(o.v); draw(); },
+          'aria-pressed': o.v === cur ? 'true' : 'false',
+          style: {
+            cursor: 'pointer', border: 'none', font: 'inherit', flex: '1',
+            fontSize: `${Math.round(12.5 * o.v)}px`,
+            background: o.v === cur ? 'var(--green)' : 'var(--surface)',
+            color: o.v === cur ? 'var(--paper)' : 'var(--ink-3)',
+          },
+        }, o.label))),
+    );
+  };
+
+  draw();
+  return card;
+}
+
 function goalCard() {
   const OPTIONS = [10, 20, 30, 50];
   const card = el('div.card', { style: { gap: '10px' } });

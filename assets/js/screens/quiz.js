@@ -216,7 +216,10 @@ function selfGradeView(host, session, q) {
 
   const finish = (score) => {
     store.record(q, score);
-    session.results.push({ q, score });
+    // ما لم يؤشِّر عليه هو الذي فاته — يُحمَل إلى خاتمة الجلسة ليُقرَأ مجموعاً،
+    // فالنقطةُ تمرُّ في السؤال ثمّ تُنسى، ومجموعُها في الآخِر درسٌ واحدٌ يُراجَع.
+    const missed = points ? points.filter((_, i) => !ticked.has(i)) : [];
+    session.results.push({ q, score, missed });
     advance(host, session);
   };
 
@@ -389,6 +392,104 @@ function requeueIfWrong(session) {
   session.questions.push(last.q);
 }
 
+/**
+ * تقريرُ الاختبار الشامل: **أين تخسر الدرجات** — على التوزيع الرسميّ نفسِه.
+ *
+ * فالنسبةُ المئويةُ وحدَها لا تدلُّ على موضع الخلل: من أصاب ٧٠٪ قد يكون خسر
+ * كلَّ درجاتِ الفقهِ وهو أثقلُ العلومِ في الورقة (عشرٌ من أربعٍ وثلاثين).
+ * فيُرتَّب على **ما خسره** لا على نسبته، ويُقرَن بنصيبِ العلمِ من الورقة.
+ *
+ * ولا يُذكَر حدُّ نجاحٍ ولا يُحكَم بنجاحٍ أو رسوب: درجةُ النجاح في الاختبار
+ * الرسميّ غيرُ معلومةٍ لنا، واختلاقُها يُطمئن الطالبَ أو يُقلقه بلا وجهِ حقّ.
+ */
+function examReport(session, rows) {
+  if (session.mode !== 'exam') return null;
+
+  const share = new Map(data.EXAM_BLUEPRINT.map((b) => [b.subject, b.count]));
+  const lost = rows
+    .map((r) => ({ subject: r.subject, n: r.n, got: r.sum, lost: r.n - r.sum, share: share.get(r.subject) || r.n }))
+    .filter((r) => r.lost >= 0.5)
+    .sort((a, b) => b.lost - a.lost);
+
+  if (!lost.length) {
+    return el('div.card.card--green', { style: { gap: '6px' } }, [
+      el('span', { style: { fontSize: '13.5px', fontWeight: '600' } }, 'لم تخسر درجةً تُذكَر'),
+      el('span', { style: { fontSize: '12.5px', lineHeight: '1.8', opacity: '0.88' } },
+        'أصبتَ في كلِّ علمٍ ما يقارب نصيبَه من الورقة.'),
+    ]);
+  }
+
+  return el('div.stack', { style: { gap: '10px' } }, [
+    el('span.section-title', 'أين تخسر الدرجات'),
+    el('div.stack', { style: { gap: '8px' } }, lost.map((r) =>
+      el('div.row', { style: { fontSize: '13.5px', gap: '10px' } }, [
+        el('span', r.subject),
+        el('span.num', { style: { color: 'var(--wrong)', flexShrink: '0' } },
+          `−${ar(Math.round(r.lost))} من ${ar(r.n)}`),
+      ]))),
+    el('p.fine',
+      `ابدأ بـ${(data.BOOK_OF_SUBJECT[lost[0].subject] || {}).title || lost[0].subject}: `
+      + `نصيبُه من الورقة ${ar(share.get(lost[0].subject) || lost[0].n)} من `
+      + `${ar(data.EXAM_BLUEPRINT.reduce((a, b) => a + b.count, 0))}.`),
+    el('p.fine', { style: { color: 'var(--ink-6)' } },
+      'ولا يُذكَر ههنا حدُّ نجاح: درجةُ النجاح في الاختبار الرسميّ غيرُ معلومةٍ لنا، ولا تُختلَق.'),
+  ]);
+}
+
+/**
+ * «ما فاتك» — النقاطُ التي لم يؤشِّر عليها في الأسئلة التي لم يُتقِنها.
+ *
+ * وهذا هو الفرقُ بين أن يعرفَ أنّه أخطأ وأن يعرفَ **ما الذي** أخطأ فيه. والنقطةُ
+ * مقرونةٌ بصفحتها من الكتاب، فمن أرادها قرأها من موضعها لا من ذاكرته.
+ *
+ * والأسئلةُ الموضوعيةُ لا نقاطَ تحقُّقٍ لها في البنك — وهي سبعةٌ وخمسون من أربعةِ
+ * آلاف — فشرحُها في موضع الإجابة هو بيانُها، ولا تُذكَر ههنا فارغةً.
+ */
+function missedBlock(session) {
+  const rows = (session.final || session.results)
+    .filter((r) => r.score < store.CORRECT && r.missed && r.missed.length);
+  if (!rows.length) return null;
+
+  const n = rows.reduce((a, r) => a + r.missed.length, 0);
+
+  // جلسةٌ من عشرين سؤالاً أُخطئت كلُّها تُخرِج نحوَ مائةِ نقطة، وقائمةٌ بمائةِ
+  // سطرٍ لا تُقرَأ فلا تُفيد. فيُعرَض أوّلُ ما يُراجَع، ويُقال صراحةً كم بقي
+  // وأين يُوجَد — لا يُحذَف شيءٌ في صمت.
+  const MAX_Q = 5;
+  const MAX_P = 4;
+  const shown = rows.slice(0, MAX_Q);
+  const restQ = rows.length - shown.length;
+
+  return el('div.stack', { style: { gap: '10px' } }, [
+    el('div.row-base', [
+      el('span.section-title', 'ما فاتك'),
+      el('span.fine', `${ar(n)} نقطة`),
+    ]),
+    el('div.stack', { style: { gap: '10px' } }, shown.map((r) => {
+      const pts = r.missed.slice(0, MAX_P);
+      const restP = r.missed.length - pts.length;
+      return el('div.card.card--sand', { style: { gap: '8px' } }, [
+        el('div.row', { style: { alignItems: 'flex-start', gap: '10px' } }, [
+          el('span', { style: { fontSize: '13.5px', fontWeight: '600', color: 'var(--sand-ink)', textAlign: 'start' } },
+            r.q.question),
+          pageCite(r.q),
+        ]),
+        el('ul', { style: { display: 'flex', flexDirection: 'column', gap: '6px', paddingInlineStart: '18px' } },
+          pts.map((m) => el('li', {
+            style: { fontSize: '13px', lineHeight: '1.85', color: 'var(--sand-ink2)' },
+          }, m))),
+        restP
+          ? el('span.fine', { style: { color: 'var(--sand-ink2)' } }, `وبقي ${ar(restP)} نقطةً في هذا السؤال.`)
+          : null,
+      ]);
+    })),
+    restQ
+      ? el('span.fine', { style: { textAlign: 'center' } },
+          `و${ar(restQ)} سؤالاً آخَرَ فاتك فيه شيء — تجدها في «راجع أخطاءك».`)
+      : null,
+  ]);
+}
+
 function advance(host, session) {
   requeueIfWrong(session);
   session.index += 1;
@@ -486,6 +587,10 @@ function resultView(session, result) {
           ]);
         })),
       ]),
+
+      examReport(session, rows),
+
+      missedBlock(session),
 
       weakest && weakest.sum / weakest.n < 0.8
         ? el('div.card.card--sand', [

@@ -46,6 +46,7 @@ defineRoutes({
   ownerKey: ownerKeyScreen,
 });
 
+store.applyTextScale();
 audio.sweep();
 
 // وضع المطوّر: ?dev=1 يُظهر شارة «لم يُقابَل» على الأسئلة التي لم تُقابَل حرفياً

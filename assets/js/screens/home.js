@@ -41,13 +41,15 @@ export default function homeScreen() {
       ]),
     ]),
 
+    // «تابِع» أوّلُ ما يقع عليه البصر: هو الفعلُ الذي جاء الطالبُ من أجله،
+    // وكان تحت ثلاثِ بطاقاتٍ يُمرَّر إليها، فيبدأ من الكتب كلَّ مرّة.
+    resume ? resumeCard(track, resume) : null,
+
     rankCard(),
 
     masteryCard(pool),
 
     wirdCard(track),
-
-    resume ? resumeCard(resume) : null,
 
     el('div.grid2', [
       tile('اختبار شامل', `${ar(exam)} سؤالاً · بوقت`, () => openExam(track, exam)),
@@ -213,8 +215,24 @@ function openWird(track, n) {
   });
 }
 
-function resumeCard(resume) {
-  return el('div.stack', [
+/**
+ * «تابِع من حيث وقفت».
+ *
+ * والعددُ يُحسَب من البنكِ الآن لا يُقرَأ من اللقطةِ المحفوظةِ يومَ فُتِح الباب:
+ * تلك تُكتَب مرّةً عند فتح الجلسة ثمّ لا تتحرّك، فيُجيب الطالبُ عشرةً ويرى
+ * الرقمَ كما تركه فيظنُّ أنّه لم يتقدّم.
+ *
+ * ويُقال «بقي كذا» لا «كذا من كذا»: الباقي هو ما يعنيه، وهو الذي ينقص كلَّ يوم.
+ */
+function resumeCard(track, resume) {
+  const topic = resume.topic === 'الكتاب كاملاً' ? null : resume.topic;
+  const qs = data.questionsIn(track, resume.subject, topic);
+  if (!qs.length) return null;
+
+  const done = qs.filter((q) => store.isCorrect(q.id)).length;
+  const left = qs.length - done;
+
+  return el('div.stack', { style: { gap: '10px' } }, [
     el('div.row-base', [
       el('span.section-title', 'تابِع من حيث وقفت'),
       el('button', {
@@ -222,16 +240,20 @@ function resumeCard(resume) {
         style: { font: 'inherit', fontSize: '13px', color: 'var(--ink-5)', background: 'none', border: 'none', cursor: 'pointer' },
       }, 'الكلّ'),
     ]),
-    el('button.card', {
+    el('button.card.card--green', {
       style: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-      onclick: () => openTopic(resume.subject, resume.topic === 'الكتاب كاملاً' ? null : resume.topic),
+      onclick: () => openTopic(resume.subject, topic),
     }, [
-      el('div', { style: { display: 'flex', flexDirection: 'column', gap: '5px', textAlign: 'start' } }, [
+      el('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'start', flex: '1', minWidth: '0' } }, [
         el('span', { style: { fontFamily: 'var(--serif)', fontSize: '26px', fontWeight: '700' } }, resume.topic),
-        el('span', { style: { fontSize: '13px', color: 'var(--ink-4)' } },
-          `${resume.subject} — ${ar(resume.done)} من ${ar(resume.total)}`),
+        el('span', { style: { fontSize: '13px', opacity: '0.88' } },
+          left
+            ? `${resume.subject} — بقي ${ar(left)} من ${ar(qs.length)}`
+            : `${resume.subject} — أصبتَ الباب كلَّه`),
+        el('div.bar.bar--onGreen', { style: { marginTop: '2px' } },
+          el('i', { style: { width: `${Math.round((done / qs.length) * 100)}%` } })),
       ]),
-      el('span.iconbtn.iconbtn--lg', '▶'),
+      el('span.iconbtn.iconbtn--lg', { style: { marginInlineStart: '14px' } }, '▶'),
     ]),
   ]);
 }

@@ -17,6 +17,10 @@ const EMPTY = {
   reviews: {},
   // وِرد اليوم: كم سؤالاً يلتزمه الطالب يومياً
   dailyGoal: 20,
+  // مقاسُ الخطّ: ١ هو الأصل، وما فوقه تكبيرٌ يختاره الطالب
+  textScale: 1,
+  // وقتُ تنبيه الوِرد «HH:MM» — يُحفَظ ليُعرَض، والتنبيهُ نفسُه في تقويم الجهاز
+  reminderAt: null,
 };
 
 function read() {
@@ -64,6 +68,35 @@ export function scoreOf(id) {
 }
 
 export const seenCount = () => Object.keys(cache.answers).length;
+
+/**
+ * مقاسُ الخطّ — **خيارٌ لا أصل**: الأصلُ يبقى كما صُمِّم، ومن احتاج كبَّر.
+ *
+ * وكثيرٌ من الأئمة كبارُ سنّ، والقياساتُ في التطبيق كلُّها بالبكسل فلا تتبع
+ * مقاسَ خطِّ النظام. فيُكبَّر اللوحُ كلُّه — الحروفُ والأزرارُ ومواضعُ اللمس
+ * معاً — لا الحروفُ وحدَها، وإلا ضاقت الأزرارُ عمّا فيها.
+ */
+export const textScale = () => cache.textScale || 1;
+
+export function setTextScale(v) {
+  cache.textScale = v;
+  write();
+  applyTextScale();
+}
+
+/** يُنادى عند الإقلاع وعند كلِّ تبديل. */
+export function applyTextScale() {
+  try {
+    document.body.dataset.text = String(textScale());
+  } catch { /* لا مستندَ — في فحصٍ خارج المتصفّح */ }
+}
+
+export const reminderAt = () => cache.reminderAt;
+
+export function setReminderAt(hhmm) {
+  cache.reminderAt = hhmm || null;
+  write();
+}
 
 export function setResume(resume) {
   cache.resume = resume;
