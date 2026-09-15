@@ -12,7 +12,7 @@
  * وكلُّ تغييرٍ في الملفاتِ يُوجِب رفعَ CACHE — وإلا بقي الطالبُ على نسخةٍ قديمة.
  */
 
-const CACHE = 'awqaf-prep-v15';
+const CACHE = 'awqaf-prep-v16';
 
 /** الهيكلُ الذي لا يقومُ التطبيقُ بدونه — يُجلَب كلُّه عند التنصيب. */
 const SHELL = [
@@ -44,6 +44,7 @@ const SHELL = [
   'assets/js/screens/owner.js',
   'assets/js/owner.js',
   'assets/js/reminder.js',
+  'assets/js/version.js',
   'assets/js/share.js',
   'assets/js/sync.js',
   'assets/fonts/amiri-400-arabic.woff2',

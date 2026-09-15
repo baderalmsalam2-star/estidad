@@ -6,6 +6,7 @@ import { el, ar, pct, go, waLink, WHATSAPP_MARK } from '../ui.js';
 import * as sync from '../sync.js';
 import * as owner from '../owner.js';
 import * as reminder from '../reminder.js';
+import * as version from '../version.js';
 
 export default function accountScreen() {
   const track = store.get().track;
@@ -91,6 +92,8 @@ export default function accountScreen() {
     shareStatsCard(),
 
     contactCard(),
+
+    versionCard(),
   ]);
 }
 
@@ -147,19 +150,51 @@ function shareStatsCard() {
  * يعود يعدُّ النقرات.
  */
 function gate() {
-  const h = el('h1.title', { style: { cursor: 'default', WebkitUserSelect: 'none', userSelect: 'none' } }, 'حسابي');
+  const h = el('h1.title', {
+    style: {
+      cursor: 'default', WebkitUserSelect: 'none', userSelect: 'none',
+      WebkitTouchCallout: 'none', touchAction: 'manipulation',
+      display: 'inline-flex', alignItems: 'center', gap: '10px',
+    },
+  }, 'حسابي');
+
+  // مؤشّرُ التقدّم — بابٌ خفيٌّ بلا إشارةٍ لا يُعلَم أيعمل أم لا، فيُظنُّ معطوباً.
+  // ولا يظهر إلا بعد الثالثة، فالطالبُ لا يبلغها بنقرةٍ عابرة.
+  const dots = el('span', {
+    style: {
+      fontSize: '13px', color: 'var(--ink-8)', fontFamily: 'var(--mono)',
+      opacity: '0', transition: 'opacity .15s ease',
+    },
+  }, '');
+
   let taps = 0;
   let last = 0;
+  let timer = null;
 
-  h.addEventListener('click', () => {
+  const paint = () => {
+    dots.textContent = '·'.repeat(taps);
+    dots.style.opacity = taps >= 3 ? '1' : '0';
+  };
+
+  // `pointerdown` لا `click`: النقرُ في سفاري يتأخّر ويُدمَج مع نقرةِ التكبير
+  // المزدوجة، فتضيع نقراتٌ من السبع فلا تُفتَح البوّابةُ أبداً على لوحيّ.
+  h.addEventListener('pointerdown', () => {
     const now = Date.now();
-    taps = now - last < 900 ? taps + 1 : 1;
+    taps = now - last < 1500 ? taps + 1 : 1;
     last = now;
+    paint();
+
+    clearTimeout(timer);
+    timer = setTimeout(() => { taps = 0; paint(); }, 1700);
+
     if (taps < 7) return;
+    clearTimeout(timer);
     taps = 0;
+    paint();
     go(owner.isOwner() ? 'owner' : 'signin');
   });
 
+  h.append(dots);
   return h;
 }
 
@@ -218,6 +253,49 @@ function contactCard() {
  * والدفعُ يحتاج خادماً لا وجودَ له. فيُقال للطالب ما يجري فعلاً — يدخل الحدثُ
  * تقويمَه فيُوقِظه التقويم — ولا يُضبَط زرٌّ يَعِدُ بما لا يأتي.
  */
+/**
+ * نسخةُ التطبيقِ على هذا الجهاز، وزرُّ تجديدها.
+ *
+ * وُضِعت لأنّ الشكوى تكرّرت: يُنشَر إصلاحٌ ولا يظهر، ولا يُعرَف أالنشرُ تأخّر أم
+ * الجهازُ بقي على القديم. فالاسمُ يُقرَأ من مخزن عامل الخدمة نفسِه — لا يُكتَب
+ * في الكود فيكذب — والزرُّ يُجدِّد قطعاً لا انتظاراً.
+ */
+function versionCard() {
+  const line = el('span.fine', { class: 'num', style: { direction: 'ltr' } }, '…');
+  const btn = el('button', {
+    style: {
+      font: 'inherit', fontSize: '13.5px', fontWeight: '600', color: 'var(--green)',
+      background: 'none', border: 'none', cursor: 'pointer', textAlign: 'start', padding: '4px 0 0',
+    },
+    onclick: async () => {
+      btn.textContent = 'يُجدَّد…';
+      btn.disabled = true;
+      try {
+        await version.refresh();
+      } catch (e) {
+        btn.disabled = false;
+        btn.textContent = 'جدِّد التطبيق الآن';
+        line.textContent = e.message;
+      }
+    },
+  }, 'جدِّد التطبيق الآن');
+
+  version.current().then((name) => {
+    line.textContent = name || 'لم يُنصَّب عاملُ الخدمة بعد';
+  });
+
+  return el('div.card', { style: { gap: '6px' } }, [
+    el('div.row-base', [
+      el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'نسخة التطبيق'),
+      line,
+    ]),
+    el('span.fine', { style: { textAlign: 'start' } },
+      'التطبيقُ يُقلِع من مخزنِ جهازك ليعمل بلا شبكة، فقد يبقى على نسخةٍ قديمةٍ '
+      + 'زيارةً أو زيارتين بعد أيِّ تحديث. وهذا يُنزِل الجديدَ الآن.'),
+    btn,
+  ]);
+}
+
 function reminderCard() {
   const card = el('div.card', { style: { gap: '10px' } });
   const TIMES = ['06:00', '13:00', '19:00', '21:00'];
