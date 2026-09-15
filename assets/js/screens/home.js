@@ -2,7 +2,7 @@
 
 import * as data from '../data.js';
 import * as store from '../store.js';
-import { el, ar, go, MAGNIFIER } from '../ui.js';
+import { el, ar, go, ring, MAGNIFIER } from '../ui.js';
 import * as icons from '../icons.js';
 import { openTopic } from './books.js';
 
@@ -20,7 +20,8 @@ export default function homeScreen() {
   );
 
   return el('div.pane', [
-    el('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' } }, [
+    // الترويسةُ على زَلِّيجٍ يتلاشى — فيبدأ التطبيقُ بهويّةٍ لا بسطرٍ مجرَّد.
+    el('div.hero', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' } }, [
       el('div', { style: { display: 'flex', flexDirection: 'column', gap: '2px' } }, [
         el('span.meta', `مسار ${label}`),
         el('span.title', 'أهلاً بك'),
@@ -120,18 +121,19 @@ function rankCard() {
 function masteryCard(pool) {
   const ch = store.chapters(pool);
 
-  return el('button.card', { onclick: () => go('books'), style: { gap: '12px' } }, [
-    el('div.row-base', { style: { width: '100%' } }, [
-      el('span.section-title', 'إتقانُ الأبواب'),
-      el('span.num', { style: { fontSize: '13px', color: 'var(--ink-5)' } },
-        `${ar(ch.mastered)} / ${ar(ch.total)}`),
+  // حلقةٌ بدل الشريطِ المسطَّح: الرقمُ في جوفها فلا يُبحَث عنه في طرفِ سطر،
+  // والقوسُ يُرسَم أمام الطالبِ فيرى حصيلتَه تتقدّم لا توضَع.
+  // ولا نسبةَ مئويةٌ هنا: بابٌ من ثلاثمائةٍ يُقرَأ «٠٪»، فيعود المقياسُ إلى ما هربنا منه.
+  return el('button.card', { onclick: () => go('books'), style: { gap: '14px' } }, [
+    el('div', { style: { display: 'flex', gap: '16px', alignItems: 'center', width: '100%' } }, [
+      ring(ch.pct, { size: 76, width: 8, label: ar(ch.mastered), sub: `من ${ar(ch.total)}` }),
+      el('div', { style: { display: 'flex', flexDirection: 'column', gap: '5px', textAlign: 'start', flex: '1', minWidth: '0' } }, [
+        el('span.section-title', 'إتقانُ الأبواب'),
+        el('span.fine', ch.started
+          ? `${ar(ch.started)} باباً قيدَ الدرس. والبابُ متقَنٌ إذا أتقنتَ ثلثَي أسئلته.`
+          : 'البابُ يُعَدُّ متقَناً إذا أتقنتَ ثلثَي أسئلته. ابدأ من الكتب.'),
+      ]),
     ]),
-    el('div.bar', { style: { width: '100%' } }, el('i', { style: { width: `${Math.round(ch.pct * 100)}%` } })),
-    // لا نسبةَ مئويةٌ هنا: بابٌ من ثلاثمائةٍ يُقرَأ «٠٪»، فيعود المقياسُ إلى ما هربنا منه.
-    el('span.fine', { style: { textAlign: 'start', width: '100%' } },
-      ch.started
-        ? `${ar(ch.started)} باباً قيدَ الدرس. والبابُ متقَنٌ إذا أتقنتَ ثلثَي أسئلته.`
-        : 'البابُ يُعَدُّ متقَناً إذا أتقنتَ ثلثَي أسئلته. ابدأ من الكتب.'),
   ]);
 }
 

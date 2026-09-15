@@ -186,8 +186,82 @@ export function setDevMode(on) {
   } catch { /* لا شيء */ }
 }
 
+/**
+ * نجمُ الزَلِّيجِ نفسُه مرسوماً — للشاشاتِ الفارغة.
+ *
+ * ثمانيةُ رؤوسٍ بحِضنٍ بينها، محسوبةٌ لا منقولة، فتُطابق بلاطةَ الأرضِ شكلاً.
+ */
+export function zellijMark(size = 76) {
+  const R = 46;
+  const r = R * 0.54;
+  const pts = [];
+  for (let i = 0; i < 16; i += 1) {
+    const rad = i % 2 === 0 ? R : r;
+    const a = (i * Math.PI) / 8;
+    pts.push(`${(50 + rad * Math.cos(a)).toFixed(1)},${(50 + rad * Math.sin(a)).toFixed(1)}`);
+  }
+  return `<svg viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true">`
+    + `<path d="M${pts.join('L')}Z" fill="none" stroke="currentColor" stroke-width="2.4"`
+    + ' stroke-linejoin="round"/>'
+    + '<circle cx="50" cy="50" r="9" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>';
+}
+
+/**
+ * الشاشةُ الفارغة. وكان فيها سطرٌ يتيمٌ في وسطِ بياض، فتُقرَأ عَطَباً لا حالةً
+ * مقصودة. فصار فوقها نجمُ الزَلِّيجِ باهتاً — يشغل الموضعَ ويقول إنّ هذا هو
+ * الشكلُ المقصود.
+ */
 export function empty(title, note) {
-  return el('div.empty', [el('span.head', title), note ? el('p.lede', note) : null]);
+  return el('div.empty', [
+    el('div.empty-mark', { html: zellijMark(76) }),
+    el('span.head', title),
+    note ? el('p.lede', note) : null,
+  ]);
+}
+
+/**
+ * حلقةُ تقدُّمٍ برقمها في جوفها.
+ *
+ * والقوسُ يبدأ من الصفرِ ثمّ يمتدُّ إلى موضعه بعد الرسم، فيرى الطالبُ حصيلتَه
+ * تُرسَم أمامه لا تُوضَع أمامه. ومن أطفأ الحركةَ في نظامه رآها في موضعها فوراً.
+ */
+export function ring(value, { size = 78, width = 8, label = null, sub = null } = {}) {
+  const R = (size - width) / 2;
+  const C = 2 * Math.PI * R;
+  const v = Math.max(0, Math.min(1, value || 0));
+  const c = size / 2;
+
+  // يُبنى بـ`innerHTML` لا بـ`el`: `el` تنادي `document.createElement`، وهي
+  // تُنشئ عنصراً في فضاءِ أسماءِ HTML. و`<svg>` في فضاء HTML عنصرٌ مجهولٌ لا
+  // يُرسَم البتّة — يوجد في الشجرةِ ولا يظهر على الشاشة. ولذلك تُبنى أيقوناتُ
+  // المشروعِ كلُّها نصّاً، والحلقةُ مثلُها.
+  const host = el('span', {
+    style: { display: 'flex', flexShrink: '0', width: `${size}px`, height: `${size}px` },
+    html: `<svg class="ring" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" aria-hidden="true">`
+      + `<circle class="track" cx="${c}" cy="${c}" r="${R}" stroke-width="${width}"/>`
+      + `<circle class="fill" cx="${c}" cy="${c}" r="${R}" stroke-width="${width}"`
+      + ` stroke-dasharray="${C.toFixed(2)}" stroke-dashoffset="${C.toFixed(2)}"/></svg>`,
+  });
+
+  // القوسُ يبدأ تامّاً ثمّ ينكشف إلى موضعه بعد الرسم، فيرى الطالبُ حصيلتَه
+  // تُرسَم أمامه. ومن أطفأ الحركةَ في نظامه رآها في موضعها فوراً.
+  requestAnimationFrame(() => {
+    host.querySelector('.fill')?.setAttribute('stroke-dashoffset', (C * (1 - v)).toFixed(2));
+  });
+
+  if (label === null) return host;
+  return el('div', { style: { position: 'relative', width: `${size}px`, height: `${size}px`, flexShrink: '0' } }, [
+    host,
+    el('div', {
+      style: {
+        position: 'absolute', inset: '0', display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: '1px',
+      },
+    }, [
+      el('span.num', { style: { fontSize: '17px', fontWeight: '600', lineHeight: '1' } }, label),
+      sub ? el('span', { style: { fontSize: '9.5px', color: 'var(--ink-6)' } }, sub) : null,
+    ]),
+  ]);
 }
 
 /* ── الملاحة ─────────────────────────────────────────────────────────── */

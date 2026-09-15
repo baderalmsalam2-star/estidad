@@ -312,7 +312,9 @@ function objectiveView(host, session, q) {
 
 function explainCard(q, correct) {
   const answerText = q.type === 'fill' ? (Array.isArray(q.answer) ? q.answer[0] : q.answer) : null;
-  return el('div.card', { style: { gap: '8px' } }, [
+  // `explain-in`: ترتفع البطاقةُ قليلاً وتظهر — خبرٌ بأنّ جواباً جديداً وصل،
+  // لا زينة. ومن أطفأ الحركةَ في نظامه رآها في موضعها فوراً.
+  return el('div.card.explain-in', { style: { gap: '8px' } }, [
     el('div.row', [
       el('span', {
         style: { fontSize: '13px', fontWeight: '600', color: correct ? 'var(--green)' : 'var(--wrong)' },
