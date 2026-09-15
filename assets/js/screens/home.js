@@ -91,14 +91,18 @@ export default function homeScreen() {
 function rankCard() {
   const r = store.rank();
 
-  return el('div.card.card--lg.card--green', { style: { gap: '14px' } }, [
+  // كانت خضراءَ مصمَتةً كبطاقةِ «تابِع» فوقها، فتجاوَرَ أخضرانِ ثقيلان في أوّلِ
+  // الشاشة وتزاحما على العين. والأخضرُ المصمَتُ للفعلِ الذي يُقصَد — وهو
+  // «تابِع» — والرتبةُ خبرٌ يُقرَأ، فرُدَّت إلى الورق وبقي الأخضرُ في الاسمِ
+  // والشريطِ وحدَهما.
+  return el('div.card.card--lg', { style: { gap: '14px' } }, [
     el('div.row-base', [
-      el('span', { style: { fontSize: '14px', opacity: '0.85' } }, 'رتبتك'),
-      el('span.num', { style: { fontSize: '14px' } }, `${ar(r.points)} نقطة`),
+      el('span', { style: { fontSize: '14px', color: 'var(--ink-5)' } }, 'رتبتك'),
+      el('span.num', { style: { fontSize: '14px', color: 'var(--ink-5)' } }, `${ar(r.points)} نقطة`),
     ]),
-    el('span', { style: { fontFamily: 'var(--serif)', fontSize: '46px', fontWeight: '700', lineHeight: '1.15' } }, r.name),
-    el('div.bar.bar--onGreen', el('i', { style: { width: `${Math.round(r.pct * 100)}%` } })),
-    el('span', { style: { fontSize: '12.5px', opacity: '0.85' } },
+    el('span', { style: { fontFamily: 'var(--serif)', fontSize: '46px', fontWeight: '700', lineHeight: '1.15', color: 'var(--green)' } }, r.name),
+    el('div.bar', el('i', { style: { width: `${Math.round(r.pct * 100)}%` } })),
+    el('span', { style: { fontSize: '12.5px', color: 'var(--ink-5)' } },
       r.next ? `${ar(r.toNext)} نقطةً إلى رتبة «${r.next}»` : 'بلغتَ أعلى الرُّتَب'),
   ]);
 }
