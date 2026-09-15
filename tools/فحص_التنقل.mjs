@@ -13,7 +13,16 @@
 import { execSync } from 'node:child_process';
 
 const URL = 'http://localhost:3000/';
-const TEMP_PASS = 'estidad-admin';   // الكلمةُ المؤقّتةُ في tools/مفتاح_المشرف.py
+/**
+ * كلمةُ دخولِ المشرف تُقرَأ من البيئة ولا تُكتَب ههنا: المستودعُ عامّ، ولو كُتبت
+ * فيه لكان الفحصُ نفسُه هو الذي يُفشي الكلمة. فمن أرادها:
+ *
+ *     ESTIDAD_PASS='…' node tools/فحص_التنقل.mjs
+ *
+ * وإن لم تُعطَ، تُخطَّى تحقُّقاتُ الدخولِ ويُقال ذلك صريحاً — لا تُحسَب ناجحةً
+ * وهي لم تُجرَ، ولا فاشلةً وهي لم تُطلَب.
+ */
+const PASS = process.env.ESTIDAD_PASS || '';
 
 const fails = [];
 const ok = (cond, msg) => {
@@ -146,7 +155,15 @@ await page.locator('text=ادخل').click();
 await page.waitForTimeout(600);
 ok(await page.locator('text=كلمةٌ غير صحيحة').count() > 0, 'الكلمةُ الخاطئةُ تُردّ ولا يُفتَح شيء');
 
-await page.locator('input[type=password]').fill(TEMP_PASS);
+if (!PASS) {
+  console.log('— تُخطَّى تحقُّقاتُ اللوحةِ العشرُ: لم تُعطَ ESTIDAD_PASS.');
+  await browser.close();
+  console.log(`\n=== إخفاقات (${fails.length + crashes.length}) ===`);
+  fails.forEach((f) => console.log('  ✗ ' + f));
+  process.exit(fails.length + crashes.length ? 1 : 0);
+}
+
+await page.locator('input[type=password]').fill(PASS);
 await page.locator('text=ادخل').click();
 await page.waitForTimeout(900);
 ok((await title()).includes('لوحة الإدارة'), 'الكلمةُ الصحيحةُ تفتح اللوحة');
