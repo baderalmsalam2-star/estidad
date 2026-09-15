@@ -8,7 +8,7 @@
 
 import * as data from '../data.js';
 import * as audio from '../audio.js';
-import { el, ar, arTime, go, empty, padNav, hideTabs } from '../ui.js';
+import { el, ar, arTime, go, empty, hideTabs } from '../ui.js';
 
 /* عائلات الأحكام — منها تُبنى المشتّتات، قريبةً لا بعيدة (SPEC §٦). */
 const FAMILIES = [
@@ -98,14 +98,12 @@ function pickAyah(wrap) {
     el('div', { style: { padding: '14px 24px 26px' } },
       el('p.fine', 'التطبيق لا يحكم على تلاوتك؛ يوجّه أذنك، والحكم لك أو لشيخك.')),
   );
-  padNav(wrap);
 }
 
 /* ── جلسة التسميع ───────────────────────────────────────────────────── */
 
 function session(wrap, index) {
   hideTabs();
-  wrap.classList.remove('pad-nav');
   const a = db.ayat[index];
   const key = `${a.surah}:${a.ayah}`;
   const questions = buildQuestions(a);

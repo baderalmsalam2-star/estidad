@@ -117,18 +117,22 @@ body {
 .screen::-webkit-scrollbar { display: none; }
 .screen:focus { outline: none; }
 
-/* ─── شريط التنقّل العائم ───────────────────────────────────────────────── */
+/* ─── شريط التنقّل ──────────────────────────────────────────────────────── */
 
+/* كان عائماً فوق المحتوى (`position: absolute`)، فكان إظهارُه في شاشةٍ يحجب
+   أسفلَها — زرَّ «ابدأ الدراسة» في الكتاب، وآخرَ سطرٍ في كلِّ قائمة. فلذلك كان
+   مقصوراً على أربعِ شاشاتٍ، ومن خرج عنهنّ فقَدَ طريقَه إلى الرئيسية.
+   وصار في صفِّ الشاشةِ نفسِه يأخذ موضعَه ولا يعلو أحداً، فأمكن إظهارُه في
+   الشاشاتِ كلِّها بلا حشوٍ يُضاف لكلِّ واحدةٍ على حدة. والشكلُ باقٍ: قُرصٌ
+   داكنٌ بحوافَّ دائرية. */
 .tabbar {
-  position: absolute;
-  bottom: max(26px, env(safe-area-inset-bottom));
-  right: var(--pad); left: var(--pad);
+  flex-shrink: 0;
+  margin: 0 var(--pad) max(20px, env(safe-area-inset-bottom));
   background: var(--ink);
   border-radius: var(--r-pill);
   height: var(--h-nav);
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 26px;
-  z-index: 20;
 }
 /* سمة hidden وحدها لا تكفي: display:flex أعلاه يتغلّب عليها، فيبقى الشريط
    حاجباً للنقر أسفل كل شاشةٍ بلا تبويبات. */
@@ -139,9 +143,6 @@ body {
   padding: 8px 2px;
 }
 .tabbar button[aria-current="page"] { color: var(--paper); font-weight: 600; }
-
-/* حين يظهر شريط التنقّل يحمل سطرُ الاعتماد أسفلَ الشاشة فراغَه (انظر .credit) */
-.pad-nav { padding-bottom: 8px !important; }
 
 /* ─── التخطيط العام داخل الشاشة ─────────────────────────────────────────── */
 
@@ -431,10 +432,8 @@ mark.hit { background: var(--green-tint); color: inherit; border-radius: 4px; pa
   text-align: center; padding: 6px 0 2px;
 }
 
-/* السطر المعلَّق على الشاشة نفسها — يُلحَق بكل شاشةٍ من `go()`. ولا ينكمش
-   ولا ينزلق تحت شريط التنقّل العائم حين يكون ظاهراً. */
+/* السطر المعلَّق على الشاشة نفسها — يُلحَق بكل شاشةٍ من `go()`. */
 .screen > .credit { flex-shrink: 0; padding: 10px 0 18px; }
-.screen.has-nav > .credit { padding-bottom: 104px; }
 
 /* لا يراها الطالب — تُفعَّل بـ?dev=1 فقط */
 .devbadge {

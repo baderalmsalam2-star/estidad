@@ -214,6 +214,18 @@ const TABS = [
   { id: 'account', label: 'حسابي' },
 ];
 
+/**
+ * الشاشةُ الداخليةُ وتبويبُها. فالشريطُ كان لا يظهر إلا في الأربعِ نفسِها، فمن
+ * دخل كتاباً أو بحثاً أو فهرسَ سورٍ بقي بلا طريقٍ إلى الرئيسيةِ إلا أن يرجع
+ * خطوةً خطوة. وإنّما يُخفى في مهمّةٍ مركَّزةٍ لها بابُها: جلسةُ الأسئلة،
+ * وورقةُ الاختيار، ومراجعةُ البنك، وأوّلُ شاشةٍ يُختار فيها المسار.
+ */
+const TAB_OF = {
+  book: 'books', search: 'books', mastered: 'books', library: 'books',
+  custom: 'home', flashcards: 'home', tajweed: 'home', surahs: 'home',
+  admin: 'account',
+};
+
 let routes = {};
 let current = null;
 
@@ -272,14 +284,14 @@ export function go(name, params = {}) {
 
   const screen = host();
   screen.replaceChildren();
-  // إعادة الصنف إلى أصله، وإلا تسرّب pad-nav من شاشةٍ إلى ما بعدها.
+  // إعادة الصنف إلى أصله، وإلا تسرّبت أصنافُ شاشةٍ إلى ما بعدها.
   screen.className = 'screen';
   screen.scrollTop = 0;
 
   const node = view(params);
   if (node) screen.appendChild(node);
 
-  renderTabs(params.tab ?? name);
+  renderTabs(params.tab ?? TAB_OF[name] ?? name);
   stampCredit(screen, node);
   screen.focus({ preventScroll: true });
   return node;
@@ -306,12 +318,9 @@ function renderTabs(active) {
   if (!tab) {
     nav.hidden = true;
     nav.replaceChildren();
-    host().classList.remove('has-nav');
     return;
   }
   nav.hidden = false;
-  // يعرفه سطرُ الاعتماد ليترك للشريطِ العائم فراغَه فلا يحجبه.
-  host().classList.add('has-nav');
   nav.replaceChildren(
     ...TABS.map((t) =>
       el('button', {
@@ -322,16 +331,9 @@ function renderTabs(active) {
   );
 }
 
-/** يُستدعى من الشاشات التي يظهر فوقها شريط التنقّل، لترك فراغٍ أسفلها. */
-export const padNav = (node) => {
-  node.classList.add('pad-nav');
-  return node;
-};
-
 /** يُخفي شريط التنقّل داخل مهمّةٍ مركَّزة (جلسة تسميعٍ مثلاً) حتى لا يحجب أزرارها. */
 export function hideTabs() {
   const nav = tabbarEl();
   nav.hidden = true;
   nav.replaceChildren();
-  host().classList.remove('has-nav');
 }

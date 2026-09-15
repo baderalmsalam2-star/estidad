@@ -2,7 +2,7 @@
 
 import * as data from '../data.js';
 import * as store from '../store.js';
-import { el, ar, go, padNav, topbar, MAGNIFIER } from '../ui.js';
+import { el, ar, go, topbar, MAGNIFIER } from '../ui.js';
 
 /* ── غلافُ الكتاب ────────────────────────────────────────────────────── */
 
@@ -32,7 +32,7 @@ export function booksScreen() {
   const track = store.get().track;
   const subjects = data.subjectsOf(track);
 
-  return padNav(el('div.pane', [
+  return el('div.pane', [
     el('div.stack', { style: { gap: '6px' } }, [
       el('h1.title', 'الكتب المقرَّرة'),
       el('p.lede', `${ar(subjects.length)} علومٍ في مسارك، على الكتب التي قرَّرتها إدارة الشؤون الفنية.`),
@@ -76,7 +76,7 @@ export function booksScreen() {
           el('i', { style: { width: `${Math.round((done / s.total) * 100)}%` } })),
       ]);
     })),
-  ]));
+  ]);
 }
 
 /* ── كتابٌ واحد: أبوابه ─────────────────────────────────────────────── */

@@ -2,7 +2,7 @@
 
 import * as data from '../data.js';
 import * as store from '../store.js';
-import { el, ar, pct, go, padNav, devMode, setDevMode, waLink, WHATSAPP_MARK } from '../ui.js';
+import { el, ar, pct, go, devMode, setDevMode, waLink, WHATSAPP_MARK } from '../ui.js';
 import * as sync from '../sync.js';
 
 export default function accountScreen() {
@@ -13,7 +13,7 @@ export default function accountScreen() {
   const r = store.rank();
   const ch = store.chapters(pool);
 
-  return padNav(el('div.pane', [
+  return el('div.pane', [
     el('div.stack', { style: { gap: '6px' } }, [
       gate(),
       el('p.lede', `مسار ${label} — أجبتَ عن ${ar(store.seenCount())} سؤالاً.`),
@@ -102,7 +102,7 @@ export default function accountScreen() {
     shareStatsCard(),
 
     contactCard(),
-  ]));
+  ]);
 }
 
 /**
