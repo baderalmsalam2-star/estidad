@@ -31,6 +31,10 @@
   --sand-ink2: #82724d;
   --sand-ink3: #7a6a45;
 
+  /* الذهبيّ — كان في مدود التجويد وحدَها، ورُقِّي نغمةَ هويّةٍ ثانية */
+  --gold:      #a07a2c;
+  --gold-tint: #f3ead6;
+
   /* الأحمر — للخطأ وحده */
   --wrong:      #b3453a;
   --wrong-tint: #fbeeec;
@@ -340,11 +344,33 @@ img.cover { display: block; object-fit: cover; }
 /* ─── الشبكة ────────────────────────────────────────────────────────────── */
 
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/*
+ * بلاطاتُ الأوضاع.
+ *
+ * كانت ستَّ بلاطاتٍ بلونٍ واحدٍ ونصٍّ مجرَّد، فكانت الشاشةُ تُقرَأ سطراً سطراً
+ * ولا تُلمَح: لا شيءَ فيها يدلُّ العينَ على بابها. فصار لكلِّ وضعٍ **أيقونةٌ في
+ * قُرصٍ بنغمته**، فيُعرَف موضعُه بالنظرِ قبل القراءة. والنغماتُ من لوحة
+ * التطبيق نفسِها — أخضرُ الهوية، والرمليّ، والذهبيُّ الذي كان في مدود التجويد.
+ */
 .tile {
-  background: var(--surface); border-radius: var(--r-card-2); padding: 18px;
-  min-height: 116px; display: flex; flex-direction: column; justify-content: space-between; gap: 8px;
+  background: var(--surface); border-radius: var(--r-card-2); padding: 16px 18px 18px;
+  min-height: 124px; display: flex; flex-direction: column; gap: 10px;
   font: inherit; text-align: inherit; border: none; cursor: pointer; color: inherit;
 }
+.tile .h-card { font-size: 24px; line-height: 1.3; }
+.tile .fine { margin-top: auto; }
+
+.tile-ico {
+  width: 38px; height: 38px; border-radius: 13px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--green-tint); color: var(--green);
+}
+.tile-ico svg { width: 21px; height: 21px; }
+
+.tile--gold .tile-ico { background: var(--gold-tint); color: var(--gold); }
+.tile--sand .tile-ico { background: #e3d3b2; color: var(--sand-ink); }
+.tile--ink  .tile-ico { background: var(--sunk); color: var(--ink-2); }
+
 .tile--sand { background: var(--sand); }
 .tile--sand .h-card { color: var(--sand-ink); }
 .tile--sand .fine { color: var(--sand-ink2); }

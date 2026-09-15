@@ -3,6 +3,7 @@
 import * as data from '../data.js';
 import * as store from '../store.js';
 import { el, ar, go, MAGNIFIER } from '../ui.js';
+import * as icons from '../icons.js';
 import { openTopic } from './books.js';
 
 export default function homeScreen() {
@@ -52,25 +53,33 @@ export default function homeScreen() {
     wirdCard(track),
 
     el('div.grid2', [
-      tile('اختبار شامل', `${ar(exam)} سؤالاً · بوقت`, () => openExam(track, exam)),
-      tile('التسميع', 'القرآن والأذان', () => go('recite')),
-      tile('بطاقات الحفظ', 'التعدادات', () => go('flashcards')),
-      tile('اختبار مخصّص', 'اختر العلوم والصعوبة', () => go('custom')),
-      tile('محرّك التجويد', 'جزء عمّ · كلمةً كلمة', () => go('surahs')),
+      tile('اختبار شامل', `${ar(exam)} سؤالاً · بوقت`, () => openExam(track, exam),
+        '', icons.EXAM),
+      tile('التسميع', 'القرآن والأذان', () => go('recite'),
+        'tile--ink', icons.RECITE),
+      tile('بطاقات الحفظ', 'التعدادات', () => go('flashcards'),
+        'tile--gold', icons.CARDS),
+      tile('اختبار مخصّص', 'اختر العلوم والصعوبة', () => go('custom'),
+        'tile--ink', icons.CUSTOM),
+      tile('محرّك التجويد', 'جزء عمّ · كلمةً كلمة', () => go('surahs'),
+        'tile--gold', icons.TAJWEED),
       tile(
         'مراجعة الأخطاء',
         mistakes.length ? `${ar(mistakes.length)} بانتظارك` : 'لا أخطاءَ بعد',
         mistakes.length
           ? () => go('quiz', { questions: mistakes, mode: 'review', title: 'مراجعة الأخطاء' })
           : null,
-        'tile--sand',
+        'tile--sand', icons.REVIEW,
       ),
     ]),
 
     // ما أصابه الطالبُ خرج من الدورة إلى ههنا، فلا بدَّ من بابٍ ظاهرٍ يدخل منه.
     el('button.card', { onclick: () => go('mastered'), style: { gap: '6px' } }, [
       el('div.row-base', { style: { width: '100%' } }, [
-        el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'صندوق المراجعة'),
+        el('span', { style: { fontSize: '15.5px', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '9px' } }, [
+          el('span', { html: icons.BOX, style: { display: 'flex', color: 'var(--green)', width: '19px', height: '19px' } }),
+          'صندوق المراجعة',
+        ]),
         el('span.num', { style: { fontSize: '13px', color: 'var(--ink-5)' } }, ar(kept)),
       ]),
       el('span.fine', { style: { textAlign: 'start', width: '100%' } },
@@ -262,12 +271,13 @@ function resumeCard(track, resume) {
   ]);
 }
 
-function tile(title, note, onclick, cls = '') {
+function tile(title, note, onclick, cls = '', icon = null) {
   return el(`button.tile${cls ? '.' + cls : ''}`, {
     onclick: onclick || undefined,
     disabled: !onclick,
     style: onclick ? null : { opacity: '0.55', cursor: 'default' },
   }, [
+    icon ? el('span.tile-ico', { html: icon }) : null,
     el('span.h-card', title),
     el('span.fine', note),
   ]);
