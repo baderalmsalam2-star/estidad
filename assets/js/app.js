@@ -4,7 +4,7 @@ import * as data from './data.js';
 import * as store from './store.js';
 import * as audio from './audio.js';
 import * as sync from './sync.js';
-import { defineRoutes, go, el, setDevMode, setPageRefResolver, setPageOpener, setNavigateHook } from './ui.js';
+import { defineRoutes, go, el, setDevMode, setPageRefResolver, setPageOpener, setNavigateHook, setOverlayProbe } from './ui.js';
 
 import trackScreen from './screens/track.js';
 import homeScreen from './screens/home.js';
@@ -15,7 +15,7 @@ import tajweedScreen, { surahsScreen } from './screens/tajweed.js';
 import reciteScreen from './screens/recite.js';
 import flashcardsScreen from './screens/flashcards.js';
 import accountScreen from './screens/account.js';
-import { openPage, closePage, libraryScreen } from './screens/page-view.js';
+import { openPage, closePage, isPageOpen, libraryScreen } from './screens/page-view.js';
 import reviewScreen from './screens/review.js';
 import searchScreen from './screens/search.js';
 import masteredScreen from './screens/mastered.js';
@@ -56,6 +56,7 @@ setPageRefResolver(data.pageRefOf);
 setPageOpener(openPage);
 // أي انتقالٍ بين الشاشات يُغلق طبقة الصفحة إن كانت مفتوحة.
 setNavigateHook(closePage);
+setOverlayProbe(isPageOpen);
 
 /**
  * عاملُ الخدمة — يُسجَّل بعدَ إقلاعِ التطبيقِ لا قبلَه، فلا يزاحمُ أوّلَ رسمٍ على

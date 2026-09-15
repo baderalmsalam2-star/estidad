@@ -30,6 +30,9 @@ const PREVIEW = typeof window !== 'undefined' && window.__PREVIEW === true;
 
 let layer = null;
 
+/** يعرفه الموجِّه ليجعل زرَّ الرجوعِ يُغلق الطبقةَ لا يغادر الشاشة. */
+export const isPageOpen = () => !!layer;
+
 export function closePage() {
   layer?.remove();
   layer = null;
@@ -48,6 +51,10 @@ export function openPage(ref) {
   layer = el('div.pagelayer', { role: 'dialog', 'aria-modal': 'true' });
   document.getElementById('device').appendChild(layer);
   document.addEventListener('keydown', onKey);
+
+  // قيدٌ في سجلِّ المتصفّحِ تستهلكه سحبةُ الرجوع فتُغلَق الطبقةُ وحدَها،
+  // ويبقى الطالبُ في شاشته — ولا يُقذَف منها وقد ترك تصحيحاً في نصفه.
+  history.pushState({ overlay: true }, '');
 
   const paint = () => {
     const total = data.bookPageCount(ref.book);

@@ -54,7 +54,7 @@ export default function homeScreen() {
       tile('التسميع', 'القرآن والأذان', () => go('recite')),
       tile('بطاقات الحفظ', 'التعدادات', () => go('flashcards')),
       tile('اختبار مخصّص', 'اختر العلوم والصعوبة', () => go('custom')),
-      tile('محرّك التجويد', 'جزء عمّ · كلمةً كلمة', () => go('tajweed')),
+      tile('محرّك التجويد', 'جزء عمّ · كلمةً كلمة', () => go('surahs')),
       tile(
         'مراجعة الأخطاء',
         mistakes.length ? `${ar(mistakes.length)} بانتظارك` : 'لا أخطاءَ بعد',

@@ -37,20 +37,20 @@ function paint(wrap, index) {
   const a = ayat[i];
 
   wrap.replaceChildren(
-    el('div.topbar', { style: { justifyContent: 'space-between' } }, [
-      el('button.iconbtn', { onclick: () => paint(wrap, i - 1), disabled: i === 0, 'aria-label': 'الآية السابقة' }, '→'),
-      el('button.topbar-title', {
-        onclick: () => go('surahs'),
-        style: { font: 'inherit', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-5)', fontSize: '13.5px' },
-      }, `سورة ${a.surahName} — آية ${ar(a.ayah)}`),
-      el('button.iconbtn', { onclick: () => paint(wrap, i + 1), disabled: i === ayat.length - 1, 'aria-label': 'الآية التالية' }, '←'),
-    ]),
+    // الشريطُ العلويُّ كالشاشاتِ كلِّها: خروجٌ ثمّ عنوان. وكان ركناه مشغولَين
+    // بتنقُّلِ الآيات فلم يبقَ للطالبِ بابٌ يخرج منه، فيبقى محبوساً في الآية.
+    topbar({ onBack: () => go('surahs'), title: `سورة ${a.surahName} — آية ${ar(a.ayah)}` }),
 
-    el('div', { style: { padding: '22px 24px 26px', display: 'flex', flexDirection: 'column', gap: '20px', flexShrink: '0' } }, [
+    el('div', { style: { padding: '22px 24px 26px', display: 'flex', flexDirection: 'column', gap: '18px', flexShrink: '0' } }, [
       ayahLine(a),
       el('div.legend', [
         el('span', [el('i', { style: { background: 'var(--green)' } }), 'الغنّة والإدغام']),
         el('span', [el('i', { style: { background: '#a07a2c' } }), 'المدود']),
+      ]),
+      el('div.ayahnav', [
+        el('button', { onclick: () => paint(wrap, i - 1), disabled: i === 0 }, '→ السابقة'),
+        el('span.num', `${ar(i + 1)} من ${ar(ayat.length)}`),
+        el('button', { onclick: () => paint(wrap, i + 1), disabled: i === ayat.length - 1 }, 'التالية ←'),
       ]),
     ]),
 
@@ -141,8 +141,26 @@ function rulingsSheet(a) {
 /* ── فهرس السور ─────────────────────────────────────────────────────── */
 
 export function surahsScreen() {
-  if (!cache) { go('tajweed'); return null; }
+  const wrap = el('div', { style: { display: 'flex', flexDirection: 'column', flex: '1', minHeight: '0' } });
 
+  // كان الفهرسُ يقذف الطالبَ إلى أوّلِ آيةٍ إن لم يكن المحرّكُ محمَّلاً بعدُ —
+  // وهو مدخلُ التجويدِ من الرئيسية، فكان يُقذَف دائماً. فصار يحمّله لنفسه.
+  if (cache) {
+    paintSurahs(wrap);
+  } else {
+    wrap.append(empty('يُحمَّل محرّك التجويد…', 'نحو ٩٠٠ كيلوبايت، مرةً واحدة.'));
+    data.loadTajweed().then((db) => {
+      cache = db;
+      paintSurahs(wrap);
+    }).catch(() => {
+      wrap.replaceChildren(empty('تعذّر تحميل أحكام التجويد', 'تأكّد من وجود ملف data/tajweed.'));
+    });
+  }
+
+  return wrap;
+}
+
+function paintSurahs(wrap) {
   const surahs = [];
   cache.ayat.forEach((a, i) => {
     const last = surahs[surahs.length - 1];
@@ -150,8 +168,8 @@ export function surahsScreen() {
     else last.ayat += 1;
   });
 
-  return el('div', { style: { display: 'flex', flexDirection: 'column', flex: '1', minHeight: '0' } }, [
-    topbar({ onBack: () => go('tajweed'), title: 'جزء عمّ' }),
+  wrap.replaceChildren(
+    topbar({ onBack: () => go('home'), title: 'جزء عمّ' }),
     el('div', { style: { flex: '1', minHeight: '0', overflowY: 'auto', padding: '18px 24px 26px' } }, [
       el('div.list', surahs.map((s) =>
         el('button.list-item', { onclick: () => go('tajweed', { index: s.from }) }, [
@@ -161,5 +179,5 @@ export function surahsScreen() {
       el('p.fine', { style: { marginTop: '18px' } },
         'لا فواتحَ حروفيّةً في جزء عمّ فلا مدَّ لازمٌ حرفيٌّ فيه البتّة · ولا إمالةَ لحفصٍ فيه · ولا تسهيل · ولا يقع من مواضع السكت إلا ﴿بَلْ ۜ رَانَ﴾.'),
     ]),
-  ]);
+  );
 }

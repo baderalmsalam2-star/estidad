@@ -200,6 +200,10 @@ export const setNavigateHook = (fn) => { onNavigate = fn; };
 export const setPageRefResolver = (fn) => { pageRef = fn; };
 export const setPageOpener = (fn) => { openPageLayer = fn; };
 
+/** أمفتوحةٌ طبقةُ صفحةِ الكتاب فوق الشاشة؟ يحقنه app.js كسابقَيه. */
+let overlayOpen = () => false;
+export const setOverlayProbe = (fn) => { overlayOpen = fn; };
+
 const host = () => document.getElementById('screen');
 const tabbarEl = () => document.getElementById('tabbar');
 
@@ -213,6 +217,47 @@ const TABS = [
 let routes = {};
 let current = null;
 
+/* ── زرُّ الرجوع في الجهاز ────────────────────────────────────────────── */
+
+/**
+ * يُقيَّد كلُّ انتقالٍ في سجلِّ المتصفّح، ليرجعَ زرُّ الرجوعِ في أندرويد وسحبةُ
+ * الحافّةِ في سفاري إلى الشاشةِ السابقةِ لا إلى خارجِ التطبيق.
+ *
+ * وبدونه كان الطالبُ إذا سحب — وهي أوّلُ ما تفعله اليدُ — خرج من التطبيقِ كلِّه
+ * وفقد موضعَه. والخروجُ إنّما يكون من الشاشةِ الأولى وحدَها، فتلك لا تُقيَّد.
+ *
+ * والمعاملاتُ تُحفَظ في الذاكرةِ لا في `history.state`، لأنّ فيها دوالَّ
+ * (`back` و`again` في الاختبار) لا تُسلسَل. فإن أُعيد تحميلُ الصفحةِ ضاع
+ * السجلُّ وبدأ من الشاشةِ الأولى — وهو الصوابُ لا نقص.
+ */
+const trail = [];
+let popping = false;
+
+function remember(name, params) {
+  if (popping) return;
+  const top = trail[trail.length - 1];
+  // إعادةُ رسمِ الشاشةِ نفسِها ليست انتقالاً، فلا تُقيَّد قيداً يُرجَع إليه.
+  if (top && top.name === name) { top.params = params; return; }
+  trail.push({ name, params });
+  if (trail.length === 1) history.replaceState({ depth: 1 }, '');
+  else history.pushState({ depth: trail.length }, '');
+}
+
+window.addEventListener('popstate', () => {
+  // طبقةُ صفحةِ الكتابِ أولى بالرجوع: تُغلَق وتبقى الشاشةُ تحتها.
+  if (overlayOpen()) { onNavigate(); return; }
+
+  trail.pop();
+  const prev = trail[trail.length - 1];
+  if (!prev) return;   // لا شاشةَ قبلها — يُترَك للمتصفّح أن يخرج
+  popping = true;
+  try {
+    go(prev.name, prev.params);
+  } finally {
+    popping = false;
+  }
+});
+
 export function defineRoutes(map) {
   routes = map;
 }
@@ -222,6 +267,7 @@ export function go(name, params = {}) {
   const view = routes[name];
   if (!view) throw new Error(`لا توجد شاشة باسم ${name}`);
   onNavigate();
+  remember(name, params);
   current = name;
 
   const screen = host();

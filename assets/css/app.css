@@ -92,11 +92,14 @@ body {
   padding-top: max(16px, env(safe-area-inset-top));
 }
 
-/* على الجوال: ملء الشاشة بلا إطار */
+/* على الجوال: ملء الشاشة بلا إطار.
+   والعرضُ مسقوفٌ مع ذلك: الشرطُ الثاني (`max-height`) يصدُق على اللوحيِّ عرضاً
+   وعلى نافذةِ حاسوبٍ قصيرة، فكان السطرُ يمتدُّ ألفَي بكسلٍ فلا تكاد العينُ
+   تعود من آخرِه إلى أوّل الذي يليه. والعمودُ المسقوفُ يتوسّط فيُقرَأ. */
 @media (max-width: 480px), (max-height: 880px) {
   body { background: var(--paper); }
   .device {
-    width: 100%; height: 100vh; height: 100dvh; max-height: none;
+    width: 100%; max-width: 520px; height: 100vh; height: 100dvh; max-height: none;
     border-radius: 0; border: none;
   }
 }
@@ -365,6 +368,17 @@ mark.hit { background: var(--green-tint); color: inherit; border-radius: 4px; pa
   background: var(--surface); padding: 6px 13px; border-radius: var(--r-chip);
 }
 .legend i { width: 12px; height: 3px; display: block; }
+
+/* تنقُّلُ الآيات — كان في ركنَي الشريط العلويّ، وهما أبعدُ ما يكون عن الإبهام
+   في جوّالٍ كبير، ويزاحمان زرَّ الخروج من الشاشة. فنُقلا تحت الآية نفسِها. */
+.ayahnav { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ayahnav button {
+  font: inherit; font-size: 13.5px; font-weight: 600; color: var(--ink-2);
+  background: var(--surface); border: none; border-radius: var(--r-pill);
+  padding: 11px 20px; cursor: pointer; min-height: 44px;
+}
+.ayahnav button:disabled { color: var(--ink-8); cursor: default; }
+.ayahnav .num { font-size: 12.5px; color: var(--ink-5); }
 
 .sheet {
   flex: 1; background: var(--surface); border-radius: 34px 34px 0 0;
