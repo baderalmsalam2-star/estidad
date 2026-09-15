@@ -2,8 +2,9 @@
 
 import * as data from '../data.js';
 import * as store from '../store.js';
-import { el, ar, pct, go, devMode, setDevMode, waLink, WHATSAPP_MARK } from '../ui.js';
+import { el, ar, pct, go, waLink, WHATSAPP_MARK } from '../ui.js';
 import * as sync from '../sync.js';
+import * as owner from '../owner.js';
 
 export default function accountScreen() {
   const track = store.get().track;
@@ -42,27 +43,10 @@ export default function accountScreen() {
         ]))),
     ]),
 
-    devMode()
-      ? el('button.card.card--green', { onclick: () => go('admin'), style: { marginBottom: '-4px' } }, [
-          el('div.row', [
-            el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'لوحة المشرف'),
-            el('span', { style: { fontSize: '18px', opacity: '0.7' } }, '‹'),
-          ]),
-          el('span', { style: { fontSize: '12.5px', lineHeight: '1.8', opacity: '0.88', textAlign: 'start' } },
-            'صحّةُ بنك الأسئلة وثغراتُه، وأرقامُ هذا الجهاز. للمشرف لا للطالب.'),
-        ])
-      : null,
-
-    devMode()
-      ? el('button.card.card--green', { onclick: () => go('review') }, [
-          el('div.row', [
-            el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'اعتماد التوثيق'),
-            el('span', { style: { fontSize: '18px', opacity: '0.7' } }, '‹'),
-          ]),
-          el('span', { style: { fontSize: '12.5px', lineHeight: '1.8', opacity: '0.88', textAlign: 'start' } },
-            'مرّ على الأسئلة غير الموثَّقة وأقرّها على صفحاتها. للمراجع لا للطالب.'),
-        ])
-      : null,
+    // كانت ههنا بطاقتان تظهران بوضع المطوّر: «لوحة المشرف» و«اعتماد التوثيق».
+    // وقد صارتا بابَين في لوحة الإدارة، فحُذفتا من ههنا: بابٌ واحدٌ للإدارة
+    // أهونُ من ثلاثةٍ تُفتَح بشروطٍ مختلفة.
+    ownerCard(),
 
     goalCard(),
 
@@ -148,14 +132,14 @@ function shareStatsCard() {
 }
 
 /**
- * بابُ لوحة المشرف: سبعُ نقراتٍ على العنوان.
+ * بابُ لوحة الإدارة: سبعُ نقراتٍ على العنوان، ثمّ كلمةُ الدخول.
  *
- * كانت اللوحةُ خلفَ `?dev=1` يُكتَب في شريطِ العنوان، وهذا لا يُفعَل على جوّالٍ
- * ولا يُتذكَّر، فكانت اللوحةُ كأنّها غيرُ موجودة. فصار لها بابٌ في التطبيق.
+ * ولمَ نقراتٌ ثمّ كلمة، ولا تكفي الكلمةُ وحدَها؟ لأنّ حقلَ كلمةٍ ظاهراً في
+ * «حسابي» يُقلِق الطالبَ ويُوهمه أنّ عليه حساباً يُنشئه. فالنقراتُ تكشف
+ * الباب، والكلمةُ تفتحه.
  *
- * وليست هذه حِمايةً ولا تُدَّعى: المفتاحُ في كودٍ مقروءٍ لمن قرأه. وإنّما هي
- * سِترٌ عن الطالب كي لا تُشوِّش عليه صفحةٌ ليست له — واللوحةُ لا تعرض عن أحدٍ
- * شيئاً خاصّاً أصلاً، فلا سرَّ يُحمى.
+ * ومن دخل مرّةً بقي داخلاً في هذا الجهاز، فتظهر له بطاقةُ اللوحةِ ظاهرةً ولا
+ * يعود يعدُّ النقرات.
  */
 function gate() {
   const h = el('h1.title', { style: { cursor: 'default', WebkitUserSelect: 'none', userSelect: 'none' } }, 'حسابي');
@@ -168,17 +152,23 @@ function gate() {
     last = now;
     if (taps < 7) return;
     taps = 0;
-    const on = devMode();
-    if (on) {
-      setDevMode(false);
-      go('account');
-      return;
-    }
-    setDevMode(true);
-    go('admin');
+    go(owner.isOwner() ? 'owner' : 'signin');
   });
 
   return h;
+}
+
+/** مدخلُ اللوحةِ ظاهراً — لمن دخل وحدَه، ولا يراه الطالبُ البتّة. */
+function ownerCard() {
+  if (!owner.isOwner()) return null;
+  return el('button.card.card--green', { onclick: () => go('owner') }, [
+    el('div.row', [
+      el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'لوحة الإدارة'),
+      el('span', { style: { fontSize: '18px', opacity: '0.7' } }, '‹'),
+    ]),
+    el('span', { style: { fontSize: '12.5px', lineHeight: '1.8', opacity: '0.88', textAlign: 'start' } },
+      'أرقامُ الطلاب، وصحّةُ البنك، وما ينقصه.'),
+  ]);
 }
 
 /**

@@ -223,7 +223,7 @@ const TABS = [
 const TAB_OF = {
   book: 'books', search: 'books', mastered: 'books', library: 'books',
   custom: 'home', flashcards: 'home', tajweed: 'home', surahs: 'home',
-  admin: 'account',
+  admin: 'account', owner: 'account', ownerKey: 'account',
 };
 
 let routes = {};

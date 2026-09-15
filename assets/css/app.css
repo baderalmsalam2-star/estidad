@@ -154,6 +154,10 @@ body {
 .row { display: flex; justify-content: space-between; align-items: center; }
 .row-base { display: flex; justify-content: space-between; align-items: baseline; }
 
+/* بطاقاتُ لوحة الإدارة — عمودٌ في الجوّال، وعمودان حيث يتّسع، بلا نقطةِ قطعٍ
+   مكتوبةٍ بيدٍ: `auto-fill` يقرِّر على العرضِ المتاحِ نفسِه. */
+.grid-cards { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); }
+
 /* ─── الطباعة ───────────────────────────────────────────────────────────── */
 
 .display { font-family: var(--serif); font-size: 40px; font-weight: 700; line-height: 1.2; }

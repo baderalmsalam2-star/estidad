@@ -16,14 +16,29 @@ import * as sync from '../sync.js';
  *   • **أرقامُ هذا الجهاز** — إجاباتُك أنت وحدَك. وتُعنوَن بذلك صراحةً فلا
  *     تُقرأ إحصاءَ طلاب.
  */
-export default function adminScreen() {
+export default function adminScreen({ section = null } = {}) {
   const track = store.get().track;
   const pool = data.forTrack(track);
   const all = data.allQuestions();
 
-  return el('div', { style: { display: 'flex', flexDirection: 'column', flex: '1', minHeight: '0' } }, [
-    topbar({ onBack: () => go('account'), title: 'لوحة المشرف' }),
-    el('div.pane', { style: { gap: '18px' } }, [
+  // تُفتَح كتلةٌ واحدةٌ من اللوحة، أو الكلُّ إن لم تُسمَّ واحدة. وإنّما فُصِلت
+  // لتصير للوحةِ الإدارةِ أبوابٌ مسمّاةٌ يُقصَد كلُّ بابٍ منها وحدَه، بدل
+  // صفحةٍ واحدةٍ طويلةٍ يُبحَث فيها عن الرقم المطلوب.
+  const BLOCKS = {
+    students: { title: 'أرقام الطلاب', make: () => [studentStats(all)] },
+    bank: { title: 'صحّة البنك', make: () => [bankHealth(all)] },
+    difficulty: { title: 'توزيع الصعوبة', make: () => [difficultySpread(all), measured(pool)] },
+    gaps: { title: 'ما ينقص البنك', make: () => [gaps(all)] },
+    device: { title: 'أرقام هذا الجهاز', make: () => [deviceStats(pool)] },
+  };
+  const one = section && BLOCKS[section] ? BLOCKS[section] : null;
+
+  // بلا `minHeight: '0'` عن قصد: لا مُمَرِّرَ داخلَ هذه الشاشة، فالتمريرُ على
+  // `#screen` كلِّه. ولو سُمِح للّوحِ أن ينكمشَ دون محتواه لخرج المحتوى من
+  // صندوقه، ولَطُبِع سطرُ الاعتماد — وهو أخوه من بعده — فوقَه في وسط الصفحة.
+  return el('div', { style: { display: 'flex', flexDirection: 'column', flex: '1' } }, [
+    topbar({ onBack: () => go('owner'), title: one ? one.title : 'لوحة المشرف' }),
+    el('div.pane', { style: { gap: '18px' } }, one ? one.make() : [
       studentStats(all),
       bankHealth(all),
       difficultySpread(all),

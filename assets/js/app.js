@@ -21,6 +21,7 @@ import searchScreen from './screens/search.js';
 import masteredScreen from './screens/mastered.js';
 import adminScreen from './screens/admin.js';
 import sheetScreen from './screens/sheet.js';
+import { ownerScreen, signinScreen, ownerKeyScreen } from './screens/owner.js';
 
 defineRoutes({
   track: trackScreen,
@@ -40,6 +41,9 @@ defineRoutes({
   mastered: masteredScreen,
   admin: adminScreen,
   sheet: sheetScreen,
+  owner: ownerScreen,
+  signin: signinScreen,
+  ownerKey: ownerKeyScreen,
 });
 
 audio.sweep();
