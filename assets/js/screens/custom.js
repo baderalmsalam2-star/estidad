@@ -5,11 +5,13 @@ import * as store from '../store.js';
 import { el, ar, go, topbar } from '../ui.js';
 
 const COUNTS = [10, 15, 25, 34];
+// المُدَياتُ في `data.LEVEL_RANGES` — والسببُ مشروحٌ عندها. والعددُ يُكتَب على
+// الزرِّ نفسِه، فلا يختار الطالبُ صعوبةً ثمّ يجد «المتاح: ٠».
 const LEVELS = [
   { v: null, label: 'الكلّ' },
-  { v: 1, label: 'سهل' },
-  { v: 2, label: 'متوسط' },
-  { v: 3, label: 'صعب' },
+  { v: 'easy', label: 'سهل' },
+  { v: 'mid', label: 'متوسط' },
+  { v: 'hard', label: 'صعب' },
 ];
 
 export default function customScreen() {
@@ -23,9 +25,8 @@ export default function customScreen() {
   const wrap = el('div', { style: { display: 'flex', flexDirection: 'column', flex: '1', minHeight: '0' } });
 
   const paint = () => {
-    const available = data.buildCustomExam(track, {
-      subjects: [...picked], count: 999, difficulty,
-    }).length;
+    // عدٌّ بلا سحب — السحبُ الموزونُ كان يُعاد في كلِّ نقرةٍ ثمّ تُرمى نتيجتُه.
+    const available = data.countCustom(track, { subjects: [...picked], difficulty });
 
     wrap.replaceChildren(
       topbar({ onBack: () => go('home'), title: 'اختبار مخصّص' }),
@@ -42,7 +43,11 @@ export default function customScreen() {
           COUNTS.map((c) => toggle(c, ar(c), c === count, () => { count = c; paint(); })))),
 
         group('الصعوبة', el('div', { style: { display: 'flex', gap: '8px' } },
-          LEVELS.map((l) => toggle(l.label, l.label, l.v === difficulty, () => { difficulty = l.v; paint(); })))),
+          LEVELS.map((l) => {
+            const n = data.countCustom(track, { subjects: [...picked], difficulty: l.v });
+            return toggle(l.label, `${l.label} — ${ar(n)}`, l.v === difficulty,
+              () => { difficulty = l.v; paint(); });
+          }))),
 
         el('p.fine', `المتاح بهذه الشروط: ${ar(available)} سؤالاً.`),
       ]),

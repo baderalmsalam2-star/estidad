@@ -262,7 +262,10 @@ function bankHealth(all) {
       [['قوبِل على صورة الصفحة', onImage, 'أوثقُ الأصناف — الصورةُ في التطبيق'],
        ['قوبِل على نصٍّ مستخرَجٍ (OCR)', onText, 'أضعفُ: لا صورةَ صفحةٍ لكتابه في التطبيق، فقد يكون في النصِّ خطأُ مسحٍ لم يُلحَظ'],
        ['لم يُقابَل بعدُ', none, 'مكتوبٌ يدوياً أو مُرشَّحٌ بالبحثِ الآليّ — يُراجَع في «اعتماد التوثيق»'],
-       ['فيه تصحيحُ خطأٍ مطبعيّ', corrected, 'خطأٌ في الكتاب نُصَّ عليه']]
+       ['فيه تصحيحُ خطأٍ مطبعيّ', corrected, 'خطأٌ في الكتاب نُصَّ عليه'],
+       ['سؤالٌ مكرَّرٌ طُوي', data.duplicates().length,
+        'نصُّه واحدٌ بمعرِّفَين — يُطوى عند التحميلِ ولا يُحذَف من البنك. '
+        + 'انظر «المكرَّر» أدناه، والحذفُ قرارُك لا قرارُ الكود']]
         .map(([label, v, note]) => el('div', { style: { display: 'flex', flexDirection: 'column', gap: '4px' } }, [
           el('div.row', { style: { fontSize: '13.5px' } }, [
             el('span', label),
@@ -270,6 +273,36 @@ function bankHealth(all) {
           ]),
           el('span.fine', { style: { textAlign: 'start' } }, note),
         ]))),
+
+    duplicatesCard(),
+  ]);
+}
+
+/**
+ * المكرَّرُ المطويّ — يُعرَض بمعرِّفَيه ونصِّه ليُقرِّر صاحبُ التطبيقِ فيه.
+ *
+ * والطيُّ في `data.dedupe` إجراءٌ مؤقّتٌ يمنع الضررَ (سؤالٌ يُسحَب مرّتَين في
+ * ورقةٍ واحدة، ويُعَدُّ سؤالَين في الإتقان)، لا قراراً في المادّة. والقرارُ
+ * في المادّةِ لصاحبِها بعد النظر — فيُعرَض ولا يُكتَم.
+ */
+function duplicatesCard() {
+  const dups = data.duplicates();
+  if (!dups.length) return null;
+
+  return el('div.card', { style: { gap: '10px' } }, [
+    el('span', { style: { fontSize: '13.5px', fontWeight: '600' } },
+      `المكرَّر — ${ar(dups.length)} سؤالاً نصُّه واحدٌ بمعرِّفَين`),
+    el('span.fine', { style: { textAlign: 'start' } },
+      'يُطوى أحدُهما عند التحميلِ فلا يُسحَب السؤالُ مرّتَين في ورقةٍ واحدةٍ ولا '
+      + 'يُعَدُّ بابَين. والمُبقى أوثقُهما توثيقاً. وحذفُه من البنكِ قرارُك.'),
+    el('div.stack', { style: { gap: '8px' } }, dups.map((d) =>
+      el('div', { style: { display: 'flex', flexDirection: 'column', gap: '3px' } }, [
+        el('div.row', { style: { fontSize: '12.5px' } }, [
+          el('span.num', { style: { color: 'var(--green)' } }, `أُبقي ${d.kept}`),
+          el('span.num', { style: { color: 'var(--ink-5)' } }, `طُوي ${d.dropped}`),
+        ]),
+        el('span.fine', { style: { textAlign: 'start' } }, d.question.slice(0, 90)),
+      ]))),
   ]);
 }
 

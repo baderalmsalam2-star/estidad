@@ -14,10 +14,8 @@ export default function homeScreen() {
   const resume = store.get().resume;
   const label = data.trackLabel(track);
 
-  const exam = data.EXAM_BLUEPRINT.reduce(
-    (n, b) => n + (data.questionsIn(track, b.subject).length ? b.count : 0),
-    0,
-  );
+  // الحسابُ في `data.examSize` — موضعٌ واحدٌ تقرؤه هذه الشاشةُ وشاشةُ النتيجة.
+  const exam = data.examSize(track);
 
   return el('div.pane', [
     // الترويسةُ على زَلِّيجٍ يتلاشى — فيبدأ التطبيقُ بهويّةٍ لا بسطرٍ مجرَّد.
@@ -44,12 +42,12 @@ export default function homeScreen() {
       ]),
     ]),
 
-    // بنكٌ لم يصل: يُقال صريحاً. والطالبُ يدرُس على ما وصل، لكنّه يعلم أنّ
-    // علماً ناقصٌ فلا يظنُّ أنّه أتمّ المنهجَ وقد سقط منه بابٌ في صمت.
     // تخزينٌ لا يقبل الكتابة: يُقال صريحاً، فالصمتُ يجعل الطالبَ يظنُّ التطبيقَ
     // أكلَ عملَه وهو لم يُحفَظ أصلاً.
     storageCard(),
 
+    // بنكٌ لم يصل: يُقال صريحاً. والطالبُ يدرُس على ما وصل، لكنّه يعلم أنّ
+    // علماً ناقصٌ فلا يظنُّ أنّه أتمّ المنهجَ وقد سقط منه بابٌ في صمت.
     missingCard(),
 
     // «تابِع» أوّلُ ما يقع عليه البصر: هو الفعلُ الذي جاء الطالبُ من أجله،

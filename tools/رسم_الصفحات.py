@@ -48,6 +48,49 @@ def wanted():
     return need
 
 
+def reconcile(index):
+    """
+    يُطابَق الفهرسُ على ما في `books/pages/` فعلاً، لا على ما رُسِم في هذه
+    الجَولةِ وحدَها.
+
+    ── لِمَ ────────────────────────────────────────────────────────────────
+
+    كان `index[book]['pages'] = drawn` — أي ما خرج من هذه الجَولة. فإن شُغِّل
+    الرسمُ على مدًى أضيق، أو وصلت صورٌ من `تجهيز_الصفحات.py`، أو سقطت جَولةٌ
+    في نصفها — كُتِب فهرسٌ أنقصُ ممّا على القرص.
+
+    وأثرُه في التطبيقِ صامت: `data.hasImage` تقرأ الفهرسَ لا القرص، فالشارةُ
+    تبقى نصّاً ولا تصير زرّاً — فيُسلَب الطالبُ صفحةَ سؤالٍ **صورتُها موجودةٌ
+    تحت يده**. وقد وقع فعلاً: ستُّ صفحاتٍ خارجَ الفهرس، و١٨ سؤالاً بلا زرّ.
+
+    ولا يُحذَف من الفهرسِ ما لا صورةَ له على القرص: فهرسٌ يَعِدُ بصورةٍ ليست
+    ثَمَّ يُعطي زرّاً يُفتَح على فراغ.
+    """
+    root = ROOT / 'books' / 'pages'
+    if not root.exists():
+        return
+    on_disk = collections.defaultdict(set)
+    for p in root.glob('*.jpg'):
+        m = re.match(r'(.+)-(\d+)$', p.stem)
+        if m:
+            on_disk[m.group(1)].add(int(m.group(2)))
+
+    # ما بقي من فهرسٍ سابقٍ يُقرَأ لأجل `count` وحده (عددُ صفحاتِ الكتاب كلِّه).
+    old_path = ROOT / 'books' / 'pages-index.json'
+    old = json.load(open(old_path, encoding='utf-8')) if old_path.exists() else {}
+
+    for book, pages in sorted(on_disk.items()):
+        entry = index.setdefault(book, {})
+        entry['pages'] = sorted(pages)
+        if 'count' not in entry:
+            entry['count'] = old.get(book, {}).get('count') or max(pages)
+
+    # كتابٌ في الفهرسِ ولا صورةَ له على القرص — يُفرَّغ ولا يُترَك وعداً كاذباً.
+    for book, entry in index.items():
+        if book not in on_disk:
+            entry['pages'] = []
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     need = wanted()
@@ -71,6 +114,7 @@ def main():
         index[book] = {'pages': drawn, 'count': doc.page_count}
         print(f"  {book}: رُسمت {len(drawn)} من {len(pages)} صفحة")
 
+    reconcile(index)
     (ROOT / 'books' / 'pages-index.json').write_text(
         json.dumps(index, ensure_ascii=False), encoding='utf-8')
 

@@ -164,7 +164,73 @@ export async function load() {
     }
   });
 
+  dedupe();
   return state;
+}
+
+/* ── سؤالٌ واحدٌ بمعرِّفَين ──────────────────────────────────────────────── */
+
+/** يُطبَّع النصُّ ليُقارَن: تُجرَّد الحركاتُ وتُوحَّد الألفُ والياءُ والتاء. */
+function normText(s) {
+  return String(s || '')
+    .normalize('NFKC')
+    .replace(/[ً-ْٰ]/g, '')
+    .replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** المكرَّراتُ التي طُويت — تُعرَض في لوحةِ المشرف ليُقرِّر فيها. */
+export const duplicates = () => state.duplicates || [];
+
+/**
+ * ستّةُ أسئلةٍ في العقيدةِ نصُّها واحدٌ ولها معرِّفان.
+ *
+ * وخمسةٌ منها كُتِبت يدوياً (`AQD-*`) ثمّ وُلِّدت ثانيةً من نصِّ الكتاب
+ * (`GAQ-*`)، وواحدٌ مكرَّرٌ داخلَ المولَّدِ نفسِه. وأثرُه ثلاثة:
+ *
+ *   • يُسحَبان معاً في ورقةٍ واحدةٍ فيرى الطالبُ السؤالَ مرّتَين ويحسب في
+ *     الاختبارِ أنّه أخطأ الفهم.
+ *   • يُعَدّانِ سؤالَين في قياسِ الإتقان، فلا يُتقَن البابُ حتى يُجابَ الواحدُ
+ *     مرّتَين.
+ *   • ويُرسَلان إلى الإحصاءِ صفَّين، فيبدو السؤالُ أكثرَ ورودَاً ممّا هو.
+ *
+ * ── ولِمَ لا يُحذَف من البنكِ رأساً ────────────────────────────────────
+ *
+ * لأنّ البنكَ مادّةٌ شرعيّةٌ لم تُراجَع بعدُ مراجعةً عِلميّة، وحذفُ سؤالٍ منه
+ * قرارُ صاحبِ التطبيقِ لا قرارُ كودٍ يعمل في الخلفية. فيُطوى عند التحميلِ
+ * ويُعرَض المطويُّ في اللوحةِ ليُنظَر فيه — والطيُّ يُرَدُّ بحذفِ هذه الدالّة،
+ * والحذفُ لا يُرَدّ.
+ *
+ * والمُبقَى أوثقُهما توثيقاً: ما قوبِل على صورةِ الصفحة، ثمّ ما له صفحةٌ
+ * أصلاً، ثمّ الأقدمُ معرِّفاً — فلا يكون الاختيارُ بالمصادفة.
+ */
+function dedupe() {
+  const rank = (q) => (
+    (q.provenance === 'generated-from-page' || q.provenance === 'collated-on-page' ? 4 : 0)
+    + (q.bookPage ? 2 : 0)
+    + (q.keyPoints?.length ? 1 : 0)
+  );
+
+  const seen = new Map();
+  const dropped = [];
+  for (const q of state.questions) {
+    const text = normText(q.question);
+    if (!text) continue;                       // سؤالٌ بلا نصّ لا يُقارَن بشيء
+    const key = `${q.subject} ${text}`;
+    const prev = seen.get(key);
+    if (!prev) { seen.set(key, q); continue; }
+    const [keep, drop] = rank(q) > rank(prev) ? [q, prev] : [prev, q];
+    seen.set(key, keep);
+    dropped.push({ kept: keep.id, dropped: drop.id, subject: q.subject, question: q.question });
+  }
+  if (!dropped.length) { state.duplicates = []; return; }
+
+  const out = new Set(dropped.map((d) => d.dropped));
+  state.questions = state.questions.filter((q) => !out.has(q.id));
+  for (const id of out) state.byId.delete(id);
+  state.duplicates = dropped;
 }
 
 export const manifest = () => state.manifest;
@@ -261,7 +327,22 @@ function mulberry32(seed) {
   };
 }
 
-/** اختبارٌ شاملٌ محاكٍ لورقة الاختبار: ٣٤ سؤالاً بالتوزيع المعتمد. */
+/**
+ * كم سؤالاً في ورقةِ هذا المسار؟
+ *
+ * و**ليست ٣٤ لكلِّ مسار**: `EXAM_BLUEPRINT` مجموعُه ٣٤، لكنّ `buildFullExam`
+ * يتخطّى كلَّ علمٍ لا أسئلةَ له في المسار — فالمؤذّنُ بلا نحوٍ ورقتُه ٣١،
+ * والمتقاعدُ أقلّ. وكانت الرئيسيةُ تحسبه على وجهه، و`examReport` في شاشةِ
+ * النتيجةِ تكتب «٣٤» ثابتةً: «نصيبُه من الورقة ١٠ من ٣٤» — فيُنسَب إلى ورقةٍ
+ * لم يجلس إليها، ويبني على النسبةِ الخطأِ حكمَه على نفسِه.
+ *
+ * فصار الحسابُ في موضعٍ واحدٍ يُنادى منهما جميعاً.
+ */
+export const examSize = (track) => EXAM_BLUEPRINT.reduce(
+  (n, b) => n + (questionsIn(track, b.subject).length ? b.count : 0), 0,
+);
+
+/** اختبارٌ شاملٌ محاكٍ لورقة الاختبار — بالتوزيع المعتمد على أعلامِ المسار. */
 export function buildFullExam(track, seed = Date.now()) {
   const rand = mulberry32(seed);
   const out = [];
@@ -274,11 +355,53 @@ export function buildFullExam(track, seed = Date.now()) {
 }
 
 /** اختبارٌ مخصّص: الطالب يختار العلوم والعدد والصعوبة والنوع. */
-export function buildCustomExam(track, { subjects = [], count = 15, difficulty = null, types = null } = {}) {
+/**
+ * ── الصعوبةُ مدًى لا رقمٌ بعينه ──────────────────────────────────────────
+ *
+ * حقلُ `difficulty` في البنوكِ على سُلَّمِ **واحدٍ إلى تسعة**، وأزرارُ الشاشةِ
+ * ثلاثةٌ كانت تُرسِل `1` و`2` و`3` والفلترةُ `q.difficulty === difficulty`
+ * مطابقةً تامّة. فكان الأثرُ أمرَين، كلاهما خفيٌّ:
+ *
+ *   • **٢٩٢٠ سؤالاً من ٤٠١٠ (٧٢٪) لا يبلغها زرٌّ البتّة** — كلُّ ما درجتُه
+ *     أربعةٌ فما فوق. والطالبُ يظنُّ أنّه اختار «صعب» فاستوعبَ الصعبَ كلَّه.
+ *   • **والمعنى مقلوب**: «صعب» كانت تُعطي درجةَ ٣ — وهي من السهلِ على سُلَّمِ
+ *     التسعة — ولا يصل الطالبُ إلى ٧ و٨ و٩ أبداً، وهي التي يحتاج تمرينَها.
+ *
+ * فصارت الأزرارُ مُدَياتٍ تستوعب السُّلَّمَ كلَّه: ١–٣ · ٤–٥ · ٦–٩.
+ * والتوزيعُ لا يستوي (١٠٩٠ · ٢٥٦٤ · ٣٥٦) لأنّ البنكَ كذلك، ولا يُعدَّل
+ * بالتسويةِ المصطنَعةِ في الفلتر — بل يُعرَض عددُ كلِّ زرٍّ على الزرِّ نفسِه.
+ */
+export const LEVEL_RANGES = {
+  easy: [1, 3],
+  mid: [4, 5],
+  hard: [6, 9],
+};
+
+/** يُطبَّق ما اختاره الطالبُ من شروط — بلا سحبٍ، فيصلح للعدِّ وللبناء. */
+function customPool(track, { subjects = [], difficulty = null, types = null } = {}) {
   let pool = forTrack(track);
   if (subjects.length) pool = pool.filter((q) => subjects.includes(q.subject));
-  if (difficulty) pool = pool.filter((q) => q.difficulty === difficulty);
+  if (difficulty) {
+    const [lo, hi] = LEVEL_RANGES[difficulty] || [];
+    if (lo) pool = pool.filter((q) => q.difficulty >= lo && q.difficulty <= hi);
+  }
   if (types && types.length) pool = pool.filter((q) => types.includes(q.type));
+  return pool;
+}
+
+/**
+ * كم سؤالاً يستوفي الشروط — بلا سحبٍ ولا ترتيب.
+ *
+ * وكانت الشاشةُ تعدُّ بـ`buildCustomExam(…, { count: 999 })`: تُصفّي أربعةَ
+ * آلافِ سؤالٍ ثمّ **تسحب منها تسعمائةً وتسعةً وتسعين سحباً موزوناً** — في كلِّ
+ * نقرةٍ على علمٍ أو عددٍ أو صعوبة. والسحبُ الموزونُ هو أثقلُ ما في الملفّ،
+ * ونتيجتُه تُرمى ولا يُؤخَذ منها إلا `.length`. فتُحسُّ الشاشةُ ثقيلةً على
+ * جهازٍ قديم، وذلك في شاشةِ اختيارٍ لا عملَ فيها أصلاً.
+ */
+export const countCustom = (track, opts) => customPool(track, opts).length;
+
+export function buildCustomExam(track, { count = 15, ...opts } = {}) {
+  const pool = customPool(track, opts);
   return weightedSample(pool, Math.min(count, pool.length), mulberry32(Date.now()));
 }
 

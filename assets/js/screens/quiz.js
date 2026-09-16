@@ -463,8 +463,12 @@ function examReport(session, rows) {
       ]))),
     el('p.fine',
       `ابدأ بـ${(data.BOOK_OF_SUBJECT[lost[0].subject] || {}).title || lost[0].subject}: `
+      // ورقةُ هذا المسارِ لا مجموعُ المخطَّط: `EXAM_BLUEPRINT` مجموعُه ٣٤،
+      // و`buildFullExam` يتخطّى كلَّ علمٍ لا أسئلةَ له في المسار — فالمؤذّنُ
+      // بلا نحوٍ ورقتُه ٣١، والمتقاعدُ أقلّ. وكان يُكتَب «٣٤» للجميع، فيُنسَب
+      // الطالبُ إلى ورقةٍ لم يجلس إليها ويبني عليها حكمَه على نفسِه.
       + `نصيبُه من الورقة ${ar(share.get(lost[0].subject) || lost[0].n)} من `
-      + `${ar(data.EXAM_BLUEPRINT.reduce((a, b) => a + b.count, 0))}.`),
+      + `${ar(data.examSize(store.get().track))}.`),
     el('p.fine', { style: { color: 'var(--ink-6)' } },
       'ولا يُذكَر ههنا حدُّ نجاح: درجةُ النجاح في الاختبار الرسميّ غيرُ معلومةٍ لنا، ولا تُختلَق.'),
   ]);
