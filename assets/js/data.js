@@ -52,18 +52,47 @@ export function firstPageOf(label) {
 }
 
 /**
+ * درجةُ المقابلةِ — ثلاثٌ لا اثنتان.
+ *
+ * وكان `bookVerified` علماً واحداً (`true`/`false`) يحمل دعوتَين مختلفتَين:
+ *
+ *   • «قوبِلت على **صورةِ** الصفحة» — وهي الأوثق، وعليها ٣١٤٢ سؤالاً.
+ *   • «قوبِلت على **نصٍّ** مستخرَجٍ بالـOCR» — و٤٦٦ سؤالٍ في العقيدةِ عليها،
+ *     وكتابُها (بريق الجمان) **لا صورةَ صفحةٍ له في التطبيقِ أصلاً** — كما
+ *     يقول `note` في بنكِه صريحاً. فالنصُّ قد يكون فيه خطأُ مسحٍ لم يُلحَظ.
+ *
+ * فكان التطبيقُ يطبع على الـ٤٦٦ «قوبِلت على الكتاب»، وهو أقوى ممّا وقع.
+ * والطالبُ يتحرّى، فإن قيل له «قوبِلت» اعتمدَ ولم يُراجِع الأصل.
+ *
+ * و٤٤ سؤالاً مختومةٌ موثَّقةً بلا بيانِ مصدرٍ في البنك — لا تُرفَع إلى
+ * الدرجةِ الأولى بالظنّ، فتُعَدُّ في «نصّ» لا في «صورة».
+ *
+ * والدرجةُ الثالثةُ لا مقابلةَ فيها: ترشيحُ بحثٍ آليٍّ من `page-hints`.
+ */
+const collationOf = (q) => (
+  q.provenance === 'generated-from-page' || q.provenance === 'collated-on-page' ? 'image' : 'text'
+);
+
+/**
  * أين يذهب الطالب من هذا السؤال؟
- * `verified` يعني أن الصفحة قوبِلت حرفاً بحرف؛ وإلا فهي ترشيحُ بحثٍ آليّ.
+ *
+ * `collated`: `'image'` قوبِلت على صورةِ الصفحة، `'text'` على نصٍّ مستخرَجٍ
+ * لا على صورة، `'hint'` ترشيحُ بحثٍ آليٍّ لا مقابلةَ فيه. و`verified` باقٍ
+ * لِما يسأل: «أفيها مقابلةٌ من أيِّ نوع؟».
  */
 export function pageRefOf(q) {
   const book = BOOK_ID[q.subject];
   if (!book) return null;
   if (q.bookPage) {
     const page = firstPageOf(q.bookPage);
-    return page && { book, page, label: q.bookPage, verified: true, hasImage: hasImage(book, page) };
+    return page && {
+      book, page, label: q.bookPage, verified: true,
+      collated: collationOf(q), hasImage: hasImage(book, page),
+    };
   }
   const h = state.hints[q.id];
   return h && { book: h.book, page: h.page, label: `ص${h.page}`, verified: false,
+                collated: 'hint',
                 confidence: h.confidence, countWord: h.countWord, countAgrees: h.countAgrees,
                 hasImage: hasImage(h.book, h.page) };
 }

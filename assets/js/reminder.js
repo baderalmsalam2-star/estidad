@@ -74,17 +74,70 @@ export function icsFor(hhmm, { title = 'وِرد الاستعداد', url = '' }
   return lines.join('\r\n') + '\r\n';
 }
 
-/** يُنزِّل الملفَّ ليفتحه الجهازُ في تقويمه. */
-export function download(hhmm, opts) {
-  const blob = new Blob([icsFor(hhmm, opts)], { type: 'text/calendar;charset=utf-8' });
-  const href = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = href;
+/**
+ * يُسلِّم الملفَّ إلى الجهازِ ليدخل تقويمَه — ويُرجِع **ما وقع فعلاً**.
+ *
+ * ── لماذا لا يكفي `a.download` ──────────────────────────────────────────
+ *
+ * كان هذا كلَّ ما تفعله الدالّة: رابطٌ بـ`download` على عنوانِ blob. وذلك
+ * يعمل على الحاسوبِ وأندرويد، **ولا يعمل على iOS**: سفاري ثَمَّ لا يُنزِّل
+ * روابطَ blob بهذه الصورة، فيُعرِض عنها أو يفتح نصَّ الملفِّ خاماً على الشاشة.
+ * فيضغط الإمامُ «أضِفْه إلى التقويم» فلا يقع شيءٌ — **ولا ردَّ على الشاشة
+ * أصلاً**، لأنّ الدالّةَ لا تُرجِع خبراً — والوقتُ معروضٌ فوقَه مضبوطاً.
+ *
+ * فهو عينُ ما بُنِي هذا الملفُّ لتجنُّبه: «الوعدُ الكاذبُ في الواجهة أسوأُ من
+ * غيابِ المِيزة» — مكتوبٌ في رأسِه، ثمّ وقع فيه.
+ *
+ * ── الطريقُ الذي يعمل ثَمَّ ──────────────────────────────────────────────
+ *
+ * ورقةُ المشاركةِ (`navigator.share` بالملفّات، وهي في iOS من ١٥) تُسلِّم
+ * الملفَّ إلى التطبيقات، وفيها «التقويم» — فيصل الحدثُ إلى موضعه بضغطةٍ من
+ * الطالب. فتُقدَّم على غيرها حيث وُجِدت، ويُرجَع `'shared'`.
+ *
+ * ثمّ `a.download` لمن يُنزِّل (الحاسوبُ وأندرويد) ← `'downloaded'`.
+ * ثمّ فتحُ لسانٍ لمن لا يفعل أيّاً منهما ← `'opened'`، ويُقال للطالبِ ما
+ * يفعله به. و`'blocked'` إن مُنِع اللسان.
+ */
+export async function download(hhmm, opts) {
+  const text = icsFor(hhmm, opts);
   // اسمٌ لاتينيّ: الامتدادُ `.ics` هو الذي يدلُّ النظامَ أن يفتحه في التقويم،
   // والاسمُ العربيُّ يسقط في بعض المتصفّحات فيُحفَظ بلا امتدادٍ أصلاً فلا يُفتَح.
-  a.download = 'estidad-wird.ics';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(href), 4000);
+  const NAME = 'estidad-wird.ics';
+  const TYPE = 'text/calendar;charset=utf-8';
+
+  if (typeof File === 'function' && typeof navigator.share === 'function') {
+    const file = new File([text], NAME, { type: 'text/calendar' });
+    // `canShare` إنّما جاء في سفاري ١٦٫٤، فغيابُه لا يعني المنعَ — يُجرَّب.
+    const allowed = navigator.canShare ? navigator.canShare({ files: [file] }) : true;
+    if (allowed) {
+      try {
+        await navigator.share({ files: [file], title: 'وِرد الاستعداد' });
+        return 'shared';
+      } catch (e) {
+        if (e && e.name === 'AbortError') return 'cancelled';
+        /* لا يقبل الملفّات — يُجرَّب ما بعدَه */
+      }
+    }
+  }
+
+  const href = URL.createObjectURL(new Blob([text], { type: TYPE }));
+  const revoke = () => setTimeout(() => URL.revokeObjectURL(href), 8000);
+
+  const ua = navigator.userAgent || '';
+  const iosSafari = /iP(hone|ad|od)/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
+  const a = document.createElement('a');
+
+  if ('download' in a && !iosSafari) {
+    a.href = href;
+    a.download = NAME;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    revoke();
+    return 'downloaded';
+  }
+
+  const win = window.open(href, '_blank');
+  revoke();
+  return win ? 'opened' : 'blocked';
 }

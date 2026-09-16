@@ -107,29 +107,64 @@ export function resultCard({ title, score, right, total, seconds, rank }) {
  * ويُعاد ما وقع فعلاً — لا يُقال «شُورِكت» وما شُورِكت.
  */
 export async function shareCard(blob, text) {
+  /*
+   * ── `canShare` بوّابةٌ تَحجُب من تعمل عنده المشاركةُ فعلاً ────────────────
+   *
+   * `navigator.canShare` إنّما جاء في سفاري ١٦٫٤، و`navigator.share` بالملفّاتِ
+   * يعمل في iOS من ١٥. فما بينهما — iOS ١٥ إلى ١٦٫٣، وهي أجهزةُ من لا يُبدِّل
+   * جوّالَه، وهم كثيرٌ في جمهورِ هذا التطبيق — كان `canShare` فيها `undefined`
+   * فتسقط البوّابةُ، فلا تُعرَض ورقةُ المشاركةِ وقد كانت تعمل. فيُسأل عنه إن
+   * وُجِد، وإلّا جُرِّب `share` نفسُه — والتجربةُ أصدقُ من سؤالٍ لا يُجاب.
+   *
+   * ── و«حُفِظت في جهازك ✓» كانت تُقال بلا دليل ────────────────────────────
+   *
+   * كان طريقُ التنزيلِ يُرجِع `'downloaded'` دائماً، ولو لم يُنزَل شيء. وسفاري
+   * على iOS لا يُنزِّل بـ`a.download` في كلِّ حال، فيفتح الصورةَ أو لا يفعل
+   * شيئاً — والزرُّ يقول «حُفِظت في جهازك ✓». فيُفحَص دعمُ `download` أوّلاً،
+   * ومن لا يدعمه تُفتَح له الصورةُ في لسانٍ ليحفظها بنفسه، ويُقال له ذلك.
+   */
   const file = new File([blob], 'نتيجتي.png', { type: 'image/png' });
 
-  if (navigator.canShare?.({ files: [file] })) {
+  const canFiles = navigator.canShare
+    ? navigator.canShare({ files: [file] })
+    : typeof navigator.share === 'function';
+
+  if (canFiles) {
     try {
       await navigator.share({ files: [file], text });
       return 'shared';
     } catch (e) {
       if (e && e.name === 'AbortError') return 'cancelled';
+      // `TypeError` من متصفّحٍ لا يقبل الملفّات — يُجرَّب النصُّ وحدَه، فبعثُ
+      // السطرِ أنفعُ من لا شيء، ثمّ يُنزَّل الملفُّ على كلِّ حال.
     }
   }
 
   const url = URL.createObjectURL(blob);
-  try {
-    const a = document.createElement('a');
+  const revoke = () => setTimeout(() => URL.revokeObjectURL(url), 60_000);
+
+  const a = document.createElement('a');
+  // `'download' in a` يُفرِّق بين من يُنزِّل ومن يفتح — ولا يُدَّعى الحفظُ لمن
+  // لا يُنزِّل. وسفاري يُعلِن الخاصّيةَ ويُهمِلها لروابطِ blob في نسخٍ قديمة،
+  // فإن كان سفاري على iOS فُتِح اللسانُ صراحةً ولم يُدَّعَ حفظٌ.
+  const ua = navigator.userAgent || '';
+  const iosSafari = /iP(hone|ad|od)/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
+
+  if ('download' in a && !iosSafari) {
     a.href = url;
     a.download = 'نتيجتي.png';
     document.body.appendChild(a);
     a.click();
     a.remove();
+    revoke();
     return 'downloaded';
-  } finally {
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
+
+  const win = window.open(url, '_blank');
+  revoke();
+  // مُنِع فتحُ اللسان (وذلك يقع إن لم تكن الضغطةُ متّصلةً بالفعل) — يُقال ذلك
+  // ولا يُقال «حُفِظت».
+  return win ? 'opened' : 'blocked';
 }
 
 /** نصٌّ يُرافق الصورة عند المشاركة، وفيه دعوةٌ للتطبيق لا رابطٌ لأحد. */

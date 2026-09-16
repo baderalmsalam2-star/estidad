@@ -149,11 +149,17 @@ export function openPage(ref) {
         el('span', { style: { width: '38px' } }),
       ]),
 
-      // شارةٌ صريحة: أهي صفحةٌ قوبِلت، أم ترشيحُ بحثٍ آليٍّ قد يخطئ؟
+      /*
+       * شارةٌ صريحة، وثلاثُ درجاتٍ لا درجتان — كانت تقول «قوبِلت على الكتاب»
+       * عن ٤٦٦ سؤالاً قوبِلت على نصٍّ مستخرَجٍ لا على صورةِ صفحةٍ، وكتابُها
+       * لا صورةَ له في التطبيقِ أصلاً. (الشرحُ عند `collationOf` في data.js.)
+       */
       el('div', { style: { padding: '8px 20px 12px', display: 'flex' } },
-        ref.verified
-          ? el('span.pagecite', `${ref.label} — قوبِلت على الكتاب`)
-          : el('span.hintcite', 'ترشيحٌ آليّ — قد لا تكون هذه صفحته')),
+        ref.collated === 'image'
+          ? el('span.pagecite', `${ref.label} — قوبِلت على صورة الصفحة`)
+          : ref.collated === 'text'
+            ? el('span.hintcite', `${ref.label} — قوبِلت على نصٍّ مستخرَجٍ، لا على صورة`)
+            : el('span.hintcite', 'ترشيحٌ آليّ — قد لا تكون هذه صفحته')),
 
       body,
 
@@ -206,7 +212,7 @@ export function bookRefCard(bookId) {
           padding: '12px 15px', textDecoration: 'none', color: 'var(--ink)',
           fontSize: '13.5px', lineHeight: '1.6',
         },
-      }, [el('span', l.label), el('span', { style: { color: 'var(--ink-8)' } }, '↗')])),
+      }, [el('span', l.label), el('span', { 'aria-hidden': 'true', style: { color: 'var(--ink-8)' } }, '↗')])),
     info.warning ? el('p.fine', { style: { color: 'var(--sand-ink3)' } }, info.warning) : null,
   ]);
 }
@@ -233,7 +239,7 @@ export function libraryScreen() {
         }, [
           el('div.row', [
             el('span', { style: { fontFamily: 'var(--serif)', fontSize: '24px', fontWeight: '700', textAlign: 'start' } }, title),
-            el('span', { style: { fontSize: '18px', color: 'var(--ink-8)' } }, '‹'),
+            el('span', { 'aria-hidden': 'true', style: { fontSize: '18px', color: 'var(--ink-8)' } }, '‹'),
           ]),
           el('span.fine', PREVIEW
             ? `${ar(data.bookPageCount(id))} صفحة — في النسخة المنشورة`

@@ -169,30 +169,46 @@ function rows(d, byId) {
 
 /* ── صحّةُ البنك ─────────────────────────────────────────────────────── */
 
+/**
+ * صحّةُ البنك — والبطاقتانِ كانتا تتناقضانِ وهما متجاورتان.
+ *
+ * كانت الأولى تقول «موثَّقٌ على الكتاب ٣٦٥٢/٤٠١٠» و«٣٥٨ سؤالاً لم يُقابَل على
+ * صفحةٍ مطبوعة»، والثانيةُ تحتَها تقول «مولَّدٌ من نصّ OCR: ٤٦٦ — أضعفُ: لم
+ * يُقابَل على صورة». فأيُّهما الصادق: ٣٥٨ لم تُقابَل أم ٤٦٦؟ وصاحبُ التطبيقِ
+ * يقرأ الرقمَ الكبيرَ الأخضرَ ويبني عليه قرارَ النشر.
+ *
+ * وأصلُ التناقضِ أنّ `bookVerified` علمٌ واحدٌ يحمل دعوتَين — انظر
+ * `collationOf` في `data.js`. فصارت البطاقةُ تُعلِن **الدرجةَ الأولى وحدَها**
+ * رقماً كبيراً، وتُفصِّل الثلاثَ تحتَها من `provenance` نفسِه، فلا يُجمَع في
+ * رقمٍ ما ليس من جنسٍ واحد.
+ */
 function bankHealth(all) {
   const n = all.length;
-  const verified = all.filter((q) => q.bookVerified).length;
-  const fromPage = all.filter((q) => q.provenance === 'generated-from-page').length;
-  const fromOcr = all.filter((q) => q.provenance === 'generated-from-ocr-text').length;
+  const onImage = all.filter((q) => q.provenance === 'generated-from-page'
+    || q.provenance === 'collated-on-page').length;
+  const onText = all.filter((q) => q.bookVerified
+    && q.provenance !== 'generated-from-page' && q.provenance !== 'collated-on-page').length;
+  const none = n - onImage - onText;
   const corrected = all.filter((q) => q.correctionNote).length;
 
   return el('div.stack', [
     el('span.section-title', 'صحّة البنك'),
     el('div.card.card--lg.card--green', { style: { gap: '14px' } }, [
       el('div.row-base', [
-        el('span', { style: { fontSize: '14px', opacity: '0.85' } }, 'موثَّقٌ على الكتاب'),
-        el('span.num', { style: { fontSize: '14px' } }, `${ar(verified)} / ${ar(n)}`),
+        el('span', { style: { fontSize: '14px', opacity: '0.85' } }, 'قوبِل على صورة الصفحة'),
+        el('span.num', { style: { fontSize: '14px' } }, `${ar(onImage)} / ${ar(n)}`),
       ]),
       el('span', { style: { fontFamily: 'var(--serif)', fontSize: '46px', fontWeight: '700', lineHeight: '1' } },
-        pct(verified / n)),
-      el('div.bar.bar--onGreen', el('i', { style: { width: `${Math.round((verified / n) * 100)}%` } })),
+        pct(onImage / n)),
+      el('div.bar.bar--onGreen', el('i', { style: { width: `${Math.round((onImage / n) * 100)}%` } })),
       el('span', { style: { fontSize: '12.5px', opacity: '0.85' } },
-        `${ar(n - verified)} سؤالاً لم يُقابَل على صفحةٍ مطبوعةٍ بعدُ.`),
+        `وهذه أوثقُ درجة. وبقي ${ar(onText)} قوبِل على نصٍّ لا على صورة، `
+        + `و${ar(none)} لم يُقابَل بعدُ.`),
     ]),
     el('div.card', { style: { gap: '10px' } },
-      [['مولَّدٌ من صورة الصفحة', fromPage, 'أوثقُ الأصناف'],
-       ['مولَّدٌ من نصّ OCR', fromOcr, 'أضعفُ: لم يُقابَل على صورة'],
-       ['مكتوبٌ يدوياً', n - fromPage - fromOcr, 'أكثرُه غيرُ موثَّق'],
+      [['قوبِل على صورة الصفحة', onImage, 'أوثقُ الأصناف — الصورةُ في التطبيق'],
+       ['قوبِل على نصٍّ مستخرَجٍ (OCR)', onText, 'أضعفُ: لا صورةَ صفحةٍ لكتابه في التطبيق، فقد يكون في النصِّ خطأُ مسحٍ لم يُلحَظ'],
+       ['لم يُقابَل بعدُ', none, 'مكتوبٌ يدوياً أو مُرشَّحٌ بالبحثِ الآليّ — يُراجَع في «اعتماد التوثيق»'],
        ['فيه تصحيحُ خطأٍ مطبعيّ', corrected, 'خطأٌ في الكتاب نُصَّ عليه']]
         .map(([label, v, note]) => el('div', { style: { display: 'flex', flexDirection: 'column', gap: '4px' } }, [
           el('div.row', { style: { fontSize: '13.5px' } }, [

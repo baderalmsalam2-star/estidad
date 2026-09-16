@@ -59,7 +59,7 @@ export default function accountScreen() {
     el('button.card', { onclick: () => go('track') }, [
       el('div.row', [
         el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'غيّر المسار'),
-        el('span', { style: { fontSize: '18px', color: 'var(--ink-8)' } }, '‹'),
+        el('span', { 'aria-hidden': 'true', style: { fontSize: '18px', color: 'var(--ink-8)' } }, '‹'),
       ]),
       el('span.fine', { style: { textAlign: 'start' } }, 'الأئمة · المؤذنون · المتقاعدون'),
     ]),
@@ -240,7 +240,7 @@ function ownerCard() {
   return el('button.card.card--green', { onclick: () => go('owner') }, [
     el('div.row', [
       el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'لوحة الإدارة'),
-      el('span', { style: { fontSize: '18px', opacity: '0.7' } }, '‹'),
+      el('span', { 'aria-hidden': 'true', style: { fontSize: '18px', opacity: '0.7' } }, '‹'),
     ]),
     el('span', { style: { fontSize: '12.5px', lineHeight: '1.8', opacity: '0.88', textAlign: 'start' } },
       'أرقامُ الطلاب، وصحّةُ البنك، وما ينقصه.'),
@@ -332,6 +332,44 @@ function versionCard() {
   ]);
 }
 
+/**
+ * زرُّ «أضِفْه إلى التقويم» — ويُخبِر بما وقع.
+ *
+ * ولكلِّ حالٍ لفظُها: على iOS تُفتَح ورقةُ المشاركةِ فيختار الطالبُ «التقويم»،
+ * وعلى الحاسوبِ يُنزَّل الملفُّ فيُفتَح، ومن لا يفعل واحدةً منهما يُفتَح له
+ * الملفُّ ويُقال له ما يفعله به. ولا يُسكَت عن ضغطةٍ لم تُثمِر.
+ */
+function addToCalendarBtn(at) {
+  const was = 'أضِفْه إلى التقويم';
+  const btn = el('button.btn', { style: { fontSize: '14.5px', minHeight: '48px' } }, was);
+  const note = el('span.fine', { style: { textAlign: 'start', display: 'none' } });
+
+  btn.onclick = async () => {
+    btn.disabled = true;
+    btn.textContent = 'يُهيَّأ…';
+    let how = 'failed';
+    try {
+      how = await reminder.download(at, { url: location.origin + location.pathname });
+    } catch { /* how يبقى failed */ }
+
+    const said = {
+      shared: ['أُرسِل إلى التقويم ✓', 'إن لم تَرَه في تقويمك فاختر «التقويم» من ورقة المشاركة.'],
+      downloaded: ['نُزِّل الملفّ ✓', 'افتحه من تنزيلاتك ليُضاف الحدث المتكرّر إلى تقويمك.'],
+      opened: ['فُتِح الملفّ', 'اضغط «مشاركة» ثمّ «التقويم» لتُضيفه — أو احفظه وافتحه من «الملفّات».'],
+      blocked: ['منعَ المتصفّحُ فتحَه', 'اسمحْ بالنوافذ لهذا الموقع ثمّ أعِدْ المحاولة.'],
+      cancelled: [was, ''],
+      failed: ['تعذّر التهيئة', 'أعِدْ المحاولة، أو اضبط التنبيه في تقويم جهازك مباشرةً.'],
+    }[how] || [was, ''];
+
+    btn.textContent = said[0];
+    if (said[1]) { note.textContent = said[1]; note.style.display = ''; }
+    btn.disabled = false;
+    setTimeout(() => { if (btn.isConnected) btn.textContent = was; }, 6000);
+  };
+
+  return el('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px' } }, [btn, note]);
+}
+
 function reminderCard() {
   const card = el('div.card', { style: { gap: '10px' } });
   const TIMES = ['06:00', '13:00', '19:00', '21:00'];
@@ -357,12 +395,9 @@ function reminderCard() {
             color: tm === at ? 'var(--paper)' : 'var(--ink-3)',
           },
         }, reminder.readable(tm)))),
-      at
-        ? el('button.btn', {
-            style: { fontSize: '14.5px', minHeight: '48px' },
-            onclick: () => reminder.download(at, { url: location.origin + location.pathname }),
-          }, 'أضِفْه إلى التقويم')
-        : null,
+      // ويُقال للطالبِ ما وقع — فالزرُّ كان يُضغَط ولا يقع شيءٌ على iOS ولا
+      // يُقال له شيء، والوقتُ فوقَه معروضٌ مضبوطاً فيظنُّ التنبيهَ قائماً.
+      at ? addToCalendarBtn(at) : null,
       at
         ? el('button', {
             onclick: () => { store.setReminderAt(null); draw(); },

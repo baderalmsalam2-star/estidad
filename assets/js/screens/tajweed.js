@@ -127,7 +127,7 @@ function rulingsSheet(a) {
         el('span', { style: { fontSize: '12.5px', color: 'var(--ink-4)' } },
           `${r.note ? r.note.split('—')[0].trim() + ' · ' : ''}${r.word}`),
       ]),
-      linked ? el('span', { style: { fontSize: '18px', color: 'var(--ink-8)' } }, '‹') : null,
+      linked ? el('span', { 'aria-hidden': 'true', style: { fontSize: '18px', color: 'var(--ink-8)' } }, '‹') : null,
     ]));
   });
 

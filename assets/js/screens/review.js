@@ -70,7 +70,7 @@ export default function reviewScreen() {
               el('div.row', [
                 el('span', { style: { fontSize: '14px', fontWeight: '600' } },
                   `${bookTitle(ref.book)} — صفحة ${ar(ref.page)}`),
-                el('span', { style: { fontSize: '18px', color: 'var(--ink-8)' } }, '‹'),
+                el('span', { 'aria-hidden': 'true', style: { fontSize: '18px', color: 'var(--ink-8)' } }, '‹'),
               ]),
               el('span.fine', { style: { textAlign: 'start' } },
                 `ثقة ${pct(ref.confidence ?? 1)}${ref.countWord ? ` · العدد «${ref.countWord}» ${ref.countAgrees ? 'موافقٌ للصفحة' : 'غيرُ موجودٍ فيها'}` : ''}`),

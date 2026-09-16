@@ -66,6 +66,7 @@ export default function trackScreen() {
                     background: 'rgba(250,247,241,0.22)', display: 'flex',
                     alignItems: 'center', justifyContent: 'center', fontSize: '13px',
                   },
+                  'aria-hidden': 'true',
                 }, '✓')
               : el('span.num', { style: { fontSize: '12.5px', color: 'var(--ink-5)' } }, ar(count)),
           ]),

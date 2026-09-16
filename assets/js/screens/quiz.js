@@ -200,7 +200,7 @@ function selfGradeView(host, session, q) {
             if (on) ticked.delete(i); else ticked.add(i);
             updateTally();
           },
-        }, [el('span.box', '✓'), el('span', p)]);
+        }, [el('span.box', { 'aria-hidden': 'true' }, '✓'), el('span', p)]);
         buttons.push(b);
         return b;
       }))
@@ -295,7 +295,7 @@ function objectiveView(host, session, q) {
           const correct = data.checkObjective(q, opt.value);
           buttons.forEach((b, i) => {
             const isRight = data.checkObjective(q, options[i].value);
-            if (isRight) { b.dataset.state = 'right'; b.append(el('span.mark', '✓')); }
+            if (isRight) { b.dataset.state = 'right'; b.append(el('span.mark', { 'aria-hidden': 'true' }, '✓')); }
             else if (options[i].value === opt.value) { b.dataset.state = 'wrong'; b.append(el('span.mark', '✕')); }
             else b.dataset.state = 'dim';
           });
@@ -374,8 +374,11 @@ function shareButton(session, result, overall, sum, total) {
         rank: store.rank().name,
       });
       const how = await shareCard(blob, shareText(session.title || 'جلسة', overall));
+      // لكلِّ ما وقع لفظُه — ولا يُقال «حُفِظت في جهازك ✓» إلا لمن حُفِظت عنده.
       btn.textContent = how === 'shared' ? 'شُورِكت ✓'
         : how === 'downloaded' ? 'حُفِظت في جهازك ✓'
+        : how === 'opened' ? 'فُتِحت — اضغط عليها مطوَّلاً لتحفظها'
+        : how === 'blocked' ? 'منعَ المتصفّحُ فتحَها'
         : was;
     } catch {
       btn.textContent = 'تعذّرت المشاركة';

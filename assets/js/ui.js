@@ -114,10 +114,21 @@ export function statusRow(left, right) {
 }
 
 /** ترويسة علوية: زرّ رجوع، وعنوان، وفعلٌ اختياريّ. */
+/**
+ * العنوانُ في الترويسةِ **عنوانٌ** (`h1`) لا `span`.
+ *
+ * وقيسَت الشاشاتُ فوُجِدت ثمانٍ من ثلاثةَ عشرةَ بلا عنوانٍ البتّة: البحثُ،
+ * والبطاقاتُ، والورقةُ المخصَّصة، والتجويدُ، وصندوقُ المراجعة، واللوحةُ،
+ * والمراجعةُ، والرئيسية. وأكثرُها له عنوانٌ يُرى بالعين، لكنّه `span` — فقارئُ
+ * الشاشةِ لا يعلم أنّه عنوان، ولا تُبنى للصفحةِ خريطةٌ يُنتقَل بها، ومن يتنقّل
+ * بالعناوينِ (وهو أوّلُ ما يفعله المستعملُ الخبير) لا يجد شيئاً.
+ *
+ * ولا يتبدّل المنظرُ بحرف: `.topbar-title` يحمل مقاسَه ولونَه كما كان.
+ */
 export function topbar({ onBack, title, right = null, icon = '→' } = {}) {
   return el('header.topbar', [
     onBack ? el('button.iconbtn', { onclick: onBack, 'aria-label': 'رجوع' }, icon) : el('span', { style: { width: '38px' } }),
-    el('span.topbar-title', title || ''),
+    el('h1.topbar-title', title || ''),
     right || el('span', { style: { width: '38px' } }),
   ]);
 }
@@ -214,7 +225,8 @@ export function zellijMark(size = 76) {
 export function empty(title, note) {
   return el('div.empty', [
     el('div.empty-mark', { html: zellijMark(76) }),
-    el('span.head', title),
+    // عنوانٌ لا `span`: الشاشةُ الفارغةُ شاشةٌ، ولها عنوانُها كغيرها.
+    el('h1.head', title),
     note ? el('p.lede', note) : null,
   ]);
 }
@@ -434,7 +446,47 @@ export function go(name, params = {}) {
   renderTabs(params.tab ?? TAB_OF[name] ?? name);
   stampCredit(screen, node);
   screen.focus({ preventScroll: true });
+  announce(screen);
   return node;
+}
+
+/* ── إعلانُ تبدُّلِ الشاشة ─────────────────────────────────────────────── */
+
+/**
+ * التطبيقُ صفحةٌ واحدةٌ لا تُعاد تحميلاً، فتبدُّلُ الشاشةِ **صامتٌ** عند قارئِ
+ * الشاشة: يُبدَّل المحتوى كلُّه ولا يُقال شيء، فيبقى المستعملُ يظنُّ نفسَه في
+ * موضعه الأوّل ويسأل ما الذي وقع.
+ *
+ * ولم يكن في الصفحةِ موضعُ `aria-live` واحد. فأُضيف موضعٌ خفيٌّ يُكتَب فيه
+ * اسمُ الشاشةِ بعدَ رسمها فيُقرَأ مرّةً، و`document.title` يُبدَّل معه — فهو
+ * الذي يُقرَأ في قائمةِ الألسنةِ وفي سجلِّ المتصفّح.
+ *
+ * والاسمُ يُؤخَذ من عنوانِ الشاشةِ نفسِه (`h1`) لا من قائمةٍ تُكتَب بيدٍ، فلا
+ * تُنسى شاشةٌ تُضاف ولا يُخالِف المُعلَنُ المرسوم.
+ */
+const BASE_TITLE = 'منصة الاستعداد لاختبارات الوظائف الدينية';
+let crier = null;
+
+function announce(screen) {
+  if (!crier) {
+    crier = el('div', {
+      role: 'status',
+      'aria-live': 'polite',
+      'aria-atomic': 'true',
+      // يُقرَأ ولا يُرى: `display:none` يُخرِجه من شجرةِ الوصولِ فلا يُقرَأ.
+      style: {
+        position: 'absolute', width: '1px', height: '1px', overflow: 'hidden',
+        clip: 'rect(0 0 0 0)', clipPath: 'inset(50%)', whiteSpace: 'nowrap',
+      },
+    });
+    document.body.appendChild(crier);
+  }
+  const h = screen.querySelector('h1, h2, [role="heading"]');
+  const title = (h && h.textContent.trim()) || '';
+  crier.textContent = title || 'شاشةٌ جديدة';
+  try {
+    document.title = title ? `${title} — ${BASE_TITLE}` : BASE_TITLE;
+  } catch { /* لا شيء */ }
 }
 
 export const currentRoute = () => current;

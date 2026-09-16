@@ -24,7 +24,8 @@ export default function homeScreen() {
     el('div.hero', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' } }, [
       el('div', { style: { display: 'flex', flexDirection: 'column', gap: '2px' } }, [
         el('span.meta', `مسار ${label}`),
-        el('span.title', 'أهلاً بك'),
+        // عنوانُ الرئيسيةِ عنوانٌ لا `span` — انظر `topbar` في ui.js.
+        el('h1.title', 'أهلاً بك'),
       ]),
       el('div', { style: { display: 'flex', gap: '8px' } }, [
         el('button.iconbtn', {
@@ -180,11 +181,24 @@ function wirdCard(track) {
         `${ar(Math.min(today, goal))} / ${ar(goal)}`),
     ]),
 
-    el('div.week', week.map((d) => {
+    /*
+     * والخبرُ لا يُحمَل على اللونِ وحدَه: لكلِّ يومٍ اسمٌ يُقرَأ صريحاً — يومُه
+     * وعددُ ما أُجيب فيه وأبلغَ الوِردَ أم لا. و`title` وحدَها كانت لا تُغني:
+     * لا تُنال باللمسِ على الجوّال، ولا يُعوَّل عليها عند قارئِ الشاشة.
+     */
+    el('div.week', { role: 'list', 'aria-label': 'مذاكرةُ الأسبوع' }, week.map((d) => {
       const full = d.count >= goal;
-      return el('span.week-day', { title: `${ar(d.count)} سؤالاً` }, [
-        el('i', { class: d.count ? (full ? 'dot dot--full' : 'dot dot--some') : 'dot' }),
-        el('em', DAY_LETTERS[d.date.getDay()]),
+      const DAY_NAMES = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+      const said = d.count
+        ? `${ar(d.count)} سؤالاً${full ? ' — تمَّ الوِرد' : ''}`
+        : 'لا مذاكرة';
+      return el('span.week-day', {
+        role: 'listitem',
+        'aria-label': `${DAY_NAMES[d.date.getDay()]}: ${said}`,
+        title: said,
+      }, [
+        el('i', { class: d.count ? (full ? 'dot dot--full' : 'dot dot--some') : 'dot', 'aria-hidden': 'true' }),
+        el('em', { 'aria-hidden': 'true' }, DAY_LETTERS[d.date.getDay()]),
       ]);
     })),
 

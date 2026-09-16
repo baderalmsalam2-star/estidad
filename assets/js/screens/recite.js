@@ -219,7 +219,7 @@ function session(wrap, index) {
     wrap.replaceChildren(
       el('div.topbar', { style: { justifyContent: 'space-between' } }, [
         el('button.iconbtn', { onclick: () => { stopRecording(); go('recite'); }, 'aria-label': 'رجوع' }, '→'),
-        el('span.topbar-title', `تسميع — سورة ${a.surahName} آية ${ar(a.ayah)}`),
+        el('h1.topbar-title', `تسميع — سورة ${a.surahName} آية ${ar(a.ayah)}`),
         el('button.iconbtn', {
           onclick: () => { st.blob = null; st.url = null; st.verified.clear(); clock.textContent = '٠:٠٠'; setWave(() => 22); paint(); },
           'aria-label': 'إعادة',
@@ -297,7 +297,7 @@ function session(wrap, index) {
             if (card.dataset.answered) return;
             card.dataset.answered = '1';
             opts.forEach((b, i) => {
-              if (q.options[i] === q.answer) { b.dataset.state = 'right'; b.append(el('span.mark', '✓')); }
+              if (q.options[i] === q.answer) { b.dataset.state = 'right'; b.append(el('span.mark', { 'aria-hidden': 'true' }, '✓')); }
               else if (q.options[i] === text) { b.dataset.state = 'wrong'; b.append(el('span.mark', '✕')); }
               else b.dataset.state = 'dim';
             });

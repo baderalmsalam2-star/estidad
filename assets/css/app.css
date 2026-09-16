@@ -11,15 +11,38 @@
   --line:     #ded5c7;  /* الحدود */
   --hairline: #e7dfd2;  /* فواصل داخلية */
 
-  /* الحبر */
-  --ink:      #1c1917;
-  --ink-2:    #57504a;
-  --ink-3:    #6d6355;
-  --ink-4:    #7d7367;
-  --ink-5:    #8a8075;
-  --ink-6:    #97897a;
-  --ink-7:    #a19686;
-  --ink-8:    #b0a596;
+  /*
+   * ── الحبر ───────────────────────────────────────────────────────────────
+   *
+   * كان السلَّمُ يمتدُّ إلى #b0a596، وأربعُ درجاتٍ منه — من `--ink-4` إلى
+   * `--ink-8` — دونَ حدِّ التباينِ في **كلِّ** موضعٍ تُستعمَل فيه للنصّ. وهي
+   * ليست مواضعَ هامشيّة: `.lede` و`.meta` و`.fine` و`.disclaimer` و`.credit`
+   * وكلُّ نصٍّ مُعِينٍ في التطبيق. و`--ink-8` بلغ ٢٫٠٦:١ على البطاقة.
+   *
+   * وأكثرُ من يستعمل هذا التطبيقَ كبارُ سنّ، يقرؤون على جوّالٍ في مسجدٍ ضوءُه
+   * خفيف. فحبرٌ باهتٌ ههنا ليس نقصَ أناقةٍ بل نقصُ قراءة.
+   *
+   * وقد قيسَ كلُّ لونٍ على **`--surface`** (#f2ece2) وهي أقتمُ خلفيةٍ تحمل
+   * نصّاً، لا على `--paper` — فالقياسُ على الأفتحِ يُجمِّل الرقمَ ولا يُصلِح
+   * الشاشة. والحدُّ ٤٫٥:١ (WCAG AA للنصِّ الصغير).
+   *
+   * وتبيّن في القياسِ أنّه **لا موضعَ لخمسِ درجاتٍ فاتحةٍ فوق الحدّ**: الفرقُ
+   * بين ٤٫٥ و٥٫٦ لا يحمل خمسَ نغماتٍ تُفرَّق بالعين. فصار `--ink-7` نفسَ
+   * `--ink-6` — يبقى الاسمُ لئلّا تُكسَر مواضعُ استعماله، ولا يُدَّعى فرقٌ لا
+   * وجودَ له. والتفاضلُ بعدَها يُحمَل على المقاسِ والوزنِ لا على بهوتِ الحبر.
+   *
+   * و`--ink-8` وحدَه بقي دونَ ٤٫٥ لأنّه **ليس للنصّ**: سهمُ «‹» في المُدخلات،
+   * وحالُ الزرِّ المُعطَّل. ورُفِع إلى ٣:١ (حدُّ العناصرِ غيرِ النصّيّة) بعد أن
+   * كان ٢٫٠٦ — فالسهمُ يدلُّ على مَنفذٍ، ومن لا يراه لا يعلم أنّ ثَمَّ باباً.
+   */
+  --ink:      #1c1917;   /* 14.88:1 على البطاقة */
+  --ink-2:    #57504a;   /*  6.74:1 */
+  --ink-3:    #6d6355;   /*  5.01:1 */
+  --ink-4:    #635c52;   /*  5.61:1 */
+  --ink-5:    #6a6259;   /*  5.10:1 */
+  --ink-6:    #73665a;   /*  4.73:1 */
+  --ink-7:    #73665a;   /*  4.73:1 — هو نفسُه، انظر أعلاه */
+  --ink-8:    #958672;   /*  3.01:1 — للزخرفةِ والمُعطَّلِ لا للنصّ */
 
   /* الأخضر — لون الهوية */
   --green:      #14655a;
@@ -28,11 +51,11 @@
   /* الرملي — للتنبيه والمراجعة */
   --sand:      #eee2cc;
   --sand-ink:  #5f5230;
-  --sand-ink2: #82724d;
-  --sand-ink3: #7a6a45;
+  --sand-ink2: #706343;
+  --sand-ink3: #6b5e3d;
 
   /* الذهبيّ — كان في مدود التجويد وحدَها، ورُقِّي نغمةَ هويّةٍ ثانية */
-  --gold:      #a07a2c;
+  --gold:      #856524;
   --gold-tint: #f3ead6;
 
   /* الأحمر — للخطأ وحده */
@@ -190,19 +213,32 @@ body {
   background: var(--ink);
   border-radius: var(--r-pill);
   height: var(--h-nav);
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 26px;
+  display: flex; align-items: stretch; justify-content: space-between;
+  padding: 0 18px;
 }
 /* سمة hidden وحدها لا تكفي: display:flex أعلاه يتغلّب عليها، فيبقى الشريط
    حاجباً للنقر أسفل كل شاشةٍ بلا تبويبات. */
 .tabbar[hidden] { display: none; }
+/*
+ * ── موضعُ اللمسِ لا يقلُّ عن ٤٤×٤٤ ──────────────────────────────────────
+ *
+ * وكانت تبويباتُ الشريطِ ٤٥×٣٧ وأيقونةُ البحثِ ٣١×٣٥ — والشريطُ أكثرُ ما
+ * يُلمَس في التطبيق. والحدُّ ٤٤ (WCAG 2.5.5 وإرشادُ آبل) ليس رقماً مُجرَّداً:
+ * هو قياسُ طرفِ الإصبعِ الوسطيّ، وما دونَه تُخطئه الأصابعُ الكبيرةُ واليدُ
+ * المرتجفةُ — وكثيرٌ من أهلِ هذا التطبيقِ كبارُ سنّ.
+ *
+ * والعلاجُ `align-items: stretch` على الشريطِ فيأخذ الزرُّ ارتفاعَه كلَّه
+ * (٦٢ بكسلاً)، مع `min-width` على كلِّ زرّ. ولم يُزَد ارتفاعُ الشريطِ ولا
+ * تبدَّل شكلُه: الفسحةُ كانت موجودةً ولم يكن الزرُّ يأخذها.
+ */
 .tabbar button {
   font: inherit; font-size: 13.5px; background: none; border: none; cursor: pointer;
   color: rgba(250, 247, 241, 0.5);
-  padding: 8px 2px;
+  padding: 8px 4px; min-width: 44px;
+  display: flex; align-items: center; justify-content: center;
 }
 .tabbar button[aria-current="page"] { color: var(--paper); font-weight: 600; }
-.tabbar .tab-icon { display: flex; align-items: center; padding: 8px 6px; }
+.tabbar .tab-icon { display: flex; align-items: center; justify-content: center; padding: 8px; min-width: 44px; }
 .tabbar .tab-icon svg { width: 19px; height: 19px; }
 
 /* ─── مقاس الخطّ: خيارٌ لا أصل ──────────────────────────────────────────── */
@@ -238,8 +274,28 @@ body[data-text="1.3"]  .tabbar button { font-size: 15.5px; }
 }
 .hero > * { position: relative; }
 
+/*
+ * ومن طلب تبايناً عالياً لم يكن يُعطَى شيئاً غيرَ إطفاءِ الزخرفة — والملحوظةُ
+ * كانت: «وprefers-contrast لا يُقوِّي شيئاً». فصار سلَّمُ الحبرِ الفاتحُ كلُّه
+ * يُردُّ إلى `--ink-2` (٦٫٧٤:١ على البطاقة)، والحدودُ تُقوَّى، والشارةُ
+ * المُرشَّحةُ يُصمَّت خطُّها المُنقَّط. ولا يُبدَّل قياسٌ ولا موضعُ شيء.
+ */
 @media (prefers-contrast: more) {
   .hero::before { display: none; }
+
+  :root {
+    --ink-4: var(--ink-2);
+    --ink-5: var(--ink-2);
+    --ink-6: var(--ink-2);
+    --ink-7: var(--ink-2);
+    --ink-8: var(--ink-3);
+    --line: #9a8f7e;
+    --hairline: #b3a795;
+    --sand-ink2: var(--sand-ink);
+    --sand-ink3: var(--sand-ink);
+  }
+  .hintcite { border-style: solid; color: var(--ink-2); }
+  .week-day .dot { border-width: 2px; }
 }
 
 /* ─── حلقةُ التقدّم ───────────────────────────────────────────────────────── */
@@ -297,7 +353,7 @@ body[data-text="1.3"]  .tabbar button { font-size: 15.5px; }
 
 .display { font-family: var(--serif); font-size: 40px; font-weight: 700; line-height: 1.2; }
 .title   { font-family: var(--serif); font-size: 36px; font-weight: 700; line-height: 1.3; }
-.head    { font-family: var(--serif); font-size: 30px; font-weight: 700; line-height: 1.3; }
+.head    { font-family: var(--serif); font-size: 30px; font-weight: 700; line-height: 1.3; margin: 0; }
 .h-card  { font-family: var(--serif); font-size: 27px; font-weight: 700; line-height: 1.35; }
 .lede    { font-size: 15px; line-height: 1.85; color: var(--ink-4); }
 .meta    { font-size: 13.5px; line-height: 1.75; color: var(--ink-5); }
@@ -312,13 +368,33 @@ body[data-text="1.3"]  .tabbar button { font-size: 15.5px; }
   border-radius: var(--r-card-2);
   padding: 20px;
   display: flex; flex-direction: column; gap: 10px;
+  /* الإرثُ على الصنفِ الأساسِ لا على `button.card`: انظر ما عند `.card--green`. */
+  color: inherit;
 }
 .card--lg { border-radius: var(--r-card); padding: 24px; }
+/*
+ * ── ترتيبُ هذه القواعدِ ليس ترتيباً حرّاً ────────────────────────────────
+ *
+ * كان `color: inherit` على `button.card` — وتخصيصُه (٠,١,١) **أعلى** من
+ * `.card--green` (٠,١,٠). فيَغلِبها أينما وُضِعت، ولا يُصلِحه ترتيب. فكلُّ
+ * بطاقةٍ خضراءَ **هي زرٌّ** كانت ترِث `--ink` من الجسم: حبرٌ يكاد يكون أسودَ
+ * على أخضرَ غامق، تباينُه ٢٫٥٣:١.
+ *
+ * فنُقِل الإرثُ إلى `.card` نفسِه (٠,١,٠)، فصار في درجةِ النغماتِ وهي بعدَه
+ * فتَغلِبه. والدرسُ: إرثٌ عامٌّ يُوضَع على أدنى تخصيصٍ يكفيه، لا على المُركَّب.
+ *
+ * وليس موضعُه هامشاً: «الكتب كاملةً» في شاشة الكتب، و«الأئمة» و«٥ أجزاء منها
+ * جزء عمّ» في **أوّلِ شاشةٍ يراها الطالبُ في التطبيق**. فيقرأ أوّلَ ما يفتحه
+ * حبراً أسودَ على أخضرَ لا يكاد يُبين.
+ *
+ * فقُدِّم الإرثُ على النغمات، وصارت النغماتُ بعدَه فتَغلِبه. ولا يُنقَل شيءٌ من
+ * ههنا إلى أعلى دون النظرِ في هذا.
+ */
+button.card, a.card, .card[role="button"] { font: inherit; text-align: inherit; border: none; cursor: pointer; width: 100%; }
+
 .card--green { background: var(--green); color: var(--paper); }
 .card--sand  { background: var(--sand); color: var(--sand-ink); }
 .card--paper { background: var(--paper); }
-
-button.card, a.card, .card[role="button"] { font: inherit; text-align: inherit; border: none; cursor: pointer; width: 100%; color: inherit; }
 .card[role="button"]:active, button.card:active { transform: scale(0.988); }
 .card { transition: transform .12s ease; }
 
@@ -328,8 +404,13 @@ button.card, a.card, .card[role="button"] { font: inherit; text-align: inherit; 
   font-size: 12.5px; color: var(--green); background: var(--green-tint);
   padding: 6px 13px; border-radius: var(--r-chip); align-self: flex-start;
 }
+/* الشارةُ نصّاً تبقى كما هي؛ فإن كانت زرّاً فلها حدُّ اللمسِ — وشاراتُ
+   «الوِرد» و«مقاس الخطّ» و«وقت التنبيه» و«اقتراحات البحث» كلُّها أزرار. */
+button.chip, a.chip {
+  min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
+}
 .chip--muted { color: var(--ink-3); background: var(--surface); }
-.chip--onGreen { background: rgba(250, 247, 241, 0.16); color: var(--paper); font-size: 12px; padding: 5px 11px; }
+.chip--onGreen { background: rgba(250, 247, 241, 0.12); color: var(--paper); font-size: 12px; padding: 5px 11px; }
 
 /* شارة الصفحة في الكتاب — ورقة الثقة الوحيدة، فلها لونها الخاص.
    لا تُخطّ بـIBM Plex Mono لأنه بلا حروفٍ عربية، فيتباعد الخطّ تباعداً قبيحاً. */
@@ -338,7 +419,45 @@ button.card, a.card, .card[role="button"] { font: inherit; text-align: inherit; 
   color: var(--sand-ink3); background: var(--sand);
   padding: 4px 10px; border-radius: var(--r-chip); white-space: nowrap;
 }
-.card--green .pagecite { background: rgba(250, 247, 241, 0.18); color: var(--paper); }
+/* ٠٫١٢ لا ٠٫١٨: الحشوُ الفاتحُ يُفتِّح الأخضرَ تحتَه فيهبط تباينُ الحرفِ
+   الأبيضِ عليه إلى ٤٫٣٧:١. وبـ٠٫١٢ يبلغ ٤٫٩٣ والشارةُ تبقى مُبينةً. */
+.card--green .pagecite { background: rgba(250, 247, 241, 0.12); color: var(--paper); }
+
+/* ─── حدُّ موضعِ اللمس ───────────────────────────────────────────────────── */
+
+/*
+ * أرضيّةٌ واحدةٌ لكلِّ ما يُلمَس: ٤٤ بكسلاً ارتفاعاً.
+ *
+ * وقد قيسَت الشاشاتُ كلُّها فوُجِد **١٢٥ صنفاً** من مواضعِ اللمسِ دونَ الحدّ:
+ * سطورُ السورِ في التسميعِ (٤٢)، وشاراتُ الاختيارِ في الورقةِ المخصَّصة (٣٩)،
+ * وأرقامُ الآيات (٢٩×٣٣)، و«امسح تقدّمي» و«جدِّد التطبيق الآن» (٢٥)،
+ * و«السؤال المرتبط ←» (١٩)، وتبويباتُ الشريطِ نفسُها.
+ *
+ * وأكثرُها مضبوطٌ بأنماطٍ مكتوبةٍ في الـJS سطراً سطراً. فلو أُصلِح كلُّ موضعٍ
+ * في موضعِه لأُخطِئ بعضُها اليومَ، ولعاد الخللُ مع أوّلِ زرٍّ يُكتَب غداً. فصارت
+ * الأرضيّةُ ههنا قاعدةً واحدةً، ومعها فحصٌ يقيس الشاشاتِ كلَّها آلياً
+ * (`tools/فحص_اللمس.mjs`) فلا يُضاف زرٌّ صغيرٌ في صمت.
+ *
+ * ويُستثنى ما ليس زرّاً بمعناه: كلمةٌ في وسطِ جملةٍ تُفتَح بها صفحة، وما وُضِع
+ * عليه `.tap-inline` صريحاً. ولا تُستعمَل تلك إلا لِما لا يقوم موضعُه إلا
+ * كذلك — ولا لتسكيتِ الفحص.
+ */
+button, [role="button"], a.btn, summary {
+  min-height: 44px;
+  min-width: 44px;
+}
+/* والزرُّ الذي يمتدُّ بعرضِ أبيه لا يُقيَّد عرضُه — القيدُ للصغيرِ لا للواسع. */
+button.btn, button.card, button.list-item, button.tile { min-width: 0; }
+/* والوسطُ يُحاذى، وإلا بقي الحرفُ في أعلى الموضعِ الموسَّعِ وحدَه. */
+button:not(.tap-inline), [role="button"]:not(.tap-inline) {
+  display: inline-flex; align-items: center;
+}
+/* ما بُنِي عموداً يبقى عموداً — التوسيعُ لا يُقلِّب ترتيبَ ما فيه. */
+button[style*="flex-direction: column"], button.card, button.tile, button.list-item,
+button.week-day, button.cover {
+  display: flex;
+}
+.tap-inline { min-height: 0; }
 
 /* ─── الأزرار ───────────────────────────────────────────────────────────── */
 
@@ -357,13 +476,14 @@ button.card, a.card, .card[role="button"] { font: inherit; text-align: inherit; 
 .btn-row { display: flex; gap: 10px; align-items: center; }
 .btn-row .btn:first-child { flex: 1; }
 
+/* ٣٨×٣٨ كانت دون الحدّ — و«ابحث في المنهج» و«⋯» و«→» كلُّها منها. */
 .iconbtn {
-  width: 38px; height: 38px; border-radius: 50%; background: var(--surface);
+  width: 44px; height: 44px; border-radius: 50%; background: var(--surface);
   border: none; cursor: pointer; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   font-size: 16px; color: var(--ink-2); font-family: var(--sans);
 }
-.iconbtn--lg { width: 46px; height: 46px; background: var(--ink); color: var(--paper); font-size: 15px; }
+.iconbtn--lg { width: 52px; height: 52px; background: var(--ink); color: var(--paper); font-size: 15px; }
 
 /* ─── أغلفة الكتب ───────────────────────────────────────────────────────── */
 
@@ -405,15 +525,18 @@ img.cover { display: block; object-fit: cover; }
 
 .topbar { display: flex; align-items: center; gap: 14px; padding: 16px var(--pad) 0; flex-shrink: 0; }
 .topbar .grow { flex: 1; }
-.topbar-title { font-size: 13.5px; color: var(--ink-5); text-align: center; flex: 1; }
+/* وهو `h1` الآن، والمتصفّحُ يُغلِظه ويُكبِّره بالأصل — فيُردُّ إلى مقاسِه
+   المرسومِ لئلّا يتبدّل المنظرُ بإصلاحِ دلالته. */
+.topbar-title { font-size: 13.5px; font-weight: 400; margin: 0; color: var(--ink-5); text-align: center; flex: 1; }
 
 /* ─── القوائم ───────────────────────────────────────────────────────────── */
 
 .list { display: flex; flex-direction: column; }
+/* كان الحشوُ ١٥ فبلغ السطرُ ٤٢ — وهو دون الحدِّ بقليلٍ لا يُرى ويُخطَأ. */
 .list-item {
   font: inherit; text-align: inherit; background: none; border: none; cursor: pointer; color: inherit;
   display: flex; justify-content: space-between; align-items: center; gap: 12px;
-  padding: 15px 4px; border-bottom: 1px solid var(--hairline);
+  padding: 15px 4px; min-height: 48px; border-bottom: 1px solid var(--hairline);
 }
 .list-item:last-child { border-bottom: none; }
 .list-item .num { font-size: 12.5px; color: var(--ink-5); }
@@ -455,11 +578,26 @@ img.cover { display: block; object-fit: cover; }
 /* ─── وِرد اليوم ────────────────────────────────────────────────────────── */
 
 .week { display: flex; justify-content: space-between; gap: 6px; }
+/*
+ * شريطُ أيّامِ الأسبوع — ثلاثُ حالاتٍ تُفرَّق بالشكلِ لا باللونِ وحدَه.
+ *
+ * وكان يومٌ فيه عملٌ (`--green-tint`) يوازي يوماً خالياً (`--sunk`) بتباينِ
+ * ١٫٠٢:١ — أي لا فرقَ يُرى بعينٍ سليمةٍ فضلاً عن غيرها. والخبرُ كلُّه محمولٌ
+ * على اللون، ولا بديلَ نصّيَّ له إلا `title` على `span` — وهي لا تُقرَأ على
+ * الجوّالِ باللمسِ ولا يُعوَّل عليها عند قارئِ الشاشة.
+ *
+ * فصار لكلِّ حالٍ حدٌّ يُميِّزها: الخاليُ حدُّه `--line` باهتاً، والذي فيه عملٌ
+ * حدُّه `--green` مصمَتاً بسمكِ بكسلَين (٥٫٥:١ على الغائر فيُرى يقيناً)،
+ * والتامُّ مصمَتٌ كلُّه. ومع ذلك أُضيف لكلِّ يومٍ اسمٌ يُقرَأ في الـJS.
+ */
 .week-day { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; }
 .week-day em { font-style: normal; font-size: 11px; color: var(--ink-6); }
-.week-day .dot { width: 100%; height: 26px; border-radius: 9px; background: var(--sunk); display: block; }
-.week-day .dot--some { background: var(--green-tint); }
-.week-day .dot--full { background: var(--green); }
+.week-day .dot {
+  width: 100%; height: 26px; border-radius: 9px; display: block;
+  background: var(--sunk); border: 1px solid var(--line); box-sizing: border-box;
+}
+.week-day .dot--some { background: var(--green-tint); border: 2px solid var(--green); }
+.week-day .dot--full { background: var(--green); border-color: var(--green); }
 
 /* ─── البحث في المنهج ───────────────────────────────────────────────────── */
 
@@ -469,7 +607,13 @@ img.cover { display: block; object-fit: cover; }
   caret-color: var(--green);
 }
 .searchbar::placeholder { color: var(--ink-7); }
-.searchbar:focus { outline: 2px solid var(--green-tint); outline-offset: 2px; }
+/*
+ * حلقةُ التركيز — كانت `--green-tint`، وتباينُها على البطاقة ١٫٠٥:١ وعلى
+ * المسارِ الغائرِ ١٫٠٢:١. أي **لا حلقةَ أصلاً**: والقاعدةُ تستبدل حلقةَ
+ * المتصفّحِ الافتراضيّةَ بها، فمن يتنقّل بلوحةِ المفاتيحِ لا يعلم أين هو.
+ * والحدُّ ٣:١ للعناصرِ غيرِ النصّيّة (WCAG 1.4.11)، و`--green` يبلغ ٥٫٨٨.
+ */
+.searchbar:focus { outline: 2px solid var(--green); outline-offset: 2px; }
 .searchbar::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
 
 .hit-text {
@@ -488,7 +632,7 @@ mark.hit { background: var(--green-tint); color: inherit; border-radius: 4px; pa
   caret-color: var(--green);
 }
 .answerbox::placeholder { color: var(--ink-7); }
-.answerbox:focus { outline: 2px solid var(--green-tint); outline-offset: 2px; }
+.answerbox:focus { outline: 2px solid var(--green); outline-offset: 2px; }
 
 /* صفُّ النقطةِ يُضغَط عشراتِ المرّاتِ في الجلسة الواحدة، وكان ارتفاعُه نحو
    ٤٠ بكسلاً — دون الحدِّ المتعارَف للمسِ الإبهام (٤٤). فوُسِّع الصفُّ كلُّه لا
@@ -618,6 +762,10 @@ mark.hit { background: var(--green-tint); color: inherit; border-radius: 4px; pa
   color: var(--ink-4); background: none;
   border: 1px dashed var(--line);
   padding: 4px 10px; border-radius: var(--r-chip); white-space: nowrap;
+}
+/* وهما زرّانِ يُفتَح بهما الكتاب — فلهما حدُّ اللمسِ ولو صَغُر حرفُهما. */
+button.pagecite, button.hintcite {
+  min-height: 44px; display: inline-flex; align-items: center;
 }
 button.pagecite:active, button.hintcite:active { opacity: .6; }
 

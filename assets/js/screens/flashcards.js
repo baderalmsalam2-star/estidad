@@ -22,7 +22,7 @@ export default function flashcardsScreen() {
     wrap.replaceChildren(
       el('div.topbar', { style: { justifyContent: 'space-between' } }, [
         el('button.iconbtn', { onclick: () => go('home'), 'aria-label': 'رجوع' }, '→'),
-        el('span.topbar-title', 'بطاقات الحفظ'),
+        el('h1.topbar-title', 'بطاقات الحفظ'),
         el('span.num', { style: { fontSize: '13px', color: 'var(--ink-5)', width: '38px', textAlign: 'center' } },
           `${ar(i + 1)}/${ar(cards.length)}`),
       ]),

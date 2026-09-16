@@ -52,7 +52,7 @@ export function booksScreen() {
     el('button.card.card--green', { onclick: () => go('library') }, [
       el('div.row', [
         el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'الكتب كاملةً'),
-        el('span', { style: { fontSize: '18px', opacity: '0.7' } }, '‹'),
+        el('span', { 'aria-hidden': 'true', style: { fontSize: '18px', opacity: '0.7' } }, '‹'),
       ]),
       el('span', { style: { fontSize: '12.5px', lineHeight: '1.8', opacity: '0.88', textAlign: 'start' } },
         'افتح أي كتابٍ مقرَّرٍ كاملاً بصيغة PDF.'),
@@ -86,7 +86,11 @@ export function bookScreen({ subject }) {
   const book = data.BOOK_OF_SUBJECT[subject] || {};
   const all = data.questionsIn(track, subject);
   const topics = tableOfContents(all);
-  const documented = all.filter((q) => q.bookVerified).length;
+  // «موثَّقٌ على الكتاب» كانت تُعَدُّ من `bookVerified`، وفيه درجتان مختلفتان:
+  // مقابلةٌ على صورةِ الصفحة، ومقابلةٌ على نصٍّ مستخرَجٍ لا صورةَ له. فيُعَدُّ
+  // ههنا ما قوبِل على الصورةِ وحدَه، ويُقال بلفظه. (انظر `collationOf`.)
+  const onImage = all.filter((q) => q.provenance === 'generated-from-page'
+    || q.provenance === 'collated-on-page').length;
 
   const wrap = el('div', { style: { display: 'flex', flexDirection: 'column', flex: '1', minHeight: '0' } });
 
@@ -99,7 +103,7 @@ export function bookScreen({ subject }) {
         el('span', { style: { fontFamily: 'var(--serif)', fontSize: '27px', fontWeight: '700', lineHeight: '1.3' } }, book.title || subject),
         el('span.meta', `${book.note || subject}${book.pages ? ' — ' + ar(book.pages) + ' صفحة' : ''}`),
         el('span', { style: { fontSize: '12.5px', color: 'var(--green)' } },
-          `${ar(all.length)} سؤالاً، منها ${ar(documented)} موثَّقاً على الكتاب`),
+          `${ar(all.length)} سؤالاً، منها ${ar(onImage)} قوبِل على صورة الصفحة`),
       ]),
     ]),
 
@@ -132,7 +136,7 @@ export function bookScreen({ subject }) {
         ? el('button.card.card--green', { style: { margin: '12px 0 20px' }, onclick: () => go('tajweed') }, [
             el('div.row', [
               el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'محرّك التجويد'),
-              el('span', { style: { fontSize: '18px', opacity: '0.7' } }, '‹'),
+              el('span', { 'aria-hidden': 'true', style: { fontSize: '18px', opacity: '0.7' } }, '‹'),
             ]),
             el('span', { style: { fontSize: '12.5px', lineHeight: '1.8', opacity: '0.88', textAlign: 'start' } },
               'أحكام جزء عمّ كلمةً كلمة، وكلُّ حكمٍ موصولٌ بسؤاله وشرحه في غاية المريد.'),
