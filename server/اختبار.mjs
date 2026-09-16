@@ -71,14 +71,14 @@ is('معرِّفٌ ليس UUID ← ٤٠٠',
 is('مسارٌ مخترَع ← ٤٠٠',
   (await post({ device: uuid(1), track: 'hacker', answers: [] })).status, 400);
 is('دفعةٌ أكبرُ من الحدّ ← ٤١٣',
-  (await post({ device: uuid(1), track: 'imam', answers: new Array(501).fill({ id: 'a', score: 1 }) })).status, 413);
+  (await post({ device: uuid(1), track: 'imam', answers: new Array(501).fill({ id: 'MTH-001', score: 1 }) })).status, 413);
 is('درجةٌ خارج المدى تُسقَط',
-  (await (await post({ device: uuid(1), track: 'imam', answers: [{ id: 'A', score: 9 }, { id: 'B', score: -1 }] })).json()).saved, 0);
+  (await (await post({ device: uuid(1), track: 'imam', answers: [{ id: 'MTH-001', score: 9 }, { id: 'MTH-002', score: -1 }] })).json()).saved, 0);
 is('رقمُ سؤالٍ ليس نصّاً يُسقَط',
   (await (await post({ device: uuid(1), track: 'imam', answers: [{ id: 42, score: 1 }] })).json()).saved, 0);
 
 console.log('\nالحفظُ وأمانُ التكرار');
-const batch1 = [{ id: 'Q1', score: 1 }, { id: 'Q2', score: 0.2 }, { id: 'Q3', score: 0.8 }];
+const batch1 = [{ id: 'MTH-001', score: 1 }, { id: 'MTH-002', score: 0.2 }, { id: 'MTH-003', score: 0.8 }];
 is('دفعةٌ أولى', (await (await post({ device: uuid(1), track: 'imam', answers: batch1 })).json()).saved, 3);
 is('إعادةُ الدفعةِ نفسِها لا تُضاعِف',
   (await (await post({ device: uuid(1), track: 'imam', answers: batch1 })).json()).saved, 3);
@@ -88,23 +88,23 @@ is('الجهازُ واحدٌ لا اثنان',
   db.prepare('SELECT COUNT(*) AS n FROM devices').get().n, 1);
 
 // آخِرُ درجةٍ هي المحفوظة
-await post({ device: uuid(1), track: 'imam', answers: [{ id: 'Q2', score: 0.9 }] });
+await post({ device: uuid(1), track: 'imam', answers: [{ id: 'MTH-002', score: 0.9 }] });
 is('الدرجةُ تُستبدَل بآخرِها',
-  db.prepare("SELECT score FROM answers WHERE device = ? AND question = 'Q2'").get(uuid(1)).score, 0.9);
+  db.prepare("SELECT score FROM answers WHERE device = ? AND question = 'MTH-002'").get(uuid(1)).score, 0.9);
 
 console.log('\nحدُّ الخمسةِ في /stats');
 // أربعةُ أجهزةٍ على Q9 — دون الحدّ، فلا يظهر
 for (let i = 2; i <= 5; i += 1) {
-  await post({ device: uuid(i), track: 'imam', answers: [{ id: 'Q9', score: 0 }] });
+  await post({ device: uuid(i), track: 'imam', answers: [{ id: 'GEN-FQH-009', score: 0 }] });
 }
 let d = await (await call('/stats', { headers: { 'x-admin-key': env.ADMIN_KEY, origin: 'https://example.test' } })).json();
-is('سؤالٌ بأربعِ إجاباتٍ لا يظهر', d.hardest.some((r) => r.id === 'Q9'), false);
+is('سؤالٌ بأربعِ إجاباتٍ لا يظهر', d.hardest.some((r) => r.id === 'GEN-FQH-009'), false);
 
 // الخامسُ يُبلغه الحدَّ فيظهر
-await post({ device: uuid(6), track: 'muezzin', answers: [{ id: 'Q9', score: 0 }] });
+await post({ device: uuid(6), track: 'muezzin', answers: [{ id: 'GEN-FQH-009', score: 0 }] });
 d = await (await call('/stats', { headers: { 'x-admin-key': env.ADMIN_KEY, origin: 'https://example.test' } })).json();
-is('وبخمسٍ يظهر', d.hardest.some((r) => r.id === 'Q9'), true);
-is('وهو أصعبُها', d.hardest[0].id, 'Q9');
+is('وبخمسٍ يظهر', d.hardest.some((r) => r.id === 'GEN-FQH-009'), true);
+is('وهو أصعبُها', d.hardest[0].id, 'GEN-FQH-009');
 is('بمتوسّطِ صفر', d.hardest[0].avg, 0);
 
 console.log('\nالمفتاحُ لا يُقبَل إلا لاتينياً');
@@ -122,6 +122,18 @@ is('لا صفوفَ فرديّةٍ في الرد',
   Object.keys(d).some((k) => k === 'answersList' || k === 'devicesList'), false);
 is('لا معرِّفَ جهازٍ في الردّ',
   JSON.stringify(d).includes(uuid(1)), false);
+
+console.log('\nصورةُ رقمِ السؤال');
+// ما ليس على صورةِ معرِّفاتِ البنكِ يُرَدّ، فلا يُحشَر في «أصعبُ الأسئلة» كلامٌ
+// مخترَعٌ يظهر بحرفه في لوحةِ المشرف. ويُوضَع ههنا في آخرِ الفحصِ لأنّ إضافةَ
+// جهازٍ جديدٍ تُزيح مجاميعَ ما قبله.
+is('معرِّفٌ ليس على صورةِ البنكِ يُرَدّ',
+  (await (await post({ device: uuid(9), track: 'imam',
+    answers: [{ id: '؟؟ سؤالٌ مخترَع', score: 0 }, { id: 'q1', score: 0 },
+      { id: 'MTH-0001-X', score: 0 }] })).json()).saved, 0);
+is('والصحيحُ صورةً يُقبَل',
+  (await (await post({ device: uuid(9), track: 'imam',
+    answers: [{ id: 'NHW-036', score: 1 }] })).json()).saved, 1);
 
 console.log(`\n=== نجح ${pass} · فشل ${fail} ===`);
 process.exit(fail ? 1 : 0);

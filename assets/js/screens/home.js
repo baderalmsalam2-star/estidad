@@ -43,6 +43,10 @@ export default function homeScreen() {
       ]),
     ]),
 
+    // بنكٌ لم يصل: يُقال صريحاً. والطالبُ يدرُس على ما وصل، لكنّه يعلم أنّ
+    // علماً ناقصٌ فلا يظنُّ أنّه أتمّ المنهجَ وقد سقط منه بابٌ في صمت.
+    missingCard(),
+
     // «تابِع» أوّلُ ما يقع عليه البصر: هو الفعلُ الذي جاء الطالبُ من أجله،
     // وكان تحت ثلاثِ بطاقاتٍ يُمرَّر إليها، فيبدأ من الكتب كلَّ مرّة.
     resume ? resumeCard(track, resume) : null,
@@ -98,6 +102,18 @@ export default function homeScreen() {
  * في اليوم لا تُزحزح الكسرَ عن الصِّفر، فيَقنَط المجتهدُ من أوّلِ أسبوع.
  * والنقطةُ تُرى في جلسةٍ واحدة، والرُّتبةُ غايةٌ قريبةٌ تُطلَب.
  */
+function missingCard() {
+  const missing = data.missingBanks();
+  if (!missing.length) return null;
+  return el('div.card.card--sand', { style: { gap: '8px' } }, [
+    el('span', { style: { fontSize: '13.5px', fontWeight: '600', color: 'var(--sand-ink)' } },
+      `${ar(missing.length)} من ملفّاتِ الأسئلةِ لم تصل`),
+    el('span.fine', { style: { color: 'var(--sand-ink2)' } },
+      'تدرُس الآن على ما وصل، وينقصك بعضُ العلوم. أعِدْ فتحَ التطبيقِ وأنت '
+      + 'متّصلٌ ليكتمل — ثمّ يعمل بلا إنترنت.'),
+  ]);
+}
+
 function rankCard() {
   const r = store.rank();
 

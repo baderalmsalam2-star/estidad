@@ -29,6 +29,7 @@ export const bookTitle = (id) => TITLE[id] || 'الكتاب';
 const PREVIEW = typeof window !== 'undefined' && window.__PREVIEW === true;
 
 let layer = null;
+let returnFocusTo = null;
 
 /** يعرفه الموجِّه ليجعل زرَّ الرجوعِ يُغلق الطبقةَ لا يغادر الشاشة. */
 export const isPageOpen = () => !!layer;
@@ -37,10 +38,31 @@ export function closePage() {
   layer?.remove();
   layer = null;
   document.removeEventListener('keydown', onKey);
+
+  // يُرفَع الجمودُ عمّا تحتها ويعود التركيزُ إلى ما فُتِحت منه — وإلا وقف
+  // التركيزُ على عنصرٍ مُزال، فتبدأ لوحةُ المفاتيحِ من أوّل الصفحةِ كلَّ مرّة.
+  for (const id of ['screen', 'tabbar']) document.getElementById(id)?.removeAttribute('inert');
+  if (returnFocusTo && document.contains(returnFocusTo)) returnFocusTo.focus({ preventScroll: true });
+  returnFocusTo = null;
 }
 
+const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
 function onKey(e) {
-  if (e.key === 'Escape') closePage();
+  if (!layer) return;
+  if (e.key === 'Escape') { closePage(); return; }
+  if (e.key !== 'Tab') return;
+
+  // حجزٌ يدويٌّ للدَّور — احتياطاً لمتصفّحٍ لا يعرف `inert`، ولأنّ `inert` لا
+  // يُدير الدَّورَ داخلَ الطبقةِ نفسِها.
+  const items = [...layer.querySelectorAll(FOCUSABLE)].filter((n) => !n.disabled);
+  if (!items.length) { e.preventDefault(); layer.focus(); return; }
+  const first = items[0];
+  const last = items[items.length - 1];
+  const here = document.activeElement;
+  if (!layer.contains(here)) { e.preventDefault(); first.focus(); return; }
+  if (!e.shiftKey && here === last) { e.preventDefault(); first.focus(); }
+  else if (e.shiftKey && here === first) { e.preventDefault(); last.focus(); }
 }
 
 /** يفتح صفحةً من كتابٍ فوق الشاشة الجارية. */
@@ -48,8 +70,27 @@ export function openPage(ref) {
   closePage();
   let page = ref.page;
 
-  layer = el('div.pagelayer', { role: 'dialog', 'aria-modal': 'true' });
+  /*
+   * الطبقةُ تُعلِن `aria-modal` فيجب أن تكون حاجزةً فعلاً.
+   *
+   * وكانت تُعلِنه ولا تحجز شيئاً: التركيزُ يبقى على الشارةِ التي فُتِحت منها
+   * **خارج** الطبقة، وTab يمشي على ما تحتها — أزرارُ التصحيحِ الذاتيِّ
+   * و«السؤال التالي» — فيؤشِّر الطالبُ درجةً ويُثبِّتها وينقل السؤالَ **من غير
+   * أن يرى ما يفعل**، والطبقةُ تغطّي الشاشة. ومحتوى الطبقةِ نفسِه — الإغلاقُ
+   * والصفحةُ السابقةُ والتالية — لا يُنال بلوحةِ المفاتيحِ البتّة.
+   *
+   * و`inert` يكفي الثلاثةَ: يحجز التركيزَ، ويُخفي عن قارئِ الشاشة، ويمنع النقر.
+   * وهو في سفاري من ١٥٫٥، ومن قبلها يبقى الحجزُ اليدويُّ في `onKey` عاملاً.
+   */
+  layer = el('div.pagelayer', {
+    role: 'dialog',
+    'aria-modal': 'true',
+    'aria-label': `صفحةٌ من ${bookTitle(ref.book)}`,
+    tabindex: '-1',
+  });
+  returnFocusTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   document.getElementById('device').appendChild(layer);
+  for (const id of ['screen', 'tabbar']) document.getElementById(id)?.setAttribute('inert', '');
   document.addEventListener('keydown', onKey);
 
   // قيدٌ في سجلِّ المتصفّحِ تستهلكه سحبةُ الرجوع فتُغلَق الطبقةُ وحدَها،
@@ -119,6 +160,11 @@ export function openPage(ref) {
   };
 
   paint();
+
+  // التركيزُ ينتقل إلى الطبقةِ بعد رسمِها — فيبدأ الدَّورُ من داخلها، ويعلم
+  // قارئُ الشاشةِ أنّ نافذةً فُتِحت وما اسمُها.
+  (layer.querySelector(FOCUSABLE) || layer).focus({ preventScroll: true });
+
 }
 
 /**

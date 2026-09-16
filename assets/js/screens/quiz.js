@@ -33,7 +33,8 @@ export default function quizScreen({ questions, mode = 'study', title = '', back
   };
 
   const host = el('div', { style: { display: 'flex', flexDirection: 'column', flex: '1', minHeight: '0' } });
-  // نفادُ الوقت يختم الجلسةَ على ما أُجيب — وما لم يُجَب لا يُسجَّل ولا يُحسَب.
+  // نفادُ الوقت يختم الجلسةَ، وما لم يُجَب يُحسَب صفراً في ورقةِ الاختبارِ
+  // (انظر `fillUnanswered`) ولا يُسجَّل في مخزنِ الطالب.
   session.onTimeout = () => finishSession(host, session);
   renderQuestion(host, session);
   return host;
@@ -386,7 +387,17 @@ function lastLabel(session, score) {
  * والاختبارُ مُستثنًى: لا تُعاد فيه مسألةٌ، وإلا لم يكن اختباراً.
  */
 function requeueIfWrong(session) {
-  if (session.mode === 'exam') return;
+  // الإعادةُ لأوضاعِ **الدراسة** وحدَها، لا لكلِّ ما ليس `exam`.
+  //
+  // كان الشرطُ `mode === 'exam'` فحسب، و«الاختبارُ المخصَّص» وضعُه `custom` فلم
+  // يشمله الاستثناء: يُعرَض عليه جوابُه النموذجيُّ ثمّ يُعاد عليه السؤالُ في
+  // آخرِ الورقة، و`finishSession` يحتسب آخرَ محاولةٍ — فنتيجتُه مائةٌ في
+  // المائةِ دائماً و«لا أخطاء»، فلا يعلم ما أخطأ فيه. وعُدَّت لذلك بيضاءَ في
+  // سجلِّ اختباراته.
+  //
+  // والعدُّ صار على المُستثنى إليه لا على المُستثنى منه: فإن أُضيف وضعٌ جديدٌ
+  // لم يُعَد فيه سهواً، وإنّما يُذكَر ههنا إن أُريدت إعادتُه.
+  if (session.mode !== 'study' && session.mode !== 'review') return;
   const last = session.results[session.results.length - 1];
   if (!last || last.score >= store.CORRECT) return;
   if (session.retried.has(last.q.id)) return;
@@ -503,10 +514,40 @@ function advance(host, session) {
   }
 }
 
+/**
+ * الأسئلةُ التي لم يبلغها الطالبُ قبل نفادِ الوقت — تُحسَب صفراً، كما في القاعة.
+ *
+ * وكانت تسقط من الحسابِ كلَّه: `result.items` تُبنى من `session.results` وهي لا
+ * تُدفَع إلا عند إجابةٍ فعليّة، ثمّ تُقسَم النسبةُ على طولِ `items` نفسِها.
+ * فالسؤالُ الذي لم يُجَب يغيب من المقسومِ والمقامِ معاً — فمن أجاب ثلاثةً من
+ * أربعةٍ وثلاثين وانقضى وقتُه قرأ «١٠٠٪ · أصبتَ ما يعادل ٣ من ٣ · لم تخسر
+ * درجةً تُذكَر». وذلك أسوأُ من خطأٍ في رقم: يُطمئنُه على ما يرسُب فيه.
+ *
+ * وتعليقُ المؤقِّتِ كان يقول «ويُحسَب ما لم يُجَب صفراً — كما في القاعة»، وتعليقٌ
+ * آخَرُ يقول «وما لم يُجَب لا يُسجَّل ولا يُحسَب». والمنفَّذُ هو الثاني. فصُحِّح
+ * العملُ إلى الأوّلِ ووُحِّد النصّان.
+ *
+ * ولا تُسجَّل هذه في مخزنِ الطالب (`store.record`): سؤالٌ لم يره لا يُثبَّت عليه
+ * خطأً يُعاد عليه في دراستِه. وإنّما تُحسَب في ورقةِ هذا الاختبارِ وحدَها.
+ */
+function fillUnanswered(session) {
+  if (session.mode === 'study' || session.mode === 'review') return;
+  const seen = new Set(session.results.map((r) => r.q.id));
+  for (const q of session.questions) {
+    if (seen.has(q.id)) continue;
+    seen.add(q.id);
+    session.results.push({ q, score: 0, missed: q.keyPoints || [], unanswered: true });
+  }
+}
+
 function finishSession(host, session) {
   const seconds = Math.round((Date.now() - session.startedAt) / 1000);
 
+  fillUnanswered(session);
+
   // السؤالُ المُعادُ يُحسَب بآخرِ محاولةٍ لا بأوّلها — وإلا عوقب على خطأٍ صحّحه.
+  // وهذا لأوضاعِ الإعادةِ وحدَها؛ وما لا إعادةَ فيه لا تقع فيه محاولةٌ ثانيةٌ
+  // أصلاً بعد إصلاحِ `requeueIfWrong`.
   const latest = new Map();
   for (const r of session.results) latest.set(r.q.id, r);
   session.final = [...latest.values()];

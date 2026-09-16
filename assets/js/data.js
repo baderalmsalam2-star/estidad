@@ -30,6 +30,7 @@ const state = {
   byId: new Map(),
   tajweed: null,
   hints: {},        // ترشيحات الصفحات — مُرشِّحٌ لا حَكَم
+  missingBanks: [],  // بنوكٌ لم تصل في هذه الجلسة — تُعلَن للطالب لا تُكتَم
   pageIndex: {},    // أي صفحةٍ رُسمت صورتُها
   bookLinks: {},    // مراجع الكتب غير المرفوعة
   covers: {},       // الكتب التي رُسم غلافُها صورةً
@@ -99,7 +100,8 @@ export async function load() {
     getJSON('books/pages-index.json').catch(() => ({})),
     getJSON('data/book-links.json').catch(() => ({})),
     getJSON('data/covers.json').catch(() => ({})),
-    ...bankFiles.map((f) => getJSON(`data/banks/${f}`)),
+    // `null` لا رَفضٌ: يُحتمَل سقوطُ بنكٍ كما احتُمِل سقوطُ الملفّاتِ المساعدة.
+    ...bankFiles.map((f) => getJSON(`data/banks/${f}`).catch(() => null)),
   ]);
 
   state.manifest = manifest;
@@ -108,7 +110,21 @@ export async function load() {
   state.bookLinks = bookLinks;
   state.covers = covers;
 
+  /*
+   * سقوطُ بنكٍ واحدٍ لا يُسقِط الثلاثةَ عشرَ التي وصلت.
+   *
+   * كانت البنوكُ في `Promise.all` بلا حراسةٍ بخلافِ الملفّاتِ المساعدة، فسقوطُ
+   * اتّصالٍ واحدٍ من أربعةَ عشرَ طلباً متوازياً — وهو الغالبُ على شبكةِ مسجدٍ
+   * ضعيفة، لا النادر — يُرفَض به الوعدُ كلُّه فتُهدَر البنوكُ الواصلة، ويقف
+   * التطبيقُ على شاشةِ خطأٍ لا منهجَ فيها البتّة.
+   *
+   * فصار الناقصُ يُسمّى ويُعلَن للطالبِ (`state.missingBanks`) ويدرُس على ما
+   * وصل. والعلمُ الناقصُ خيرٌ من لا علم.
+   */
+  state.missingBanks = bankFiles.filter((_, i) => !banks[i]);
+
   banks.forEach((bank, i) => {
+    if (!bank) return;                 // بنكٌ لم يصل — سُمِّي أعلاه ويُتجاوَز
     const file = bankFiles[i];
     for (const q of bank.questions || []) {
       // بعض البنوك تضع العلم على مستوى البنك لا على مستوى السؤال.
@@ -123,6 +139,9 @@ export async function load() {
 }
 
 export const manifest = () => state.manifest;
+
+/** بنوكٌ لم تصل في هذه الجلسة. فارغةٌ في الحال السويّة. */
+export const missingBanks = () => state.missingBanks || [];
 export const allQuestions = () => state.questions;
 export const questionById = (id) => state.byId.get(id) || null;
 
