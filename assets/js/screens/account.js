@@ -2,7 +2,7 @@
 
 import * as data from '../data.js';
 import * as store from '../store.js';
-import { el, ar, pct, go, waLink, WHATSAPP_MARK } from '../ui.js';
+import { el, ar, pct, go, waLink, WHATSAPP_MARK, frac } from '../ui.js';
 import * as sync from '../sync.js';
 import * as owner from '../owner.js';
 import * as reminder from '../reminder.js';
@@ -38,8 +38,8 @@ export default function accountScreen() {
         el('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px' } }, [
           el('div.row', { style: { fontSize: '13.5px' } }, [
             el('span', s.subject),
-            el('span.num', { style: { color: 'var(--ink-4)' } },
-              s.done ? `${ar(s.done)}/${ar(s.total)} — ${pct(s.mastery)}` : '—'),
+            el('span', { style: { color: 'var(--ink-4)', fontSize: '13.5px', display: 'inline-flex', alignItems: 'center', gap: '6px' } },
+              s.done ? [frac(s.done, s.total), el('span.num', `— ${pct(s.mastery)}`)] : el('span.num', '—')),
           ]),
           el('div.bar', el('i', { style: { width: `${Math.round(s.mastery * 100)}%` } })),
         ]))),
@@ -134,7 +134,7 @@ function shareStatsCard() {
       card.replaceChildren(
         el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'أتأذن بمشاركة الإحصاء؟'),
         el('span.fine', { style: { textAlign: 'start' } }, what),
-        el('div', { style: { display: 'flex', gap: '8px', paddingTop: '2px' } }, [
+        el('div', { role: 'group', 'aria-label': 'الإذن بمشاركة الإحصاء', style: { display: 'flex', gap: '8px', paddingTop: '2px' } }, [
           el('button.chip', {
             onclick: () => { sync.setEnabled(true); draw(); },
             style: {
@@ -390,7 +390,15 @@ function reminderCard() {
       el('span.fine', { style: { textAlign: 'start' } },
         'اختر وقتاً، ثمّ أضِفْه إلى تقويم جهازك — فهو الذي يُنبِّهك كلَّ يوم، '
         + 'ويعمل بلا إنترنت. والتطبيقُ صفحةُ وِبّ لا توقظ جهازاً مغلقاً.'),
-      el('div', { style: { display: 'flex', gap: '8px', paddingTop: '2px' } },
+      /*
+       * مجموعةٌ لها اسمٌ يُقرَأ — وكانت شاراتُ الخيارِ إحدى عشرةَ في «حسابي»
+       * كلُّها `aria-pressed` بلا مجموعةٍ تضمُّها ولا اسمٍ يربطها. فيسمعها
+       * قارئُ الشاشةِ أرقاماً مجرَّدة: «١٠ زرُّ تبديلٍ غيرُ مضغوط»، «٢٠
+       * مضغوط» — ولا يعلم أنّها وِردُ اليومِ ولا أنّ الأربعةَ صنفٌ واحدٌ
+       * يُختار منه واحد. والأسوأُ أنّ أربعَ مجموعاتٍ متعارضةٍ تتوالى فيُظنُّ
+       * المضغوطُ في الثانيةِ متعلّقاً بالأولى.
+       */
+      el('div', { role: 'group', 'aria-label': 'وقت تنبيه الوِرد', style: { display: 'flex', gap: '8px', paddingTop: '2px' } },
         TIMES.map((tm) => el('button.chip', {
           onclick: () => { store.setReminderAt(tm); draw(); },
           'aria-pressed': tm === at ? 'true' : 'false',
@@ -437,7 +445,7 @@ function textSizeCard() {
       ]),
       el('span.fine', { style: { textAlign: 'start' } },
         'يُكبَّر معه كلُّ شيء — الحروفُ والأزرارُ ومواضعُ اللمس. ويبقى على جهازك هذا.'),
-      el('div', { style: { display: 'flex', gap: '8px', paddingTop: '2px' } },
+      el('div', { role: 'group', 'aria-label': 'مقاس الخطّ', style: { display: 'flex', gap: '8px', paddingTop: '2px' } },
         OPTIONS.map((o) => el('button.chip', {
           onclick: () => { store.setTextScale(o.v); draw(); },
           'aria-pressed': o.v === cur ? 'true' : 'false',
@@ -468,7 +476,7 @@ function goalCard() {
       ]),
       el('span.fine', { style: { textAlign: 'start' } },
         'كم سؤالاً تلتزمه كلَّ يوم؟ الدفعةُ الصغيرة المتَّصلة أنفعُ من جلسةٍ واحدةٍ طويلة.'),
-      el('div', { style: { display: 'flex', gap: '8px', paddingTop: '2px' } },
+      el('div', { role: 'group', 'aria-label': 'عدد أسئلة الوِرد اليوميّ', style: { display: 'flex', gap: '8px', paddingTop: '2px' } },
         OPTIONS.map((n) => el('button.chip', {
           onclick: () => { store.setDailyGoal(n); draw(); },
           'aria-pressed': n === goal ? 'true' : 'false',

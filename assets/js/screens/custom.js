@@ -32,17 +32,17 @@ export default function customScreen() {
       topbar({ onBack: () => go('home'), title: 'اختبار مخصّص' }),
 
       el('div', { style: { flex: '1', minHeight: '0', overflowY: 'auto', padding: '18px 24px 0', display: 'flex', flexDirection: 'column', gap: '22px' } }, [
-        group('العلوم', el('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '8px' } },
+        group('العلوم', el('div', { role: 'group', 'aria-label': 'العلوم', style: { display: 'flex', flexWrap: 'wrap', gap: '8px' } },
           subjects.map((s) => toggle(s.subject, `${s.subject} — ${ar(s.total)}`, picked.has(s.subject), () => {
             if (picked.has(s.subject)) picked.delete(s.subject); else picked.add(s.subject);
             if (!picked.size) picked.add(s.subject);
             paint();
           })))),
 
-        group('عدد الأسئلة', el('div', { style: { display: 'flex', gap: '8px' } },
+        group('عدد الأسئلة', el('div', { role: 'group', 'aria-label': 'عدد الأسئلة', style: { display: 'flex', gap: '8px' } },
           COUNTS.map((c) => toggle(c, ar(c), c === count, () => { count = c; paint(); })))),
 
-        group('الصعوبة', el('div', { style: { display: 'flex', gap: '8px' } },
+        group('الصعوبة', el('div', { role: 'group', 'aria-label': 'الصعوبة', style: { display: 'flex', gap: '8px' } },
           LEVELS.map((l) => {
             const n = data.countCustom(track, { subjects: [...picked], difficulty: l.v });
             return toggle(l.label, `${l.label} — ${ar(n)}`, l.v === difficulty,

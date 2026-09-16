@@ -62,8 +62,10 @@ export default function quizScreen({ questions, mode = 'study', title = '', back
 
 function header(session, onClose) {
   const n = session.questions.length;
-  const counter = el('span.num', { style: { fontSize: '13px', color: 'var(--ink-5)' } },
-    `${ar(session.index + 1)}/${ar(n)}`);
+  // «أ/ب» ينقلب ترتيبُه في العربية فيُقرَأ «٤٠/١٢» — انظر `frac` في ui.js.
+  const counter = el('span.num', {
+    style: { fontSize: '13px', color: 'var(--ink-5)', direction: 'ltr', unicodeBidi: 'isolate' },
+  }, `${ar(session.index + 1)}/${ar(n)}`);
 
   const row = el('div', { style: { padding: '16px 24px 0', display: 'flex', alignItems: 'center', gap: '14px', flexShrink: '0' } }, [
     el('button.iconbtn', { onclick: onClose, 'aria-label': 'إنهاء' }, '✕'),
@@ -190,7 +192,11 @@ function selfGradeView(host, session, q) {
 
   const buttons = [];
   const list = points
-    ? el('div.stack-sm', points.map((p, i) => {
+    // مجموعةٌ لها اسمٌ يُقرَأ: تسعُ شاراتٍ متتاليةٍ بـ`aria-pressed` بلا ما
+    // يربطها تُنطَق جُملاً متفرّقةً لا يُعلَم أنّها نقاطُ تصحيحِ سؤالٍ واحد.
+    // (وعلامةُ «✓» فيها `aria-hidden` فلا تُنطَق وهي غيرُ مؤشَّرة.)
+    ? el('div.stack-sm', { role: 'group', 'aria-label': 'أشِّر على ما أصبتَه من نقاط الإجابة' },
+      points.map((p, i) => {
         const b = el('button.point', {
           'aria-pressed': 'false',
           onclick: (e) => {

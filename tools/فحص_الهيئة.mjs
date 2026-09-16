@@ -24,6 +24,19 @@ const bad = []; p.on('pageerror', (e) => bad.push(e.message));
 const fails = [];
 const ok = (c, m) => { if (!c) fails.push(m); console.log(`${c ? '✓' : '✗'} ${m}`); };
 
+/*
+ * تحقُّقٌ لم يُجرَ **يُعلَن ولا يُبتلَع**.
+ *
+ * وكانت بعضُ التحقُّقاتِ داخلَ `if (await …count())`: فإن لم يُبلَغ موضعُها
+ * — تبدَّلَ نصُّ زرٍّ، أو تغيّرَ مَسلَكٌ في الشاشات — لم تُجرَ ولم يُقَل إنّها
+ * لم تُجرَ، ولم يُخفِق الفحص. فيقرأ القارئُ «صفرُ إخفاقات» ويحسب أنّ الحركةَ
+ * مفحوصةٌ وهي لم تُلمَس.
+ *
+ * فما لا يُبلَغ يُعَدُّ إخفاقاً: هذه الشاشاتُ موجودةٌ في كلِّ حالٍ سويّة، فعدمُ
+ * بلوغها خبرٌ لا يُكتَم — إمّا الفحصُ عطِبَ أو التطبيقُ عطِب، وكلاهما يُقال.
+ */
+const unreached = (m) => { fails.push(`لم يُبلَغ: ${m}`); console.log(`✗ لم يُبلَغ: ${m}`); };
+
 await p.goto('http://localhost:3000/', { waitUntil: 'networkidle' });
 await p.evaluate(() => document.fonts.ready);
 await p.waitForTimeout(500);
@@ -62,7 +75,30 @@ ok(r && r.svg, `الحلقةُ في فضاءِ أسماءِ SVG فتُرسَم �
 ok(r && r.w > 40 && r.h > 40, `ولها مقاسٌ على الشاشة: ${r ? `${r.w}×${r.h}` : '—'}`);
 ok(r && /stroke-dashoffset/.test(r.prop) && r.dur !== '0s',
    `والقوسُ يمتدُّ بانتقالٍ لا يوضَع دفعةً (${r ? r.dur : '—'})`);
-ok(await p.locator('.card .num').first().count() > 0, 'والرقمُ في جوفها');
+/*
+ * «والرقمُ في جوفها» — كان يُفحَص بـ`.card .num`، وهي تُطابِق أيَّ رقمٍ في أيِّ
+ * بطاقةٍ على الرئيسية (ومنها «٢٥٥ نقطة» في بطاقةِ الرتبة). فينجح التأكيدُ ولا
+ * حلقةَ على الشاشةِ ولا رقمَ في جوفها — وهو عينُ ما يُفتَرض أن يكشفه.
+ *
+ * فيُفحَص الجوفُ بعينه: عنصرٌ بـ`.ring-label` فيه رقمٌ، **ومركزُه على مركزِ
+ * الحلقة**. فالصنفُ وحدَه يُمكِن أن يبقى وقد انفصل عن موضعه.
+ */
+const core = await p.evaluate(() => {
+  const lab = document.querySelector('.ring-label');
+  const svg = document.querySelector('.ring');
+  if (!lab || !svg) return null;
+  const a = lab.getBoundingClientRect();
+  const b = svg.getBoundingClientRect();
+  const near = (x, y) => Math.abs(x - y) < 6;
+  return {
+    text: (lab.textContent || '').trim().slice(0, 12),
+    hasDigit: /[٠-٩]/.test(lab.textContent || ''),
+    centred: near(a.left + a.width / 2, b.left + b.width / 2)
+      && near(a.top + a.height / 2, b.top + b.height / 2),
+  };
+});
+ok(core && core.hasDigit, `والرقمُ في جوفها: «${core ? core.text : '—'}»`);
+ok(core && core.centred, 'ومركزُه على مركزِ الحلقةِ لا بجانبها');
 await p.screenshot({ path: `${S}/رئيسية-جديدة.png` });
 
 // ٤ — الشاشةُ الفارغةُ عليها نجم
@@ -82,6 +118,8 @@ await p.locator('.card >> text=دليل الطالب').first().click(); await p.
 await p.locator('text=ابدأ الدراسة').first().click(); await p.waitForTimeout(1000);
 const rev = p.locator('text=أظهر الإجابة النموذجية');
 if (await rev.count()) { await rev.first().click(); await p.waitForTimeout(700); }
+else unreached('زرُّ «أظهر الإجابة النموذجية» — لم تُفتَح شاشةُ التصحيحِ الذاتيّ');
+
 if (await p.locator('.point').count()) {
   await p.locator('.point').first().click();
   await p.waitForTimeout(120);
@@ -90,7 +128,7 @@ if (await p.locator('.point').count()) {
     return box ? getComputedStyle(box).animationName : 'لا شيء';
   });
   ok(anim === 'pop', `النقطةُ تنبض عند التأشير (${anim})`);
-}
+} else unreached('شاراتُ نقاطِ التصحيح — فلم تُفحَص حركةُ النبض');
 await b.close();
 if (bad.length) {
   console.log(`\n=== أعطابٌ في المتصفّح (${bad.length}) ===`);

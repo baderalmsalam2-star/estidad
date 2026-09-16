@@ -2,7 +2,7 @@
 
 import * as data from '../data.js';
 import * as store from '../store.js';
-import { el, ar, go, topbar, MAGNIFIER } from '../ui.js';
+import { el, ar, go, topbar, MAGNIFIER, frac } from '../ui.js';
 
 /* ── غلافُ الكتاب ────────────────────────────────────────────────────── */
 
@@ -120,7 +120,7 @@ export function bookScreen({ subject }) {
             ]),
             range ? el('span.fine', { class: 'num' }, range) : null,
           ]),
-          el('span.num', done ? `${ar(done)}/${ar(qs.length)}` : ar(qs.length)),
+          done ? frac(done, qs.length) : el('span.num', ar(qs.length)),
         ]);
       })),
 

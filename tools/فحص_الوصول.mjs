@@ -248,6 +248,101 @@ if (plain && some) {
   } else bad(`يومٌ فيه عملٌ يوازي الخاليَ (${byFill.toFixed(2)}:1 حشواً، ${byEdge.toFixed(2)}:1 حدّاً)`);
 } else console.log('  · لا تقدُّمَ في هذا الجهازِ فلم تُقَس الحالاتُ الثلاث');
 
+/* ── الاتّجاهُ والاسمُ المقروء ────────────────────────────────────────── */
+
+console.log('\nكسورُ «أ/ب» واتّجاهُها');
+// `١٢/٤٠` في سطرٍ عربيٍّ تُقرَأ «٤٠/١٢» إن لم يُعزَل اتّجاهُها — انظر `frac`.
+{
+  const flipped = new Map();
+  for (const name of SCREENS) {
+    await goTo(name);
+    const rows = await p.evaluate(() => {
+      const out = [];
+      for (const n of document.querySelectorAll('#screen *')) {
+        const own = [...n.childNodes].some((c) => c.nodeType === 3 && c.textContent.trim());
+        if (!own) continue;
+        const t = n.textContent.trim();
+        if (!/[٠-٩]+\/[٠-٩]+/.test(t)) continue;
+        const cs = getComputedStyle(n);
+        const isolated = cs.direction === 'ltr' && /isolate|plaintext/.test(cs.unicodeBidi);
+        if (!isolated) out.push({ t: t.slice(0, 30), cls: String(n.className || n.tagName).slice(0, 22) });
+      }
+      return out;
+    });
+    for (const r of rows) {
+      const key = `${r.cls} · «${r.t}»`;
+      if (!flipped.has(key)) flipped.set(key, new Set());
+      flipped.get(key).add(name);
+    }
+  }
+  if (!flipped.size) ok('كلُّ كسرٍ معزولُ الاتّجاهِ فلا ينقلب ترتيبُه');
+  else {
+    bad(`${flipped.size} كسراً بلا عزلِ اتّجاه:`);
+    for (const [k, v] of [...flipped].slice(0, 10)) console.log(`     ${k}  [${[...v].join(' ')}]`);
+  }
+}
+
+console.log('\nشاراتُ الخيارِ ومجموعاتُها');
+// `aria-pressed` بلا مجموعةٍ تضمُّها ولا اسمٍ يربطها تُنطَق أرقاماً مجرَّدة.
+{
+  const loose = new Map();
+  for (const name of SCREENS) {
+    await goTo(name);
+    const rows = await p.evaluate(() => {
+      const out = [];
+      for (const n of document.querySelectorAll('#screen [aria-pressed]')) {
+        const g = n.closest('[role="group"], [role="radiogroup"], fieldset');
+        const named = g && (g.getAttribute('aria-label') || g.getAttribute('aria-labelledby'));
+        if (!named) out.push((n.innerText || n.getAttribute('aria-label') || '?').trim().slice(0, 16));
+      }
+      return out;
+    });
+    for (const r of rows) {
+      if (!loose.has(r)) loose.set(r, new Set());
+      loose.get(r).add(name);
+    }
+  }
+  if (!loose.size) ok('كلُّ شارةِ خيارٍ في مجموعةٍ لها اسمٌ يُقرَأ');
+  else {
+    bad(`${loose.size} شارةَ خيارٍ بلا مجموعةٍ مُسمّاة:`);
+    for (const [k, v] of [...loose].slice(0, 12)) console.log(`     «${k}»  [${[...v].join(' ')}]`);
+  }
+}
+
+console.log('\nالأرقامُ العربيةُ في كلِّ ما يُعرَض');
+// قاعدةٌ منصوصةٌ في `ui.js`: «كل رقمٍ يظهر للطالب يُكتب بالأرقام العربية».
+{
+  const latin = new Map();
+  for (const name of SCREENS) {
+    await goTo(name);
+    const rows = await p.evaluate(() => {
+      const out = [];
+      for (const n of document.querySelectorAll('#screen *')) {
+        const own = [...n.childNodes].some((c) => c.nodeType === 3 && c.textContent.trim());
+        if (!own) continue;
+        const t = n.textContent.trim();
+        // الرقمُ اللاتينيُّ في نصٍّ فيه حرفٌ عربيّ — لا في معرِّفٍ ولا رابط
+        if (!/\d/.test(t) || !/[\u0600-\u06ff]/.test(t)) continue;
+        if (n.closest('a[href], code, .num')) continue;
+        if (/^[A-Z]{2,4}(-[A-Z]{2,4})?-\d+$/.test(t)) continue;      // رقمُ سؤال
+        if (/awqaf-prep-v\d+/.test(t)) continue;                      // اسمُ المخزن
+        out.push({ t: t.slice(0, 34), cls: String(n.className || n.tagName).slice(0, 20) });
+      }
+      return out;
+    });
+    for (const r of rows) {
+      const key = `${r.cls} · «${r.t}»`;
+      if (!latin.has(key)) latin.set(key, new Set());
+      latin.get(key).add(name);
+    }
+  }
+  if (!latin.size) ok('لا رقمَ لاتينيٌّ في نصٍّ عربيٍّ معروضٍ على الطالب');
+  else {
+    bad(`${latin.size} موضعاً فيه رقمٌ لاتينيٌّ في نصٍّ عربيّ:`);
+    for (const [k, v] of [...latin].slice(0, 10)) console.log(`     ${k}  [${[...v].join(' ')}]`);
+  }
+}
+
 await b.close();
 console.log(`\n=== إخفاقات (${fails}) ===`);
 process.exit(fails ? 1 : 0);

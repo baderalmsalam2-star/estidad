@@ -47,7 +47,10 @@ export default function trackScreen() {
         el('p.lede', { style: { maxWidth: '300px' } }, 'يُفلتَر المنهج كلّه على مسارك: الكتب، والأسئلة، ومقدار الحفظ.'),
       ]),
 
-      el('div.stack', Object.entries(tracks).map(([key, t]) => {
+      // مجموعةٌ لها اسمٌ يُقرَأ: البطاقاتُ الثلاثُ خيارٌ واحدٌ يُختار منه واحد،
+      // وكانت `aria-pressed` بلا ما يربطها فتُنطَق ثلاثةَ أزرارِ تبديلٍ متفرّقة.
+      el('div.stack', { role: 'group', 'aria-label': 'مسارك في المنهج' },
+        Object.entries(tracks).map(([key, t]) => {
         const count = data.forTrack(key).length;
         const on = key === picked;
 

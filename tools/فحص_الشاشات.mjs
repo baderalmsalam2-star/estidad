@@ -1,6 +1,17 @@
 /*
  * فحصُ الشاشات — يفتح كلَّ شاشةٍ ويتنقّل فيها، ويرصد أيَّ خطأٍ في المتصفّح.
  *
+ * ── «كلَّ شاشة» تُقاس ولا تُدَّعى ────────────────────────────────────────
+ *
+ * وكان الرأسُ يقول «يفتح كلَّ شاشة» و`SCREENS` ثلاثةَ عشرَ اسماً مكتوبةً بيد،
+ * والتطبيقُ عشرون مَسلَكاً في `defineRoutes`. فسبعةٌ لم تُفتَح قطُّ ولا شيءَ
+ * يقول ذلك — ومن يضيف مَسلَكاً جديداً لا يعلم أنّ فحصَه لم يمسَّه.
+ *
+ * فصارت القائمةُ تُقرَأ من `app.js` نفسِه، ويُصنَّف كلُّ مَسلَكٍ صريحاً:
+ * يُفتَح ههنا، أو يُبلَغ في التدفُّقِ الحقيقيِّ أدناه، أو يفحصُه فحصٌ آخَر
+ * باسمه. وما لم يكن في واحدةٍ من الثلاثِ **يُخفِق الفحص** — فلا يبقى مَسلَكٌ
+ * لا يعلم أحدٌ أنّه غيرُ مفحوص.
+ *
  * كان في مجلّدٍ مؤقّتٍ فضاع بين الجلسات، فصار في المستودع: الفحصُ الذي لا
  * يُعثَر عليه لا يُشغَّل، والفحصُ الذي لا يُشغَّل لا يمنع خطأً.
  *
@@ -65,8 +76,44 @@ await page.waitForTimeout(1400);
 
 /* ── كلُّ شاشةٍ تُفتَح وتُرسَم ────────────────────────────────────────── */
 
+/** تُفتَح ههنا بلا معاملات. */
 const SCREENS = ['track', 'home', 'books', 'account', 'recite', 'flashcards',
-  'custom', 'search', 'tajweed', 'library', 'mastered', 'admin', 'review'];
+  'custom', 'search', 'tajweed', 'surahs', 'library', 'mastered', 'admin', 'review'];
+
+/** تُبلَغ في التدفُّقِ الحقيقيِّ أسفلَ هذا الملفّ — فلا تُفتَح ههنا مرّتَين. */
+const IN_FLOW = ['book', 'quiz'];
+
+/** يفحصُها فحصٌ آخَر بعينه — ولا يُدَّعى ههنا فحصُ ما لا يُفحَص. */
+const ELSEWHERE = {
+  owner: 'tools/فحص_التنقل.mjs',
+  signin: 'tools/فحص_التنقل.mjs',
+  ownerKey: 'tools/فحص_التنقل.mjs',
+  sheet: 'server/جوجل-شيت — لا يُفتَح إلا بخادمٍ منشور',
+};
+
+// القائمةُ من المصدرِ لا من الذاكرة: `defineRoutes({ … })` في `app.js`.
+const routes = await page.evaluate(async () => {
+  const src = await fetch('/assets/js/app.js').then((r) => r.text());
+  const block = src.match(/defineRoutes\(\{([\s\S]*?)\}\);/);
+  if (!block) return null;
+  return [...block[1].matchAll(/^\s*([A-Za-z]\w*)\s*:/gm)].map((m) => m[1]);
+});
+if (!routes || !routes.length) errors.push('لم تُقرَأ قائمةُ المسالك من app.js');
+
+const uncovered = (routes || []).filter(
+  (r) => !SCREENS.includes(r) && !IN_FLOW.includes(r) && !ELSEWHERE[r],
+);
+if (uncovered.length) {
+  errors.push(`مسالكُ بلا فحص: ${uncovered.join(' ')} — أضِفْها أو صنِّفْها صريحاً`);
+}
+// واسمٌ في القائمةِ لا وجودَ له في المسالك: فحصٌ يفحص ما لا يوجد.
+const ghosts = [...SCREENS, ...IN_FLOW, ...Object.keys(ELSEWHERE)]
+  .filter((n) => routes && !routes.includes(n));
+if (ghosts.length) errors.push(`أسماءٌ ليست في المسالك: ${ghosts.join(' ')}`);
+
+console.log(`المسالك: ${(routes || []).length} · تُفتَح ههنا ${SCREENS.length}`
+  + ` · في التدفُّق ${IN_FLOW.length} · في فحصٍ آخَر ${Object.keys(ELSEWHERE).length}`);
+for (const [r, where] of Object.entries(ELSEWHERE)) console.log(`  · ${r} ← ${where}`);
 
 for (const s of SCREENS) {
   await go(s);

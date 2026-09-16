@@ -8,7 +8,7 @@
 
 import * as data from '../data.js';
 import * as store from '../store.js';
-import { el, ar, pct, go, empty, hideTabs, devMode } from '../ui.js';
+import { el, ar, pct, go, empty, hideTabs, devMode, frac } from '../ui.js';
 import { openPage, bookTitle } from './page-view.js';
 
 export default function reviewScreen() {
@@ -43,7 +43,7 @@ export default function reviewScreen() {
       el('div', { style: { padding: '16px 24px 0', display: 'flex', alignItems: 'center', gap: '14px', flexShrink: '0' } }, [
         el('button.iconbtn', { onclick: () => go('account'), 'aria-label': 'خروج' }, '✕'),
         el('div.bar', { style: { flex: '1' } }, el('i', { style: { width: `${(done / pending.length) * 100}%` } })),
-        el('span.num', { style: { fontSize: '13px', color: 'var(--ink-5)' } }, `${ar(done)}/${ar(pending.length)}`),
+        el('span', { style: { fontSize: '13px', color: 'var(--ink-5)' } }, frac(done, pending.length)),
       ]),
 
       el('div', { style: { flex: '1', minHeight: '0', overflowY: 'auto', padding: '16px 24px 0', display: 'flex', flexDirection: 'column', gap: '12px' } }, [

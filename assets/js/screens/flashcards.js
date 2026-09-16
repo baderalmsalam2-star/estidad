@@ -2,7 +2,7 @@
 
 import * as data from '../data.js';
 import * as store from '../store.js';
-import { el, ar, go, empty, pageCite, devBadge } from '../ui.js';
+import { el, ar, go, empty, pageCite, devBadge, frac } from '../ui.js';
 
 export default function flashcardsScreen() {
   const track = store.get().track;
@@ -24,7 +24,7 @@ export default function flashcardsScreen() {
         el('button.iconbtn', { onclick: () => go('home'), 'aria-label': 'رجوع' }, '→'),
         el('h1.topbar-title', 'بطاقات الحفظ'),
         el('span.num', { style: { fontSize: '13px', color: 'var(--ink-5)', width: '38px', textAlign: 'center' } },
-          `${ar(i + 1)}/${ar(cards.length)}`),
+          frac(i + 1, cards.length)),
       ]),
 
       el('div.pane', { style: { gap: '18px' } }, [

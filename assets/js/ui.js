@@ -11,6 +11,23 @@ export function ar(n) {
 
 export const pct = (x) => `${ar(Math.round(x * 100))}٪`;
 
+/**
+ * كسرٌ «أ/ب» معزولُ الاتّجاه.
+ *
+ * والعربيّةُ تُقلِب ترتيبَه: `١٢/٤٠` في سطرٍ اتّجاهُه من اليمين تُقرَأ
+ * «٤٠/١٢» — فيظنُّ الطالبُ أنّه في السؤالِ الأربعين من اثنَي عشر. والأرقامُ
+ * الهنديّةُ صنفُها `AN` والشَّرطةُ المائلةُ `CS` بينهما، فتُضَمُّ إليهما
+ * وتُوضَع في موضعِها من السطرِ لا من الكسر.
+ *
+ * وهو ما عُولِج به عدّادُ الاختبارِ النازل (`م:ث`) في `quiz.js`: عزلُ الاتّجاه.
+ * فيُجمَع العلاجُ ههنا في موضعٍ واحدٍ يُنادى من الشاشاتِ الخمسِ التي فيها كسر.
+ */
+export function frac(a, b) {
+  return el('span.num', {
+    style: { direction: 'ltr', unicodeBidi: 'isolate' },
+  }, `${ar(a)}/${ar(b)}`);
+}
+
 export function arTime(seconds) {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
@@ -262,9 +279,12 @@ export function ring(value, { size = 78, width = 8, label = null, sub = null } =
   });
 
   if (label === null) return host;
+  // `.ring-label` صنفٌ للجوفِ — لا للشكلِ بل ليُفحَص: كان `فحص_الهيئة` يدّعي
+  // فحصَ «الرقمِ في جوفها» بـ`.card .num`، وهي تُطابِق أيَّ رقمٍ في أيِّ
+  // بطاقةٍ على الشاشة، فتنجح ولا حلقةَ ولا رقمَ في جوفها.
   return el('div', { style: { position: 'relative', width: `${size}px`, height: `${size}px`, flexShrink: '0' } }, [
     host,
-    el('div', {
+    el('div.ring-label', {
       style: {
         position: 'absolute', inset: '0', display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', gap: '1px',
@@ -411,6 +431,11 @@ window.addEventListener('popstate', (e) => {
   // خارجَ المسار: قيدٌ بقي من تحميلٍ سابقٍ ضاع مسارُه — يُترَك للمتصفّح.
   if (target < 0 || target >= trail.length) return;
 
+  // الرجوعُ إلى موضعِ المؤشِّرِ نفسِه ليس انتقالاً — ولا يُعاد الرسمُ لأجله.
+  // وإعادةُ الرسمِ ههنا تُتلِف عملَ الطالب: شاشةُ التصحيحِ الذاتيِّ تُبنى من
+  // جديدٍ فتضيع تأشيراتُه، وهو عينُ ما بُنِيت طبقةُ الصفحةِ لتجنُّبه.
+  if (target === cursor) return;
+
   cursor = target;
   const to = trail[cursor];
   popping = true;
@@ -420,6 +445,27 @@ window.addEventListener('popstate', (e) => {
     popping = false;
   }
 });
+
+/**
+ * تُسقِط طبقةُ الصفحةِ قيدَها من السجلِّ إذا أُغلِقت بيدٍ — بلا `history.back()`.
+ *
+ * والطبقةُ تدفع قيداً عند الفتحِ ليستهلكَه زرُّ الرجوع. فإن أُغلِقت بـ✕ بقي
+ * القيدُ يتيماً فتُصرَف به ضغطةُ رجوعٍ لا تفعل شيئاً.
+ *
+ * وأوّلُ ما جُرِّب `history.back()` في `closePage`، وكان أسوأَ من العَطَب: هو
+ * **غيرُ متزامن**، فيقع `popstate` بعد حين — فيُعاد رسمُ الشاشةِ (وتضيع
+ * تأشيراتُ التصحيحِ الذاتيّ)، وإن كانت طبقةٌ أخرى قد فُتِحت في تلك الأثناء
+ * أُغلِقت من تحتِ يدِ الطالب.
+ *
+ * فالصوابُ أن يُبدَّل **معنى** القيدِ لا أن يُستهلَك: يُكتَب فيه عمقُ الشاشةِ
+ * **السابقة**، فيصير قيداً يُرجِع منها إلى ما قبلها. فضغطةُ رجوعٍ واحدةٌ
+ * تُغادِر الشاشةَ كما يتوقّع الطالب، ولا `popstate` يقع الآن، ولا رسمَ يُعاد.
+ */
+export function dropOverlayEntry() {
+  try {
+    history.replaceState({ depth: cursor }, '');
+  } catch { /* لا شيء */ }
+}
 
 export function defineRoutes(map) {
   routes = map;

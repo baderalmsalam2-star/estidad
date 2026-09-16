@@ -44,6 +44,17 @@ export const BOOK_ID = {
 };
 
 const AR2EN = { '٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9' };
+const EN2AR = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+
+/**
+ * الأرقامُ العربيةُ الهنديّة — قاعدةٌ في التطبيقِ كلِّه منصوصةٌ في `ui.js`:
+ * «كل رقمٍ يظهر للطالب يُكتب بالأرقام العربية».
+ *
+ * وشارةُ الصفحةِ المُرشَّحةِ كانت تُبنى ههنا `ص${h.page}` فتخرج «ص20»
+ * بأرقامٍ لاتينيّةٍ في سطرٍ عربيّ — وحدَها في التطبيق. ولا يُستورَد `ar` من
+ * `ui.js` لأنّ `ui` يستورد `data` (دورة)، فتُكرَّر الدالّةُ ههنا بسطرٍ واحد.
+ */
+const arNum = (n) => String(n).replace(/\d/g, (d) => EN2AR[+d]);
 
 /** «ص٢٨-٣١» → 28. أول صفحةٍ في الاستشهاد هي التي تُفتَح. */
 export function firstPageOf(label) {
@@ -91,7 +102,7 @@ export function pageRefOf(q) {
     };
   }
   const h = state.hints[q.id];
-  return h && { book: h.book, page: h.page, label: `ص${h.page}`, verified: false,
+  return h && { book: h.book, page: h.page, label: `ص${arNum(h.page)}`, verified: false,
                 collated: 'hint',
                 confidence: h.confidence, countWord: h.countWord, countAgrees: h.countAgrees,
                 hasImage: hasImage(h.book, h.page) };
@@ -218,7 +229,7 @@ function dedupe() {
   for (const q of state.questions) {
     const text = normText(q.question);
     if (!text) continue;                       // سؤالٌ بلا نصّ لا يُقارَن بشيء
-    const key = `${q.subject} ${text}`;
+    const key = `${q.subject}\u0000${text}`;
     const prev = seen.get(key);
     if (!prev) { seen.set(key, q); continue; }
     const [keep, drop] = rank(q) > rank(prev) ? [q, prev] : [prev, q];
