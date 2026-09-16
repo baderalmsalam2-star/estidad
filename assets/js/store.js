@@ -176,6 +176,9 @@ export function scoreOf(id) {
   return cache.answers[id]?.score ?? null;
 }
 
+/** متى أُجيب هذا السؤالُ آخِرَ مرّة؟ — يُبنى عليه ترتيبُ المراجعةِ في الوِرد. */
+export const answeredAt = (id) => cache.answers[id]?.at ?? 0;
+
 export const seenCount = () => Object.keys(cache.answers).length;
 
 /**

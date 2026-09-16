@@ -31,13 +31,33 @@ const PREVIEW = typeof window !== 'undefined' && window.__PREVIEW === true;
 let layer = null;
 let returnFocusTo = null;
 
+/*
+ * أقيدَ الطبقةِ في سجلِّ المتصفّحِ ما زال قائماً؟
+ *
+ * الطبقةُ تدفع قيداً عند فتحِها (`history.pushState`) ليستهلكَه زرُّ الرجوع
+ * فتُغلَق وحدَها. فإن أُغلِقت بـ✕ أو بـEscape بقي القيدُ **يتيماً** في السجلّ:
+ * لا طبقةَ تُغلَق به، فتُصرَف به ضغطةُ رجوعٍ إلى غيرِ ما قصدَ الطالب. ومن فتح
+ * خمسَ صفحاتٍ وأغلقها بـ✕ خلَّف خمسةَ قيود.
+ *
+ * فمن أغلقَ بيدِه استُهلِك قيدُه بـ`history.back()`. ومن أغلقَ بزرِّ الرجوعِ
+ * فالقيدُ مستهلَكٌ أصلاً، ولو استُهلِك ثانيةً لخرجَ من شاشته — فيُفرَّق بينهما
+ * بـ`fromPop`.
+ */
+let pushedEntry = false;
+
 /** يعرفه الموجِّه ليجعل زرَّ الرجوعِ يُغلق الطبقةَ لا يغادر الشاشة. */
 export const isPageOpen = () => !!layer;
 
-export function closePage() {
+export function closePage(fromPop = false) {
+  const had = pushedEntry;
+  pushedEntry = false;
   layer?.remove();
   layer = null;
   document.removeEventListener('keydown', onKey);
+  // القيدُ اليتيمُ يُستهلَك — إلا أن يكون الرجوعُ نفسُه هو الذي أغلقها.
+  if (had && !fromPop) {
+    try { history.back(); } catch { /* لا شيء */ }
+  }
 
   // يُرفَع الجمودُ عمّا تحتها ويعود التركيزُ إلى ما فُتِحت منه — وإلا وقف
   // التركيزُ على عنصرٍ مُزال، فتبدأ لوحةُ المفاتيحِ من أوّل الصفحةِ كلَّ مرّة.
@@ -67,7 +87,9 @@ function onKey(e) {
 
 /** يفتح صفحةً من كتابٍ فوق الشاشة الجارية. */
 export function openPage(ref) {
-  closePage();
+  // طبقةٌ تُفتَح فوق أخرى تَرِث قيدَها ولا تدفع ثانياً — وإلا تراكمت القيود.
+  const inherit = pushedEntry;
+  closePage(true);
   let page = ref.page;
 
   /*
@@ -95,7 +117,8 @@ export function openPage(ref) {
 
   // قيدٌ في سجلِّ المتصفّحِ تستهلكه سحبةُ الرجوع فتُغلَق الطبقةُ وحدَها،
   // ويبقى الطالبُ في شاشته — ولا يُقذَف منها وقد ترك تصحيحاً في نصفه.
-  history.pushState({ overlay: true }, '');
+  if (!inherit) history.pushState({ overlay: true }, '');
+  pushedEntry = true;
 
   const paint = () => {
     const total = data.bookPageCount(ref.book);
@@ -140,7 +163,9 @@ export function openPage(ref) {
 
     layer.replaceChildren(
       el('div.topbar', { style: { justifyContent: 'space-between', paddingTop: '18px' } }, [
-        el('button.iconbtn', { onclick: closePage, 'aria-label': 'إغلاق' }, '✕'),
+        // `onclick: closePage` كان يُمرِّر الحدثَ مكانَ `fromPop` فيُقرَأ صِدقاً
+        // ويُترَك القيدُ يتيماً — فيُلَفُّ النداءُ.
+        el('button.iconbtn', { onclick: () => closePage(), 'aria-label': 'إغلاق' }, '✕'),
         el('div', { style: { flex: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' } }, [
           el('span', { style: { fontSize: '13.5px', fontWeight: '600' } }, bookTitle(ref.book)),
           el('span', { style: { fontSize: '12px', color: 'var(--ink-5)' } },
@@ -168,13 +193,24 @@ export function openPage(ref) {
           onclick: () => { if (page > 1) { page -= 1; paint(); } },
           disabled: page <= 1, 'aria-label': 'الصفحة السابقة',
         }, '→'),
-        hasPdf
-          ? el('a.btn', {
-              href: `books/${ref.book}.pdf#page=${page}`, target: '_blank', rel: 'noopener',
-              style: { flex: '1', fontSize: '15px', textDecoration: 'none' },
-            }, 'افتح الكتاب كاملاً')
-          : el('span', { style: { flex: '1', textAlign: 'center', fontSize: '12.5px', color: 'var(--ink-6)' } },
-              'الكتاب غير مرفوع'),
+        /*
+         * `PREVIEW` يُعلَن في بقيّةِ الملفِّ ولم يُعلَن ههنا.
+         *
+         * فكان زرُّ «افتح الكتاب كاملاً» يظهر في نسخةِ الملفِّ الواحدِ أيضاً،
+         * وهي لا تحمل الكتبَ PDF (٢٧ م.ب) — فيُفتَح لسانٌ على لا شيء. وهذه
+         * النسخةُ هي التي تُرسَل في واتساب لمن يُجرِّب، فأوّلُ ما يلمسه زرٌّ
+         * يَعِدُ ولا يفي.
+         */
+        PREVIEW
+          ? el('span', { style: { flex: '1', textAlign: 'center', fontSize: '12.5px', color: 'var(--ink-6)' } },
+              'الكتب كاملةً في النسخة المنشورة')
+          : hasPdf
+            ? el('a.btn', {
+                href: `books/${ref.book}.pdf#page=${page}`, target: '_blank', rel: 'noopener',
+                style: { flex: '1', fontSize: '15px', textDecoration: 'none' },
+              }, 'افتح الكتاب كاملاً')
+            : el('span', { style: { flex: '1', textAlign: 'center', fontSize: '12.5px', color: 'var(--ink-6)' } },
+                'الكتاب غير مرفوع'),
         el('button.iconbtn', {
           onclick: () => { if (!total || page < total) { page += 1; paint(); } },
           disabled: !!total && page >= total, 'aria-label': 'الصفحة التالية',

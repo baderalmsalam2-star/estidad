@@ -413,9 +413,30 @@ export function buildCustomExam(track, { count = 15, ...opts } = {}) {
  * علمٍ واحد. والبذرة يومُ التقويم نفسُه، فالوِردُ ثابتٌ ما دام اليومُ قائماً
  * ولو أغلق التطبيقَ وعاد.
  *
- * `scoreOf` تُمرَّر من store لئلّا يعتمد data على حالة الطالب.
+ * `scoreOf` و`answeredAt` تُمرَّران من store لئلّا يعتمد data على حالة الطالب.
  */
-export function buildWird(track, n, scoreOf) {
+/**
+ * ── ولا يُخلِف الوِردُ وعدَه ─────────────────────────────────────────────
+ *
+ * كان الوِردُ مبنيّاً على رافدَين: ما أخطأ فيه، وما لم يمرَّ عليه. فإذا نفدَ
+ * الرافدانِ وقعَ أمران، كلاهما في وجهِ الطالبِ المجتهدِ وحدَه:
+ *
+ *   • **الزرُّ لا يفعل شيئاً البتّة.** من أصابَ أسئلةَ مسارِه كلَّها يرجع
+ *     الوِردُ فارغاً، و`openWird` تقول `if (!questions.length) return;` —
+ *     فيضغط الرجلُ ولا يقع شيءٌ ولا تُقال كلمة. وهو جزاءُ من أتمَّ المنهج.
+ *
+ *   • **أو يُفتَح بثُلثِ ما وعد.** فإن بقي خطأانِ ولا جديدَ: `take` اثنان،
+ *     و`weightedSample(fresh, 18)` تُرجِع ما وجدت — فيقول الزرُّ «ابدأ — ٢٠
+ *     سؤالاً» وتُفتَح جلسةٌ من سؤالَين.
+ *
+ * فأُضيف رافدٌ ثالثٌ: **ما أصابه وطال عهدُه به** — الأقدمُ إجابةً أوّلاً. وهو
+ * الصوابُ في التعليمِ لا حيلةٌ لملءِ العدد: المحفوظُ يُنسى، ومراجعتُه على
+ * التباعُدِ أثبتُ من تركه. ومن أتمَّ المنهجَ فحاجتُه إلى التثبيتِ لا إلى
+ * الوقوفِ أمام زرٍّ لا يستجيب.
+ *
+ * ويبقى الترتيبُ على حاله: الخطأُ أوّلاً، ثمّ الجديد، ثمّ المراجعة.
+ */
+export function buildWird(track, n, scoreOf, answeredAt = () => 0) {
   const pool = forTrack(track);
   const weak = pool
     .filter((q) => { const s = scoreOf(q.id); return s !== null && s < 0.7; })
@@ -428,6 +449,15 @@ export function buildWird(track, n, scoreOf) {
     ...weak.slice(0, take),
     ...weightedSample(fresh, Math.max(0, n - take), rand),
   ];
+
+  // ما نقصَ عن الوعدِ يُتمَّم ممّا أصابه وطال عهدُه به.
+  if (chosen.length < n) {
+    const taken = new Set(chosen.map((q) => q.id));
+    const settled = pool
+      .filter((q) => !taken.has(q.id) && (scoreOf(q.id) ?? -1) >= 0.7)
+      .sort((a, b) => (answeredAt(a.id) || 0) - (answeredAt(b.id) || 0));
+    chosen.push(...settled.slice(0, n - chosen.length));
+  }
 
   // تناوبٌ على العلوم: أوّلُ كلِّ علمٍ، ثمّ ثانيه، وهكذا.
   const lanes = new Map();

@@ -235,7 +235,14 @@ function wirdCard(track) {
     el('button.btn', {
       // «جلسةٌ أخرى» تُعيد بناءَ الوِرد لا تُعيد أسئلتَه — وإلا كُرّر ما أُتقن.
       onclick: () => openWird(track, left || goal),
-    }, done ? `زِدْ ${ar(goal)} سؤالاً` : `ابدأ — ${ar(left)} سؤالاً`),
+      // الوعدُ على ما سيُفتَح فعلاً: يُبنى الوِردُ ليُعَدَّ، فلا يقول الزرُّ
+      // «ابدأ — ٢٠ سؤالاً» وتُفتَح جلسةٌ من سؤالَين.
+    }, (() => {
+      const want = left || goal;
+      const have = data.buildWird(track, want, store.scoreOf, store.answeredAt).length;
+      if (!have) return 'لا أسئلةَ في مسارك';
+      return done ? `زِدْ ${ar(have)} سؤالاً` : `ابدأ — ${ar(have)} سؤالاً`;
+    })()),
   ]);
 }
 
@@ -269,9 +276,19 @@ function openExam(track, count) {
   });
 }
 
+/**
+ * يفتح وِردَ اليوم — ولا يسكُت إن لم يجد.
+ *
+ * وكان `if (!questions.length) return;` يبتلع الحالَ صامتاً، فيضغط من أتمّ
+ * منهجَه زرّاً لا يستجيب ولا يُقال له لِمَ. (والرافدُ الثالثُ في `buildWird`
+ * جعل ذلك نادراً، لكنّ «نادر» ليس «مستحيل»: مسارٌ لا أسئلةَ فيه أصلاً.)
+ */
 function openWird(track, n) {
-  const questions = data.buildWird(track, n, store.scoreOf);
-  if (!questions.length) return;
+  const questions = data.buildWird(track, n, store.scoreOf, store.answeredAt);
+  if (!questions.length) {
+    alert('لا أسئلةَ في مسارك الآن. تأكّدْ من وصولِ ملفّاتِ الأسئلةِ ثمّ أعِدْ فتحَ التطبيق.');
+    return;
+  }
   const { today, goal } = store.daily();
   go('quiz', {
     questions,

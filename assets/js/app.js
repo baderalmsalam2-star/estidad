@@ -60,7 +60,12 @@ screen.append(el('div.empty', el('span.head', 'يُحمَّل المنهج…'))
 setPageRefResolver(data.pageRefOf);
 setPageOpener(openPage);
 // أي انتقالٍ بين الشاشات يُغلق طبقة الصفحة إن كانت مفتوحة.
-setNavigateHook(closePage);
+//
+// و`true` تعني «قيدُ الطبقةِ مستهلَكٌ أو لا يُستهلَك ههنا»: هذا الخُطّافُ
+// يُنادى من `popstate` (وقد استُهلِك القيدُ بالرجوعِ نفسِه) ومن `go` (ولا
+// يقع مع طبقةٍ مفتوحةٍ إلا برمجياً، ومنازعةُ السجلِّ في أثناء الانتقالِ أسوأُ
+// من قيدٍ يتيم). وأمّا ✕ وEscape فتُناديان `closePage()` بلا وسيط.
+setNavigateHook(() => closePage(true));
 setOverlayProbe(isPageOpen);
 
 /**
