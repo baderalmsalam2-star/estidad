@@ -20,12 +20,21 @@
 const AR = '٠١٢٣٤٥٦٧٨٩';
 const ar = (n) => String(n).replace(/\d/g, (d) => AR[+d]);
 
-/** «١٩:٣٠» تُقرأ عربيةً: «٧:٣٠ مساءً». */
+/** «١٩:٣٠» تُقرأ عربيةً: «٧:٣٠ مساءً». وما ليس على الصورةِ يُردُّ ولا يُخرِج NaN. */
 export function readable(hhmm) {
-  const [h, m] = String(hhmm).split(':').map(Number);
+  const [h, m] = safeTime(hhmm);
   const suffix = h < 12 ? 'صباحاً' : 'مساءً';
   const h12 = h % 12 || 12;
   return `${ar(h12)}:${ar(String(m).padStart(2, '0'))} ${suffix}`;
+}
+
+/** وقتٌ على صورةِ «سا:دق» لا غير — وما خالفَ رُدَّ إلى السابعةِ مساءً. */
+function safeTime(hhmm) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm ?? '').trim());
+  if (!m) return [19, 0];
+  const h = Math.min(23, Math.max(0, +m[1]));
+  const mi = Math.min(59, Math.max(0, +m[2]));
+  return [h, mi];
 }
 
 const pad = (n) => String(n).padStart(2, '0');
@@ -37,8 +46,27 @@ const pad = (n) => String(n).padStart(2, '0');
  * «السابعةُ مساءً حيث أنت» لا لحظةٌ عالميّةٌ بعينها، ولو كُتب بـUTC لانزاح
  * الموعدُ على من سافر.
  */
+/**
+ * تهريبُ نصٍّ في iCalendar — RFC 5545 §3.3.11.
+ *
+ * وحقولُ `SUMMARY` و`DESCRIPTION` نصوصٌ تُفصَل أسطُرُها بـCRLF، فسطرٌ جديدٌ
+ * في قيمةٍ **يُنشئ حقلاً جديداً** في الملفّ. فمن كان في قيمةٍ منها فاصلةٌ أو
+ * فاصلةٌ منقوطةٌ أو سطرٌ جديدٌ تبدّل معنى الحدثِ عمّا قُصِد.
+ *
+ * ووقتُ التنبيهِ يُقرَأ من `localStorage`، وهو ليس ممّا يُوثَق به (وقد صار
+ * يُفحَص في `store.sane` أيضاً — والحرزانِ لا يُغني أحدُهما عن الآخَر: هذا
+ * الملفُّ يُنادى من غيرِ موضع). فحدثٌ يوميٌّ يُزرَع في تقويمِ الإمامِ بنصٍّ
+ * ليس من التطبيقِ أسوأُ من عدمِ التنبيه.
+ */
+const icsText = (v) => String(v ?? '')
+  .replace(/\\/g, '\\\\')
+  .replace(/;/g, '\\;')
+  .replace(/,/g, '\\,')
+  .replace(/\r?\n/g, '\\n');
+
 export function icsFor(hhmm, { title = 'وِرد الاستعداد', url = '' } = {}) {
-  const [h, m] = String(hhmm).split(':').map(Number);
+  const [h, m] = safeTime(hhmm);
+  const safeUrl = /^https?:\/\/[^\s;,]+$/.test(String(url || '')) ? url : '';
   const now = new Date();
   // أوّلُ موعدٍ اليومَ إن لم يمضِ، وإلا غداً — فلا يبدأ التكرارُ بموعدٍ فائت.
   const first = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0);
@@ -55,18 +83,21 @@ export function icsFor(hhmm, { title = 'وِرد الاستعداد', url = '' }
     'PRODID:-//estidad//reminder//AR',
     'CALSCALE:GREGORIAN',
     'BEGIN:VEVENT',
-    `UID:wird-${hhmm.replace(':', '')}-${Date.now()}@estidad`,
+    // المعرِّفُ يُبنى من الوقتِ المُطهَّرِ لا من المكتوب.
+    `UID:wird-${h}${String(m).padStart(2, '0')}-${Date.now()}@estidad`,
     `DTSTAMP:${stamp}`,
     `DTSTART:${local(first)}`,
     'DURATION:PT15M',
     'RRULE:FREQ=DAILY',
-    `SUMMARY:${title}`,
-    `DESCRIPTION:وقتُ وِردك اليوم.${url ? ` ${url}` : ''}`,
-    ...(url ? [`URL:${url}`] : []),
+    `SUMMARY:${icsText(title)}`,
+    // `URL` صنفُه URI لا TEXT، فلا يُهرَّب تهريبَ النصِّ — ويُفحَص بدلَ ذلك:
+    // ما ليس http(s) لا يُكتَب أصلاً، ولا يُذكَر في الوصفِ نصّاً كذلك.
+    `DESCRIPTION:${icsText(`وقتُ وِردك اليوم.${safeUrl ? ` ${safeUrl}` : ''}`)}`,
+    ...(safeUrl ? [`URL:${safeUrl}`] : []),
     'BEGIN:VALARM',
     'ACTION:DISPLAY',
     'TRIGGER:PT0M',
-    `DESCRIPTION:${title}`,
+    `DESCRIPTION:${icsText(title)}`,
     'END:VALARM',
     'END:VEVENT',
     'END:VCALENDAR',

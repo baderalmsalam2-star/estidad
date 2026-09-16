@@ -330,13 +330,38 @@ function session(wrap, index) {
       alert('لا يوجد تسجيلٌ لإرساله.');
       return;
     }
-    const file = new File([st.blob], `تسميع-${a.surahName}-${a.ayah}.ogg`, { type: st.blob.type });
-    if (navigator.canShare?.({ files: [file] })) {
-      navigator.share({ files: [file], title: `تسميع سورة ${a.surahName} آية ${a.ayah}` }).catch(() => {});
+    /*
+     * ── الامتدادُ يتبع الصيغةَ التي سُجِّلت بها، ولا يُفترَض ────────────────
+     *
+     * كان الاسمُ `…ogg` ثابتاً. و`audio.pickMime()` تختار أوّلَ ما يدعمه
+     * المتصفّح، وسفاري **لا تُسجِّل** `ogg` ولا `webm` — تُسجِّل `audio/mp4`
+     * وحدَها. فيصل الشيخَ ملفٌّ مكتوبٌ عليه `.ogg` ومحتواه MP4، فلا يفتحه
+     * شيءٌ على جوّاله، ولا هو ولا الطالبُ يعلم لِمَ.
+     *
+     * ── والاسمُ لاتينيٌّ لا عربيّ ──────────────────────────────────────────
+     *
+     * و`reminder.js` نصَّ على العلّةِ من قبل: الاسمُ العربيُّ في `a.download`
+     * يسقط في بعض المتصفّحات فيُحفَظ الملفُّ **بلا امتدادٍ** فلا يُفتَح. فاسمُ
+     * التنزيلِ لاتينيٌّ بالسورةِ رقماً والآيةِ رقماً، وعنوانُ ورقةِ المشاركةِ
+     * يبقى عربياً — فهو الذي يقرؤه الشيخُ في المحادثة.
+     */
+    const EXT = { 'audio/mp4': 'm4a', 'audio/ogg': 'ogg', 'audio/webm': 'webm', 'audio/mpeg': 'mp3' };
+    const base = String(st.blob.type || '').split(';')[0];
+    const ext = EXT[base] || 'm4a';
+    const name = `estidad-${a.surah}-${a.ayah}.${ext}`;
+
+    const file = new File([st.blob], name, { type: st.blob.type });
+    // `canShare` جاء في سفاري ١٦٫٤ وحدَها، وغيابُه لا يعني المنع — يُجرَّب.
+    const canFiles = navigator.canShare
+      ? navigator.canShare({ files: [file] })
+      : typeof navigator.share === 'function';
+    if (canFiles) {
+      navigator.share({ files: [file], title: `تسميع سورة ${a.surahName} آية ${a.ayah}` })
+        .catch(() => {});
     } else {
       // بلا خادم: نُنزّل الملف ليرسله الطالب بنفسه. الرفع لا يقع إلا بفعله.
       const url = URL.createObjectURL(st.blob);
-      const link = el('a', { href: url, download: file.name });
+      const link = el('a', { href: url, download: name });
       document.body.append(link);
       link.click();
       link.remove();

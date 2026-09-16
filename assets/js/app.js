@@ -55,7 +55,32 @@ const devParam = new URLSearchParams(location.search).get('dev');
 if (devParam !== null) setDevMode(devParam === '1');
 
 const screen = document.getElementById('screen');
-screen.append(el('div.empty', el('span.head', 'يُحمَّل المنهج…')));
+/*
+ * سطرُ التحميلِ يتحرّك — فالساكنُ يُقرَأ عُطلاً.
+ *
+ * والمنهجُ ٦٫٥ م.ب في أربعةَ عشرَ ملفاً، وعلى شبكةٍ ضعيفةٍ يطول الانتظارُ
+ * نصفَ دقيقةٍ أو أكثر. وكان السطرُ ثابتاً لا يدلُّ على أنّ شيئاً يقع، فيحسبه
+ * الإمامُ واقفاً فيُغلِق ويُعيد الفتحَ — فيبدأ من أوّله.
+ */
+const AR_D = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+const arD = (n) => String(n).replace(/\d/g, (d) => AR_D[+d]);
+
+const bootNote = el('p.lede', 'مرّةً واحدة، ثمّ يعمل بلا إنترنت.');
+const bootBar = el('div.bar', { style: { width: '180px', marginTop: '4px' } },
+  el('i', { style: { width: '4%' } }));
+screen.append(el('div.empty', [
+  el('span.head', 'يُحمَّل المنهج…'),
+  bootNote,
+  bootBar,
+]));
+
+const onProgress = (done, total) => {
+  const pctDone = Math.max(4, Math.round((done / total) * 100));
+  bootBar.firstChild.style.width = `${pctDone}%`;
+  bootNote.textContent = done < total
+    ? `${arD(done)} من ${arD(total)} ملفّاً — ثمّ يعمل بلا إنترنت.`
+    : 'يُرتَّب المنهج…';
+};
 
 setPageRefResolver(data.pageRefOf);
 setPageOpener(openPage);
@@ -79,7 +104,7 @@ function registerWorker() {
   });
 }
 
-data.load()
+data.load({ onProgress })
   .then(() => {
     // المسارُ يُقرَأ من تخزينِ المتصفّح، وما فيه ليس ممّا يُؤتمَن: يبقى من
     // نسخةٍ قديمةٍ، أو يُعدَّل بيد. وقيمةٌ لا يعرفها المنهجُ كانت تُسقِط الرئيسيةَ

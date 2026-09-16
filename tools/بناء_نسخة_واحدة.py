@@ -30,6 +30,29 @@ DATA_FILES = ['data/manifest.json', 'data/page-hints.json',
               'data/tajweed/juz-amma-rulings.json']
 
 
+def js_literal(obj):
+    """
+    JSON صالحاً للغرزِ داخل `<script>`.
+
+    والمُحلِّلُ يُغلِق الوسمَ عند أوّلِ `</script` يجده في النصّ — **ولو كان
+    داخلَ سلسلةِ جافاسكربت**، فالوسمُ يُقرَأ قبل أن يُقرَأ الكود. فسؤالٌ في
+    البنكِ فيه هذا النصُّ يكسر الملفَّ كلَّه، وما بعدَه يُقرَأ محتوىً لا كوداً.
+
+    ولا سؤالَ فيه اليومَ هذا النصّ (قِيست البنوكُ كلُّها). لكنّ الأسئلةَ
+    تُكتَب وتُولَّد وتُصحَّح، والعطبُ يومَ يقع يكون كاملاً وخفيَّ السبب. وثمنُ
+    الحرزِ ثلاثةُ أسطر.
+
+    ويُهرَّب `<` و`>` و`&` إلى صورتها السادسةَ عشرَ — وهي صورةٌ صحيحةٌ في
+    JSON وفي جافاسكربت، فلا يتبدّل المعنى ولا يُمَسُّ الحرفُ العربيّ.
+    """
+    return (json.dumps(obj, ensure_ascii=False)
+            .replace('<', '\\u003c')
+            .replace('>', '\\u003e')
+            .replace('&', '\\u0026')
+            .replace('\u2028', '\\u2028')
+            .replace('\u2029', '\\u2029'))
+
+
 def data_map():
     md = json.loads((ROOT / 'data/manifest.json').read_text(encoding='utf-8'))
     paths = list(DATA_FILES) + [f"data/banks/{b['file']}" for b in md['banks']]
@@ -179,7 +202,7 @@ def build(google=False):
 <div dir="rtl" lang="ar">{body}</div>
 <script>
 window.__PREVIEW = true;
-const __DATA = {json.dumps(data_map(), ensure_ascii=False)};
+const __DATA = {js_literal(data_map())};
 // شبكةٌ محلّيّة: التطبيقُ يطلب ملفّاته بـfetch كما هو، وتُخدَم من الداخل بلا تعديلِ مصدرِه.
 const __fetch = window.fetch.bind(window);
 window.fetch = (u, o) => {{

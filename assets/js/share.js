@@ -123,7 +123,11 @@ export async function shareCard(blob, text) {
    * شيئاً — والزرُّ يقول «حُفِظت في جهازك ✓». فيُفحَص دعمُ `download` أوّلاً،
    * ومن لا يدعمه تُفتَح له الصورةُ في لسانٍ ليحفظها بنفسه، ويُقال له ذلك.
    */
-  const file = new File([blob], 'نتيجتي.png', { type: 'image/png' });
+  // اسمٌ لاتينيّ: `a.download` بالعربيةِ يسقط في بعض المتصفّحاتِ فيُحفَظ
+  // الملفُّ بلا امتدادٍ فلا يُفتَح — و`reminder.js` نصَّ على ذلك من قبل.
+  // وعنوانُ ورقةِ المشاركةِ يبقى عربياً، فهو الذي يُقرَأ في المحادثة.
+  const NAME = 'estidad-natija.png';
+  const file = new File([blob], NAME, { type: 'image/png' });
 
   const canFiles = navigator.canShare
     ? navigator.canShare({ files: [file] })
@@ -152,7 +156,7 @@ export async function shareCard(blob, text) {
 
   if ('download' in a && !iosSafari) {
     a.href = url;
-    a.download = 'نتيجتي.png';
+    a.download = NAME;
     document.body.appendChild(a);
     a.click();
     a.remove();

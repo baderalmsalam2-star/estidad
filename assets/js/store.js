@@ -148,6 +148,20 @@ function write() {
 
 export const get = () => cache;
 
+/**
+ * يُستعاد تقدُّمٌ من نسخةٍ احتياطيّة.
+ *
+ * ويمرُّ على `sane()` كما يمرُّ ما يُقرَأ من التخزين: الملفُّ يُختار من قرصِ
+ * الطالبِ، فقد يكون محرَّراً أو ناقصاً أو من نسخةٍ أقدم. فلا يُقبَل بلا فحصٍ
+ * وإن جاء من يدِ صاحبه.
+ */
+export function restore(raw) {
+  cache = sane(raw);
+  write();
+  applyTextScale();
+  return cache;
+}
+
 export function setTrack(track) {
   cache.track = track;
   write();

@@ -30,7 +30,7 @@
  * الصفحةِ اليومَ وبعدَ سنة. فلا تُراجَع على الشبكةِ بعدَ خزنها، بخلافِ الهيكل.
  */
 
-const CACHE = 'awqaf-prep-v27';
+const CACHE = 'awqaf-prep-v28';
 
 /** مخزنُ ما جلبه الطالبُ بنفسِه — بلا رقمٍ فلا يُمحى مع النشر. */
 const MEDIA = 'awqaf-prep-media';
@@ -80,6 +80,7 @@ const SHELL = [
   'assets/fonts/plex-mono-400-latin.woff2',
   'assets/fonts/amiri-quran-400-arabic.woff2',
   'data/manifest.json',
+  'assets/icons/apple-touch-icon.png',
 
   /*
    * أحكامُ التجويد (٩٠٨ ك.ب) — ثقيلةٌ لكنّها في الهيكلِ لا في الوسائط.

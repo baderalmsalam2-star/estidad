@@ -7,6 +7,7 @@ import * as sync from '../sync.js';
 import * as owner from '../owner.js';
 import * as reminder from '../reminder.js';
 import * as version from '../version.js';
+import * as audio from '../audio.js';
 
 export default function accountScreen() {
   const track = store.get().track;
@@ -75,9 +76,31 @@ export default function accountScreen() {
       el('span', { style: { fontSize: '13.5px', fontWeight: '600' } }, 'بياناتك'),
       // الوعدُ يُكتَب على ما هو كائنٌ فعلاً. فإن نُشِر خادمُ الإحصاء تبدّل نصُّه،
       // ولم يبقَ «لا خادم» مكتوباً وفي التطبيق خادم.
+      // «تُحذف تلقائياً بعد ٣٠ يوماً» كانت مُطلَقةً بلا قيد، وليست كذلك: لا
+      // مُجدوِلَ في صفحةِ وِبّ، فالمحوُ يقع عند أوّلِ فتحةٍ بعد المدّة. ومن ترك
+      // التطبيقَ سنةً بقي صوتُه سنةً — والوعدُ يقول إنّه مُحي. فيُقال على وجهه،
+      // ويُوضَع المحوُ في يدِه بزرٍّ صريح.
       el('span.fine', sync.available()
-        ? 'تقدّمك محفوظٌ على جهازك وحده، ولا حسابَ لك ولا كلمةَ سرّ. وتسجيلات التسميع تُحذف تلقائياً بعد ٣٠ يوماً.'
-        : 'تقدّمك محفوظٌ على جهازك وحده. لا حساب، ولا خادم، ولا بياناتٍ شخصية. وتسجيلات التسميع تُحذف تلقائياً بعد ٣٠ يوماً.'),
+        ? 'تقدّمك محفوظٌ على جهازك وحده، ولا حسابَ لك ولا كلمةَ سرّ. وتسجيلات التسميع تُحذف عند فتح التطبيق بعد مضيّ ٣٠ يوماً عليها — أو الآن، بالزرّ أدناه.'
+        : 'تقدّمك محفوظٌ على جهازك وحده. لا حساب، ولا خادم، ولا بياناتٍ شخصية. وتسجيلات التسميع تُحذف عند فتح التطبيق بعد مضيّ ٣٠ يوماً عليها — أو الآن، بالزرّ أدناه.'),
+
+      // نسخةٌ احتياطيّة: سفاري على iOS يمحو تخزينَ الموقعِ كلَّه بعد سبعةِ
+      // أيّامٍ بلا زيارة (Intelligent Tracking Prevention). فإمامٌ ذاكرَ شهراً
+      // ثمّ سافرَ أسبوعاً يفتح التطبيقَ فيجده كما كان أوّلَ يوم — ولا نسخةَ
+      // ولا تحذير. والملفُّ يُحمَل إلى أيِّ جهازٍ ويُستعاد فيه.
+      backupRow(),
+
+      el('button', {
+        onclick: async () => {
+          if (!confirm('ستُمحى تسجيلات التسميع كلُّها من هذا الجهاز الآن. أمتأكّد؟')) return;
+          await audio.wipe();
+          alert('مُحيت تسجيلاتك.');
+        },
+        style: {
+          font: 'inherit', fontSize: '13.5px', color: 'var(--ink-3)', background: 'none',
+          border: 'none', cursor: 'pointer', textAlign: 'start', padding: '4px 0 0',
+        },
+      }, 'امسح تسجيلاتي الآن'),
       el('button', {
         onclick: async () => {
           if (!confirm('سيُمحى تقدّمك كلّه من هذا الجهاز — ومعه تسجيلات التسميع. أمتأكّد؟')) return;
@@ -97,6 +120,81 @@ export default function accountScreen() {
     contactCard(),
 
     versionCard(),
+  ]);
+}
+
+/**
+ * نسخةٌ احتياطيّةٌ من التقدُّم — تُصدَّر ملفاً وتُستعاد منه.
+ *
+ * ── لِمَ ────────────────────────────────────────────────────────────────
+ *
+ * تقدُّمُ الطالبِ في `localStorage`، وسفاري على iOS يمحو تخزينَ الموقعِ كلَّه
+ * بعد **سبعةِ أيّامٍ** بلا زيارة (Intelligent Tracking Prevention). وليس ذلك
+ * عَطَباً في التطبيقِ يُصلَح بكود: هو سياسةُ المتصفّح. فإمامٌ ذاكرَ شهراً ثمّ
+ * سافرَ أسبوعاً يفتح التطبيقَ فيجده كما كان أوّلَ يوم — لا سلسلةَ ولا رتبةَ
+ * ولا صندوقَ مراجعة، ولا شيءَ يقول له ما وقع.
+ *
+ * ولا خادمَ في هذا التطبيقِ يُحفَظ عنده التقدُّم — وذاك مقصودٌ لا نقص. فالبديلُ
+ * أن يملك الطالبُ نسختَه: ملفٌّ صغيرٌ يُصدِّره ويحفظه حيث شاء، ويُستعاد في هذا
+ * الجهازِ أو في غيره. وهو أيضاً الطريقُ لمن بدّل جوّالَه.
+ *
+ * ويُذكَر له «أضِفْه إلى الشاشة الرئيسية»: التطبيقُ المُضافُ يُعَدُّ مُنصَّباً
+ * فلا يمسُّه ذلك المحو.
+ */
+function backupRow() {
+  const note = el('span.fine', { style: { textAlign: 'start', display: 'none' } });
+
+  const save = el('button.chip', {
+    onclick: () => {
+      const blob = new Blob([JSON.stringify({
+        app: 'estidad', version: 1, at: Date.now(), progress: store.get(),
+      }, null, 1)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = el('a', { href: url, download: 'estidad-backup.json' });
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 8000);
+      note.textContent = 'نُزِّلت نسختك. احفظها حيث شئت — وتُستعاد من الزرّ المجاور.';
+      note.style.display = '';
+    },
+    style: { cursor: 'pointer', border: 'none', font: 'inherit', padding: '9px 16px' },
+  }, 'احفظ نسخةً');
+
+  const file = el('input', {
+    type: 'file', accept: 'application/json,.json',
+    style: { display: 'none' },
+    onchange: async (e) => {
+      const f = e.target.files?.[0];
+      if (!f) return;
+      try {
+        const parsed = JSON.parse(await f.text());
+        const prog = parsed && parsed.app === 'estidad' ? parsed.progress : null;
+        if (!prog || typeof prog !== 'object') throw new Error('ليست نسخةَ هذا التطبيق');
+        if (!confirm('ستحلُّ النسخةُ المحفوظةُ محلَّ تقدُّمك في هذا الجهاز. أمتأكّد؟')) return;
+        // تُمرَّر على `store.restore` فتُفحَص أنواعُها كما تُفحَص عند القراءة.
+        store.restore(prog);
+        go('home');
+      } catch (err) {
+        note.textContent = `تعذّرت الاستعادة: ${err.message || err}`;
+        note.style.display = '';
+      }
+    },
+  });
+
+  const load = el('button.chip.chip--muted', {
+    onclick: () => file.click(),
+    style: { cursor: 'pointer', border: 'none', font: 'inherit', padding: '9px 16px' },
+  }, 'استعِدْ نسخةً');
+
+  return el('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '4px' } }, [
+    el('div', { role: 'group', 'aria-label': 'نسخةُ التقدّم الاحتياطية', style: { display: 'flex', gap: '8px' } },
+      [save, load, file]),
+    el('span.fine', { style: { textAlign: 'start' } },
+      'تقدّمك في متصفّحك لا على خادم. وسفاري على آيفون يمحو تخزين المواقع بعد '
+      + 'سبعة أيامٍ بلا زيارة — فاحفظ نسخةً، أو أضِفِ التطبيق إلى الشاشة '
+      + 'الرئيسية فلا يمسّه ذلك المحو.'),
+    note,
   ]);
 }
 

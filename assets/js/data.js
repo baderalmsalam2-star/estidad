@@ -128,20 +128,40 @@ async function getJSON(path) {
   return res.json();
 }
 
-/** يحمّل المنيفست وكل بنوك الأسئلة مرةً واحدة. */
-export async function load() {
+/**
+ * يحمّل المنيفست وكل بنوك الأسئلة مرةً واحدة.
+ *
+ * ── وتقدُّمُ التحميلِ يُرى ────────────────────────────────────────────────
+ *
+ * والبنوكُ ٦٫٥ م.ب في أربعةَ عشرَ ملفاً، وأحكامُ التجويدِ ٩٠٨ ك.ب. وعلى شبكةِ
+ * مسجدٍ ضعيفةٍ يقف الإمامُ أمام سطرٍ ساكنٍ «يُحمَّل المنهج…» نصفَ دقيقةٍ أو
+ * أكثر — لا يتحرّك، ولا يدلُّ على أنّ شيئاً يقع. فيحسبه واقفاً فيُغلِقه ويُعيد
+ * الفتحَ، فيبدأ من أوّله.
+ *
+ * فيُبلَّغ المُنادي بكلِّ ملفٍّ يصل (`onProgress`)، فيُرى الرقمُ يتقدّم. ولا
+ * يُبدَّل شيءٌ في التحميلِ نفسِه: التوازي كما هو، والسقوطُ مُحتمَلٌ كما كان.
+ */
+export async function load({ onProgress = null } = {}) {
   if (state.manifest) return state;
 
   const manifest = await getJSON('data/manifest.json');
   const bankFiles = (manifest.banks || []).map((b) => b.file);
 
+  let done = 0;
+  const total = bankFiles.length + 4;
+  const tick = () => {
+    done += 1;
+    if (onProgress) { try { onProgress(done, total); } catch { /* لا شيء */ } }
+  };
+  const counted = (pr) => pr.then((v) => { tick(); return v; });
+
   const [hints, pageIndex, bookLinks, covers, ...banks] = await Promise.all([
-    getJSON('data/page-hints.json').catch(() => ({})),
-    getJSON('books/pages-index.json').catch(() => ({})),
-    getJSON('data/book-links.json').catch(() => ({})),
-    getJSON('data/covers.json').catch(() => ({})),
+    counted(getJSON('data/page-hints.json').catch(() => ({}))),
+    counted(getJSON('books/pages-index.json').catch(() => ({}))),
+    counted(getJSON('data/book-links.json').catch(() => ({}))),
+    counted(getJSON('data/covers.json').catch(() => ({}))),
     // `null` لا رَفضٌ: يُحتمَل سقوطُ بنكٍ كما احتُمِل سقوطُ الملفّاتِ المساعدة.
-    ...bankFiles.map((f) => getJSON(`data/banks/${f}`).catch(() => null)),
+    ...bankFiles.map((f) => counted(getJSON(`data/banks/${f}`).catch(() => null))),
   ]);
 
   state.manifest = manifest;

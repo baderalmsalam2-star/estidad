@@ -8,7 +8,10 @@
 <meta name="description" content="تدريبٌ على المنهج المقرَّر لوظائف الإمامة والأذان — وزارة الأوقاف والشؤون الإسلامية، دولة الكويت.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%2314655a'/%3E%3Ctext x='50' y='72' font-size='62' font-family='serif' font-weight='700' fill='%23faf7f1' text-anchor='middle'%3E%D9%88%3C/text%3E%3C/svg%3E">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+<!-- أيقونةُ iOS مصمَتةٌ لا شفّافةَ الأركان: النظامُ يُركِّبها على **أسودَ**
+     ثمّ يُدوِّر أركانَها بنفسه، فأركانُ `icon-192` الشفّافةُ كانت تسودُّ على
+     شاشةِ آيفون. و١٨٠ بكسلاً هو المقاسُ الذي يطلبه iOS. -->
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="الاستعداد">
@@ -25,6 +28,48 @@
     </div>
   </div>
   <script type="module" src="assets/js/app.js"></script>
+
+  <!--
+    متصفّحٌ أقدمُ من أرضيّةِ التطبيق — يُقال له بالعربية، ولا يُترَك بصفحةٍ بيضاء.
+
+    والأرضيّةُ الفعليّةُ **iOS ١٤٫٥** لا ما دون: التصميمُ يعتمد `gap` في flex
+    (سفاري ١٤٫١) و`inset` (سفاري ١٤٫١) و`?.` و`??` (سفاري ١٣٫١)، وهذه لا
+    تُعوَّض. فما دونها كان يُعرَض **صفحةً بيضاءَ صامتةً**: `type="module"`
+    يمنع المتصفّحَ القديمَ من تشغيل الكود، و`<noscript>` لا يظهر لأنّ
+    الجافاسكربت مُشتغِلةٌ — إنّما هي أحدثُ منه. فيقف الإمامُ أمام بياضٍ ولا
+    كلمة، ويحسب التطبيقَ معطوباً لا جهازَه قديماً.
+
+    ويُكتَب بـ`nomodule` فلا يقرؤه متصفّحٌ يعرف الوحدات، ويُفحَص معه ما لا
+    يُغطّيه `nomodule` (سفاري ١٠ إلى ١٤): وجودُ `gap` و`inset` في CSS.
+  -->
+  <script nomodule>
+    document.addEventListener('DOMContentLoaded', function () {
+      var scr = document.getElementById('screen');
+      if (scr) {
+        scr.innerHTML = '<div style="padding:28px;text-align:center;line-height:2">'
+          + '<p style="font-size:19px;font-weight:700;margin-bottom:10px">متصفّحك أقدمُ من أن يفتح التطبيق</p>'
+          + '<p style="font-size:15px;color:#57504a">حدِّثْ نظامَ جهازك، أو افتحه في متصفّحٍ أحدث. '
+          + 'والتطبيق يعمل على آيفون من iOS 14.5، وعلى أندرويد في كروم الحديث.</p></div>';
+      }
+    });
+  </script>
+  <script>
+    /* ومتصفّحٌ يعرف الوحداتِ ولا يعرف `gap` أو `inset` — بينهما نسخٌ من سفاري. */
+    (function () {
+      var css = window.CSS && CSS.supports;
+      if (!css) return;
+      if (CSS.supports('gap', '1px') && CSS.supports('inset', '0')) return;
+      document.addEventListener('DOMContentLoaded', function () {
+        var scr = document.getElementById('screen');
+        if (!scr) return;
+        scr.innerHTML = '<div style="padding:28px;text-align:center;line-height:2">'
+          + '<p style="font-size:19px;font-weight:700;margin-bottom:10px">متصفّحك أقدمُ من أن يُظهِر التطبيق كما ينبغي</p>'
+          + '<p style="font-size:15px;color:#57504a">حدِّثْ نظامَ جهازك، أو افتحه في متصفّحٍ أحدث. '
+          + 'والتطبيق يعمل على آيفون من iOS 14.5، وعلى أندرويد في كروم الحديث.</p></div>';
+      });
+    })();
+  </script>
+
   <noscript>
     <p style="padding:24px;font-family:system-ui">هذا التطبيق يحتاج جافاسكربت للعمل.</p>
   </noscript>
