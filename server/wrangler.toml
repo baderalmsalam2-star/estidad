@@ -9,7 +9,7 @@ main = "worker.js"
 compatibility_date = "2025-01-01"
 
 # ضَعْ ههنا نطاقَ التطبيق بعد نشره على Pages. والفاصلةُ تفصل بين أكثرَ من أصل.
-# مثال: "https://baderalmsalam2-star.github.io"
+# مثال: "https://estidad.github.io"
 [vars]
 ALLOWED_ORIGIN = ""
 

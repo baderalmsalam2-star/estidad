@@ -2,7 +2,7 @@
 """
 يبني بطاقتَي نشرٍ للتطبيق: واحدةً للستوري (١٠٨٠×١٩٢٠) وأخرى مربّعةً للحالة.
 
-    python3 tools/بطاقة_النشر.py "https://example.github.io/estidad/"
+    python3 tools/بطاقة_النشر.py "https://estidad.github.io/"
     python3 tools/بطاقة_النشر.py "<الرابط>" ليلي      # نمطٌ آخَر
     python3 tools/بطاقة_النشر.py "<الرابط>" الكل      # كلُّ الأنماط للمقارنة
 
