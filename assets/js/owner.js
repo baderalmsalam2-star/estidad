@@ -93,10 +93,23 @@ export async function signIn(pass) {
   return true;
 }
 
-/** خروجٌ من هذا الجهاز وحدَه. ولا يمسُّ تقدّمَ الدراسةِ ولا أرقامَ الخادم. */
+/**
+ * خروجٌ من هذا الجهاز وحدَه. ولا يمسُّ تقدّمَ الدراسة.
+ *
+ * **ويمحو مفتاحَ خادمِ الإحصاء معه.** وكان لا يمحوه، فيخرج صاحبُ التطبيقِ من
+ * اللوحةِ على جهازٍ ليس له ويظنُّ أنّه أغلقَ البابَ كلَّه، والمفتاحُ — وهو
+ * القُفلُ الحقيقيُّ الذي تنزل به أرقامُ الطلاب — باقٍ مكتوباً في التخزين.
+ *
+ * ولا يُستورَد `admin.js` ههنا (دورةُ استيرادٍ عبر `ui`)، فيُمحى بمفتاحِه
+ * نصّاً. والاسمُ مذكورٌ في الموضعَين فليُبدَّلا معاً إن بُدِّل.
+ */
+const ADMIN_KEY_STORE = 'awqaf-prep/adminKey';
+
 export function signOut() {
   try {
     localStorage.removeItem(KEY);
   } catch { /* لا شيء */ }
+  try { localStorage.removeItem(ADMIN_KEY_STORE); } catch { /* لا شيء */ }
+  try { sessionStorage.removeItem(ADMIN_KEY_STORE); } catch { /* لا شيء */ }
   cache = false;
 }

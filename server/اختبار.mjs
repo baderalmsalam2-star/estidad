@@ -58,7 +58,12 @@ const is = (name, got, want) => {
 const uuid = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
 console.log('\nالصحّة والصلاحيات');
-is('health', (await (await call('/health')).json()), { ok: true });
+const health = await (await call('/health')).json();
+is('health', health.ok, true);
+// والنبضةُ تقول حالَ الضبطِ أيضاً، فيُعرَف النقصُ من الطرفيّةِ بلا مفتاح:
+// `ALLOWED_ORIGIN` فارغةً كانت تُبعَث ترويسةً خاويةً فيُردُّ كلُّ شيءٍ صامتاً.
+is('والنبضةُ تقول أضُبِط الأصلُ والمفتاح', 
+  { o: health.originSet, k: health.adminKeySet }, { o: true, k: true });
 is('stats بلا مفتاح ← ٤٠١', (await call('/stats')).status, 401);
 is('stats بمفتاحٍ خطأ ← ٤٠١',
   (await call('/stats', { headers: { 'x-admin-key': 'wrong-key', origin: 'https://example.test' } })).status, 401);
@@ -107,13 +112,17 @@ is('وبخمسٍ يظهر', d.hardest.some((r) => r.id === 'GEN-FQH-009'), true)
 is('وهو أصعبُها', d.hardest[0].id, 'GEN-FQH-009');
 is('بمتوسّطِ صفر', d.hardest[0].avg, 0);
 
-console.log('\nالمفتاحُ لا يُقبَل إلا لاتينياً');
-try {
-  new Request('https://x.test/stats', { headers: { 'x-admin-key': 'مفتاح-عربي' } });
-  is('مفتاحٌ عربيٌّ في ترويسةٍ يُرمى خطأ', 'لم يُرمَ', 'خطأ');
-} catch {
-  is('مفتاحٌ عربيٌّ في ترويسةٍ يُرمى خطأ', 'خطأ', 'خطأ');
-}
+/*
+ * كان ههنا تأكيدٌ عنوانُه «مفتاحٌ عربيٌّ في ترويسةٍ يُرمى خطأ»، وجسمُه في فرعِ
+ * الالتقاطِ `is(…, 'خطأ', 'خطأ')` — أي يُقارَن الثابتُ بنفسِه فينجح أبداً.
+ * وهو مع ذلك لا يفحص كودَ المشروعِ في شيء: يفحص أنّ `Request` في **نود**
+ * يرفض حرفاً غيرَ لاتينيٍّ في ترويسة. فإن تبدّلت نودُ يوماً تبدّل «الفحص»،
+ * وإن كُسِر الحارسُ في `sync.stats` لم يقل هذا شيئاً.
+ *
+ * والحارسُ الحقيقيُّ في العميل (`assets/js/sync.js`)، ولا يُستورَد ههنا لأنّه
+ * يقرأ `localStorage` عند التحميل. فحُذِف التأكيدُ الكاذبُ ولم يُستبدَل به
+ * كاذبٌ آخَر — ونقصٌ مُعلَنٌ خيرٌ من تغطيةٍ مُدَّعاة.
+ */
 
 console.log('\nالمجاميع');
 is('عددُ الأجهزة', d.devices, 6);
@@ -178,6 +187,72 @@ is('بل تلخيصٌ ستّونيٌّ طولُه ٦٤', buckets.every((b) => /^
 // وبغيابِ المِلحِ لا حدَّ — فلا يتعطّل خادمٌ نُشِر بلا ضبطِ `IP_SALT`.
 is('بلا مِلحٍ لا يُمنَع إرسال',
   (await postFrom('203.0.113.7', { device: uuid(80), track: 'imam', answers: many(10) }, env)).status, 200);
+
+/* ── ما أُصلِح من الملحوظاتِ المتوسّطة ──────────────────────────────── */
+
+console.log('\nترويسةُ الأصلِ بلا ضبط');
+// كانت تُبعَث خاويةً (`allow-origin: `) فيردُّ المتصفّحُ كلَّ شيءٍ صامتاً —
+// حتى النبضة. والصوابُ ألّا تُبعَث أصلاً، فيُعطي المتصفّحُ خطأَه المعروف.
+{
+  const bare = { ...env, ALLOWED_ORIGIN: '' };
+  const res = await worker.fetch(
+    new Request('https://x.test/health', { headers: { origin: 'https://example.test' } }), bare);
+  is('لا تُبعَث ترويسةُ أصلٍ خاوية', res.headers.get('access-control-allow-origin'), null);
+  is('والنبضةُ تقول إنّ الأصلَ غيرُ مضبوط', (await res.json()).originSet, false);
+  const set = await (await call('/health')).json();
+  is('وتقولُ إنّه مضبوطٌ حيث ضُبِط', set.originSet, true);
+}
+
+console.log('\nحدُّ تجريبِ مفتاحِ المشرف');
+// كان يُجرَّب بلا نهايةٍ ولا أثر — وهو القُفلُ الحقيقيُّ في المشروع.
+{
+  const tryKey = (ip, key) => worker.fetch(new Request('https://x.test/stats', {
+    headers: { origin: 'https://example.test', 'x-admin-key': key, 'CF-Connecting-IP': ip },
+  }), salted);
+  let got429 = 0;
+  for (let i = 0; i < 60; i += 1) {
+    if ((await tryKey('192.0.2.50', `guess-${i}`)).status === 429) got429 += 1;
+  }
+  is('تجريبُ المفتاحِ يُردُّ بعد بلوغِ الحدّ', got429 > 0, true);
+  is('والمفتاحُ الصحيحُ يُقبَل بعدَه — العدُّ للإخفاقِ وحدَه',
+    (await tryKey('192.0.2.50', env.ADMIN_KEY)).status, 200);
+  is('وعنوانٌ آخَرُ لا يمسُّه حدُّ غيرِه',
+    (await tryKey('192.0.2.77', 'wrong')).status, 401);
+}
+
+console.log('\nحجمُ الجسم');
+// كان يُفَكُّ الجسمُ كلُّه قبلَ أيِّ حدٍّ على حجمه.
+is('جسمٌ أكبرُ من الحدِّ يُردُّ على الترويسةِ قبل الفكّ',
+  (await worker.fetch(new Request('https://x.test/answers', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: 'https://example.test',
+      'content-length': String(300_000) },
+    body: JSON.stringify({ device: uuid(1), track: 'imam', answers: [] }),
+  }), env)).status, 413);
+
+console.log('\nمدّةُ بقاءِ الصفوف');
+// لم يكن لما وصلَ الخادمَ مدّةٌ ولا سبيلٌ إلى محوِه، والنصُّ المعروضُ على
+// الطالبِ يُفهَم محواً. فصار يُمحى بمضيِّ عام.
+{
+  const old = Date.now() - 400 * 86_400_000;
+  db.prepare('INSERT OR REPLACE INTO answers (device, question, score, track, at) VALUES (?,?,?,?,?)')
+    .run(uuid(99), 'MTH-001', 1, 'imam', old);
+  db.prepare('INSERT OR REPLACE INTO devices (device, track, first, last) VALUES (?,?,?,?)')
+    .run(uuid(99), 'imam', old, old);
+  const before = db.prepare('SELECT COUNT(*) AS n FROM answers WHERE at < ?')
+    .get(Date.now() - 365 * 86_400_000).n;
+  is('صفٌّ عمرُه أكثرُ من عامٍ موجودٌ قبل الكنس', before > 0, true);
+  // الكنسُ عَرَضيٌّ (١٪) فيُستدعى حتى يقع — ولا يُنتظَر حظٌّ في فحص.
+  for (let i = 0; i < 2000; i += 1) {
+    await post({ device: uuid(1), track: 'imam', answers: [{ id: 'MTH-001', score: 1 }] });
+    if (!db.prepare('SELECT COUNT(*) AS n FROM answers WHERE at < ?')
+      .get(Date.now() - 365 * 86_400_000).n) break;
+  }
+  is('وبعد الكنسِ لا يبقى', db.prepare('SELECT COUNT(*) AS n FROM answers WHERE at < ?')
+    .get(Date.now() - 365 * 86_400_000).n, 0);
+  is('وجهازُه مُحي معه', db.prepare('SELECT COUNT(*) AS n FROM devices WHERE device = ?')
+    .get(uuid(99)).n, 0);
+}
 
 console.log(`\n=== نجح ${pass} · فشل ${fail} ===`);
 process.exit(fail ? 1 : 0);

@@ -62,7 +62,51 @@ export default function adminScreen({ section = null } = {}) {
 
 /* ── أرقامُ الطلاب ───────────────────────────────────────────────────── */
 
+/*
+ * ── مفتاحُ الخادمِ: أين يُحفَظ، ومتى يُمحى ──────────────────────────────
+ *
+ * هذا **القُفلُ الحقيقيُّ** في المشروع — لا كلمةُ الدخولِ في `owner.js`، فتلك
+ * سِترٌ على شاشاتٍ كلُّها في الجهاز أصلاً. وأرقامُ الطلابِ لا تنزل إلا بهذا،
+ * ويُطابَق عند الخادم.
+ *
+ * وكان يُحفَظ في `localStorage` صريحاً ويبقى **أبداً**: لا «الخروج» في
+ * `owner.signOut` يمحوه، ولا «امسح تقدّمي» يمسّه. فمن فتح اللوحةَ على جهازِ
+ * أخيه أو على حاسوبِ المسجدِ ثمّ خرج، تركَ المفتاحَ مكتوباً فيه لمن جاء بعده.
+ *
+ * والتلخيصُ لا يُفيد ههنا (بخلافِ كلمةِ الدخول): المفتاحُ يُرسَل إلى الخادمِ
+ * كما هو، فلا بدَّ من صريحه في الجهاز. فالعلاجُ في **العُمر** لا في الصورة:
+ *
+ *   • الأصلُ `sessionStorage` — يموت بإغلاقِ اللسان. وهو ما يريده من فتح
+ *     اللوحةَ مرّةً لينظر.
+ *   • ومن اختار «احفظه في هذا الجهاز» صراحةً فـ`localStorage` — ويُقال له
+ *     في موضعه إنّه يبقى حتى يخرج.
+ *   • ويُمحى الاثنانِ معاً في `owner.signOut` وفي `store.reset`.
+ */
 const KEY_STORE = 'awqaf-prep/adminKey';
+
+/** يُقرَأ من الجلسةِ أوّلاً ثمّ من الجهاز — فما حُفِظ للجلسةِ أحدثُ وأولى. */
+export function adminKey() {
+  try {
+    return sessionStorage.getItem(KEY_STORE) || localStorage.getItem(KEY_STORE) || '';
+  } catch {
+    return '';
+  }
+}
+
+/** يُحفَظ في الجلسةِ إلا أن يطلب المشرفُ بقاءَه في الجهاز. */
+export function setAdminKey(value, remember) {
+  try {
+    sessionStorage.setItem(KEY_STORE, value);
+    if (remember) localStorage.setItem(KEY_STORE, value);
+    else localStorage.removeItem(KEY_STORE);
+  } catch { /* تخزينٌ محجوب — يبقى المفتاحُ لهذا الطلبِ وحدَه */ }
+}
+
+/** يُمحى من الموضعَين — يُنادى من الخروجِ ومن «امسح تقدّمي». */
+export function clearAdminKey() {
+  try { sessionStorage.removeItem(KEY_STORE); } catch { /* لا شيء */ }
+  try { localStorage.removeItem(KEY_STORE); } catch { /* لا شيء */ }
+}
 
 /**
  * أرقامُ الطلاب المجمَّعة — تُجلَب من الخادم بمفتاحِ المشرف.
@@ -88,24 +132,33 @@ function studentStats(all) {
         const input = el('input.searchbar', {
           type: 'password', placeholder: 'مفتاح المشرف', 'aria-label': 'مفتاح المشرف',
         });
+        const remember = el('input', { type: 'checkbox', id: 'adminRemember' });
         const go_ = () => {
           if (!input.value.trim()) return;
-          try { localStorage.setItem(KEY_STORE, input.value.trim()); } catch { /* لا شيء */ }
+          setAdminKey(input.value.trim(), remember.checked);
           load();
         };
         input.addEventListener('keydown', (e) => { if (e.key === 'Enter') go_(); });
-        const wrap = el('div', { style: { display: 'flex', flexDirection: 'column', gap: '10px' } }, [
+        return el('div', { style: { display: 'flex', flexDirection: 'column', gap: '10px' } }, [
           input,
+          el('label', {
+            htmlFor: 'adminRemember',
+            style: {
+              display: 'flex', alignItems: 'center', gap: '9px', cursor: 'pointer',
+              fontSize: '12.5px', color: 'var(--ink-5)', minHeight: '44px',
+            },
+          }, [remember, 'احفظه في هذا الجهاز']),
+          el('span.fine', { style: { textAlign: 'start' } },
+            'وبلا حفظٍ يبقى ما دام هذا اللسانُ مفتوحاً ثمّ يُنسى — وهو الأسلمُ '
+            + 'على جهازٍ ليس لك وحدك.'),
           el('button.btn', { onclick: go_ }, 'افتح'),
         ]);
-        return wrap;
       })(),
     );
   };
 
   const load = async () => {
-    let key = '';
-    try { key = localStorage.getItem(KEY_STORE) || ''; } catch { /* لا شيء */ }
+    const key = adminKey();
     if (!key) return ask();
 
     box.replaceChildren(el('span.fine', 'تُجلَب…'));
@@ -117,7 +170,7 @@ function studentStats(all) {
         el('span.fine', { style: { color: 'var(--wrong)', textAlign: 'start' } },
           String(e.message || e)),
         el('button.btn.btn--ghost', {
-          onclick: () => { try { localStorage.removeItem(KEY_STORE); } catch { /* لا شيء */ } ask(); },
+          onclick: () => { clearAdminKey(); ask(); },
         }, 'غيّر المفتاح'),
       );
     }

@@ -22,15 +22,32 @@
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
 
 /** الأصولُ المسموحُ لها بالإرسال. تُضبَط في `wrangler.toml` ← `ALLOWED_ORIGIN`. */
+const allowedOrigins = (env) =>
+  (env.ALLOWED_ORIGIN || '').split(',').map((s) => s.trim()).filter(Boolean);
+
+/**
+ * ترويسةُ CORS — وترويسةٌ **فارغةٌ** ليست كترويسةٍ غائبة.
+ *
+ * و`wrangler.toml` يُشحَن بـ`ALLOWED_ORIGIN = ""`، فكانت القائمةُ فارغةً فيُبعَث
+ * `access-control-allow-origin: ` خالياً. والمتصفّحُ يردُّ كلَّ طلبٍ عندها —
+ * حتى `/health` — ورسالتُه في الطرفيّةِ لا تدلُّ على السبب. فينشُر صاحبُ
+ * التطبيقِ الخادمَ، ويراه يعمل بـ`curl`، ولا يصل من المتصفّحِ صفٌّ واحد، ولا
+ * شيءَ في التطبيقِ يقول لِمَ — لأنّ `sync.flush` يبتلع الخطأَ صامتاً بقصد.
+ *
+ * فلا تُبعَث الترويسةُ فارغةً: إن لم يُضبَط شيءٌ تُحذَف، فيُعطي المتصفّحُ خطأَ
+ * CORS المعروفَ الذي يُبحَث عنه، وتقول `/health` صريحاً إنّ الضبطَ ناقص.
+ */
 function corsHeaders(env, origin) {
-  const allowed = (env.ALLOWED_ORIGIN || '').split(',').map((s) => s.trim()).filter(Boolean);
-  const ok = allowed.includes('*') || allowed.includes(origin);
-  return {
-    'access-control-allow-origin': ok ? origin : (allowed[0] || ''),
+  const allowed = allowedOrigins(env);
+  const base = {
     'access-control-allow-methods': 'GET, POST, OPTIONS',
     'access-control-allow-headers': 'content-type, x-admin-key',
     'access-control-max-age': '86400',
   };
+  if (!allowed.length) return base;                    // غيرُ مضبوط — لا ترويسةَ خاوية
+  if (allowed.includes('*')) return { ...base, 'access-control-allow-origin': '*' };
+  if (allowed.includes(origin)) return { ...base, 'access-control-allow-origin': origin };
+  return { ...base, 'access-control-allow-origin': allowed[0], vary: 'Origin' };
 }
 
 const json = (body, status, extra) =>
@@ -51,7 +68,15 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
 
     try {
-      if (url.pathname === '/health') return json({ ok: true }, 200, cors);
+      // النبضةُ تقول حالَ الضبطِ أيضاً، فيُعرَف النقصُ من الطرفيّةِ بلا تخمين.
+      if (url.pathname === '/health') {
+        return json({
+          ok: true,
+          originSet: allowedOrigins(env).length > 0,
+          adminKeySet: !!env.ADMIN_KEY,
+          rateLimitSet: !!env.IP_SALT,
+        }, 200, cors);
+      }
       if (url.pathname === '/answers' && request.method === 'POST') return postAnswers(request, env, cors);
       if (url.pathname === '/stats' && request.method === 'GET') return getStats(request, env, cors);
       return json({ error: 'لا مسارَ بهذا الاسم' }, 404, cors);
@@ -143,7 +168,7 @@ async function bucketOf(request, env, day) {
  * والزيادةُ `INSERT … ON CONFLICT DO UPDATE` في طلبٍ واحد، فلا تُقرَأ ثمّ
  * تُكتَب — إذ طلبانِ متوازيانِ يقرآنِ العددَ نفسَه فيتجاوزانِ السقفَ معاً.
  */
-async function withinQuota(env, bucket, day, count) {
+async function withinQuota(env, bucket, day, count, cap = MAX_PER_DAY) {
   if (!bucket) return true;
   try {
     const row = await env.DB.prepare(
@@ -155,13 +180,30 @@ async function withinQuota(env, bucket, day, count) {
     if (Math.random() < 0.02) {
       await env.DB.prepare('DELETE FROM quota WHERE day < ?').bind(day - 1).run();
     }
-    return !row || row.n <= MAX_PER_DAY;
+    return !row || row.n <= cap;
   } catch {
     return true;   // القاعدةُ تعذّرت — لا يُمنَع الإرسالُ لأجلِ عدّاد
   }
 }
 
+/**
+ * أكبرُ جسمٍ يُقبَل — ٥٠٠ إجابةٍ لا تبلغ ١٥٠ ك.ب بسعةٍ واسعة.
+ *
+ * وكان `request.json()` يُفَكُّ الجسمُ كلُّه **قبلَ** أيِّ حدٍّ على حجمه، وحدُّ
+ * `MAX_BATCH` يقع بعد الفكِّ لا قبله. فمن بعثَ مصفوفةً فيها مليونُ عنصرٍ
+ * أُنفِق عليه الوقتُ والذاكرةُ كلَّها ثمّ رُدَّ. وردُّه على الترويسةِ أرخصُ
+ * من ردِّه بعد الفكّ.
+ *
+ * و`content-length` لا تُؤتمَن وحدَها (تُكذَب أو تغيب في الإرسالِ المتدفّق)،
+ * لكنّها تردُّ الغالبَ بلا كلفةٍ، وما بعدَها يردُّه `MAX_BATCH`.
+ */
+const MAX_BODY = 262_144;
+
 async function postAnswers(request, env, cors) {
+  const len = Number(request.headers.get('content-length'));
+  if (Number.isFinite(len) && len > MAX_BODY) {
+    return json({ error: 'الجسمُ أكبرُ من الحدّ' }, 413, cors);
+  }
   const body = await request.json().catch(() => null);
   if (!body || !isUuid(body.device) || !Array.isArray(body.answers)) {
     return json({ error: 'دفعةٌ غير صالحة' }, 400, cors);
@@ -212,7 +254,43 @@ async function postAnswers(request, env, cors) {
     ).bind(body.device, body.track, now, now),
   ]);
 
+  await sweep(env, now);
   return json({ saved: rows.length }, 200, cors);
+}
+
+/**
+ * مدّةُ بقاءِ الصفِّ — سنةٌ ثمّ يُمحى.
+ *
+ * ── لماذا حدٌّ أصلاً ────────────────────────────────────────────────────
+ *
+ * كان ما وصلَ الخادمَ يبقى **أبداً**: لا مدّةَ، ولا سبيلَ إلى محوِه. ويُقال
+ * للطالبِ في «حسابي»: «ومسحُ تقدّمك يمحو ذلك الرقمَ فيُولَّد غيرُه» — وهو
+ * صادقٌ في لفظه، لكنّه يُفهَم محواً، والمحوُ لا يقع: تبقى صفوفُه في الجدولِ
+ * موصولةً بمعرِّفِه القديمِ إلى غيرِ نهاية.
+ *
+ * ولا يملك الخادمُ محوَها **بطلبِ الطالب**، لأنّه لا يعرف من هو — وذاك مقصودٌ
+ * لا نقص: لو أمكنَ أن يُطلَب المحوُ بالمعرِّفِ لأمكنَ أن يُطلَب غيرُه به،
+ * ولصار المعرِّفُ مفتاحاً على شخص. فالبديلُ الصحيحُ حدُّ مدّةٍ يُطبَّق على
+ * الجميعِ بلا استثناءٍ ولا سؤال.
+ *
+ * وسنةٌ لأنّ الغرضَ كلَّه معرفةُ «أيُّ سؤالٍ يصعب على الناس» — وذاك يُعرَف من
+ * موسمٍ واحد، ولا يحتاج إلى حفظِ ما قبله.
+ *
+ * والمحوُ يقع عَرَضاً مع الإرسالِ (بضعةٌ في المائةِ من الطلبات) لا في مُجدوِلٍ
+ * مستقلّ: الطبقةُ المجانيّةُ لا تضمن `cron`، وحدُّ مدّةٍ لا يعمل إلا بضبطٍ
+ * إضافيٍّ قد يُنسى ليس حدّاً.
+ */
+const KEEP_DAYS = 365;
+
+async function sweep(env, now) {
+  if (Math.random() >= 0.01) return;
+  const cutoff = now - KEEP_DAYS * 86_400_000;
+  try {
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM answers WHERE at < ?').bind(cutoff),
+      env.DB.prepare('DELETE FROM devices WHERE last < ?').bind(cutoff),
+    ]);
+  } catch { /* المحوُ يُعاد في طلبٍ آخَر — لا يُفشَل الإرسالُ لأجله */ }
 }
 
 /* ── الأرقامُ المجمَّعة ──────────────────────────────────────────────── */
@@ -242,8 +320,29 @@ async function postAnswers(request, env, cors) {
  */
 const MIN_ANSWERS = 5;
 
+/**
+ * أكثرُ ما يُحاوَل من مصدرٍ واحدٍ في اليوم على `/stats`.
+ *
+ * وكان البابُ مفتوحاً بلا عدّ: يُجرَّب المفتاحُ ألفَ مرّةٍ في الدقيقةِ بلا مانعٍ
+ * ولا أثرٍ يُرى — وصاحبُ التطبيقِ لا يعلم أنّ أحداً يحاول، لأنّه لا سجلَّ ولا
+ * عدّاد. وهذا هو القُفلُ الحقيقيُّ في المشروعِ كلِّه (أرقامُ الطلابِ خلفَه)،
+ * فبقاؤه بلا حدٍّ أشدُّ من بقاءِ `/answers` بلا حدّ.
+ *
+ * والعدُّ على التلخيصِ اليوميِّ نفسِه الذي في `/answers` — لا يُخزَّن عنوانٌ.
+ * وأربعون محاولةً في اليوم تكفي مشرفاً أخطأ في النسخ، وتُعجِز من يُجرِّب.
+ *
+ * ويُعَدُّ **الخطأُ وحدَه**: من معه المفتاحُ الصحيحُ يفتح الشاشةَ كما يشاء.
+ */
+const MAX_KEY_TRIES = 40;
+
 async function getStats(request, env, cors) {
-  if (!env.ADMIN_KEY || request.headers.get('x-admin-key') !== env.ADMIN_KEY) {
+  const given = request.headers.get('x-admin-key');
+  if (!env.ADMIN_KEY || given !== env.ADMIN_KEY) {
+    const day = Math.floor(Date.now() / 86_400_000);
+    const bucket = await bucketOf(request, env, day);
+    // يُعَدُّ الإخفاقُ حتى في حالِ الضبطِ الناقص، فلا يُترَك بابٌ بلا عدّاد.
+    const within = await withinQuota(env, bucket ? `key:${bucket}` : null, day, 1, MAX_KEY_TRIES);
+    if (!within) return json({ error: 'كثُرت المحاولاتُ من هذا المصدر' }, 429, cors);
     return json({ error: 'مفتاحُ المشرف مطلوب' }, 401, cors);
   }
 

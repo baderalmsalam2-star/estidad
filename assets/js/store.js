@@ -52,10 +52,72 @@ const empty = () => ({
   reminderAt: null,
 });
 
+/**
+ * ما في `localStorage` ليس ممّا يُوثَق بنوعِه.
+ *
+ * وكان `{ ...empty(), ...JSON.parse(raw) }` يقبل ما وجد كما وجده: فإن كان
+ * `answers` نصّاً — من نسخةٍ أقدم، أو تحريرٍ بيدٍ في أدواتِ المتصفّح، أو كتابةٍ
+ * انقطعت في نصفها — سقطَ كلُّ ما يمرُّ عليه (`Object.values(cache.answers)`)،
+ * وإن كان `dailyGoal` نصّاً غيرَ رقميٍّ خرجت `NaN` إلى الشاشةِ فقُرِئت
+ * «NaN / ٢٠» ووقفَ الشريطُ بعرضٍ `NaN%`.
+ *
+ * والأسوأُ أنّه لا مخرجَ منه: العَطَبُ في التخزينِ فيعود مع كلِّ فتحة.
+ *
+ * فيُفحَص كلُّ حقلٍ على نوعه، وما خالفَ رُدَّ إلى أصلِه بلا ضجّة. ولا يُمحى
+ * الباقي لأجلِ حقلٍ فسد: الطالبُ يحتفظ بما صحَّ من تقدُّمه.
+ */
+function sane(raw) {
+  const d = empty();
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return d;
+
+  const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : null);
+  const num = (v, min, max, fallback) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
+  };
+
+  if (typeof raw.track === 'string') d.track = raw.track;
+  if (typeof raw.reminderAt === 'string' && /^\d{1,2}:\d{2}$/.test(raw.reminderAt)) {
+    d.reminderAt = raw.reminderAt;
+  }
+  d.dailyGoal = num(raw.dailyGoal, 5, 100, 20);
+  d.textScale = num(raw.textScale, 1, 2, 1);
+  if (Array.isArray(raw.exams)) d.exams = raw.exams.filter((x) => obj(x)).slice(0, 20);
+  if (obj(raw.resume)) d.resume = raw.resume;
+  if (obj(raw.memorized)) d.memorized = obj(raw.memorized);
+  if (obj(raw.reviews)) d.reviews = obj(raw.reviews);
+
+  // الإجاباتُ أثقلُ ما فيه — يُفحَص كلُّ صفٍّ، ويُسقَط الفاسدُ وحدَه.
+  const answers = obj(raw.answers);
+  if (answers) {
+    for (const [id, a] of Object.entries(answers)) {
+      if (!obj(a)) continue;
+      const score = Number(a.score);
+      const at = Number(a.at);
+      if (!Number.isFinite(score) || !Number.isFinite(at)) continue;
+      d.answers[id] = {
+        score: Math.min(1, Math.max(0, score)),
+        at,
+        subject: typeof a.subject === 'string' ? a.subject : undefined,
+        type: typeof a.type === 'string' ? a.type : undefined,
+      };
+    }
+  }
+
+  const days = obj(raw.days);
+  if (days) {
+    for (const [k, n] of Object.entries(days)) {
+      const v = Number(n);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(k) && Number.isFinite(v) && v > 0) d.days[k] = Math.round(v);
+    }
+  }
+  return d;
+}
+
 function read() {
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? { ...empty(), ...JSON.parse(raw) } : empty();
+    return raw ? sane(JSON.parse(raw)) : empty();
   } catch {
     return empty();
   }
@@ -63,11 +125,24 @@ function read() {
 
 let cache = read();
 
+/**
+ * أخفقتِ الكتابةُ في هذه الجلسة؟ يُعرَض للطالبِ في الرئيسيةِ إن وقع.
+ *
+ * وكان الإخفاقُ يُبتلَع صامتاً: يُذاكِر الإمامُ ساعةً في تصفُّحٍ خاصٍّ أو على
+ * تخزينٍ ممتلئ، ثمّ يُغلِق التطبيقَ فيجد كلَّ شيءٍ كما تركه أوّلَ مرّة — ولا
+ * سطرَ واحدٌ قال له إنّ شيئاً لا يُحفَظ. فلا يُلام على ظنِّه أنّ التطبيقَ أكلَ
+ * عملَه. والصمتُ ههنا أسوأُ من الخلل.
+ */
+let writeFailed = false;
+export const storageBroken = () => writeFailed;
+
 function write() {
   try {
     localStorage.setItem(KEY, JSON.stringify(cache));
+    writeFailed = false;
   } catch {
-    /* التخزين ممتلئ أو محجوب — التطبيق يظل يعمل بلا حفظ */
+    // التخزين ممتلئ أو محجوب — يُرفَع العلمُ وتُخبِر به الرئيسية.
+    writeFailed = true;
   }
 }
 
@@ -361,6 +436,11 @@ export function reset() {
   }
   // مسحُ التقدُّم يمحو معرِّفَ الجهاز أيضاً، فيُولَّد غيرُه ولا يوصَل بالقديم.
   sync.reset();
+  // ومفتاحُ خادمِ الإحصاء — إن كان صاحبُ التطبيقِ فتح اللوحةَ في هذا الجهاز.
+  // «امسح تقدّمي» يُفهَم محواً لكلِّ ما تركه المستعملُ، والمفتاحُ أخطرُه.
+  for (const store of [globalThis.localStorage, globalThis.sessionStorage]) {
+    try { store?.removeItem('awqaf-prep/adminKey'); } catch { /* لا شيء */ }
+  }
   // وتسجيلاتُ التسميعِ في IndexedDB لا في localStorage، فلا يمحوها ما سبق —
   // وهي صوتُ الطالبِ نفسِه، وأولى ما يُمحى إذا قال «امسح تقدّمي».
   return audio.wipe();
