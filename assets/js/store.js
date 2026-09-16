@@ -1,6 +1,7 @@
 // تقدّم الطالب — محليٌّ على الجهاز وحده. لا حساب، ولا خادم، ولا بيانات شخصية.
 
 import * as sync from './sync.js';
+import * as audio from './audio.js';
 
 const KEY = 'awqaf-prep/v1';
 
@@ -309,4 +310,7 @@ export function reset() {
   }
   // مسحُ التقدُّم يمحو معرِّفَ الجهاز أيضاً، فيُولَّد غيرُه ولا يوصَل بالقديم.
   sync.reset();
+  // وتسجيلاتُ التسميعِ في IndexedDB لا في localStorage، فلا يمحوها ما سبق —
+  // وهي صوتُ الطالبِ نفسِه، وأولى ما يُمحى إذا قال «امسح تقدّمي».
+  return audio.wipe();
 }

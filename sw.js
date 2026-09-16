@@ -7,12 +7,36 @@
  * والسياسةُ سياستان:
  *   • الهيكلُ (index.html والكود والخطوط) — «من المخزن أوّلاً» ليُقلِع فوراً،
  *     ويُحدَّث في الخلفيةِ للزيارةِ التالية (stale-while-revalidate).
- *   • كتبُ PDF — لا تُخزَّن مسبقاً (٢٧ م.ب)، بل ما فُتح منها فعلاً يُحفَظ.
+ *   • كتبُ PDF وصورُ الصفحات — لا تُخزَّن مسبقاً (٢٧ م.ب و١٢ م.ب)، بل ما فُتح
+ *     منها فعلاً يُحفَظ.
  *
  * وكلُّ تغييرٍ في الملفاتِ يُوجِب رفعَ CACHE — وإلا بقي الطالبُ على نسخةٍ قديمة.
+ *
+ * ── مخزنان لا مخزنٌ واحد ─────────────────────────────────────────────────
+ *
+ * والمخزنُ مخزنان، لأنّ لهما عُمرَين مختلفَين:
+ *
+ *   • `CACHE` — الهيكل. اسمُه مرقَّمٌ، ويُرفَع رقمُه مع كلِّ نشر، فيُمحى القديمُ
+ *     عند التنشيط. وهذا هو المقصود: الكودُ الجديدُ لا يُخالِطه قديم.
+ *
+ *   • `MEDIA` — ما جلبه الطالبُ بنفسِه: كتابٌ فتحه، وصفحةٌ قابلها. اسمُه **بلا
+ *     رقم** فلا يُمحى عند النشر أبداً.
+ *
+ * وكانا مخزناً واحداً، فكان كلُّ نشرٍ يمحو ما حمَّله الطالبُ: إمامٌ فتح كتابَه
+ * في بيته ليقرأه في مسجدٍ لا شبكةَ فيه، فأُصلِح في التطبيقِ خطأُ إملاءٍ، فوجد
+ * الكتابَ ذاهباً ولا شبكةَ تُعيده. وذاك ثمنٌ لا يُدفَع عن تصحيحِ حرف.
+ *
+ * وملفاتُ الوسائطِ هذه لا تتغيّر لعنوانها: `daleel-altalib-16.jpg` صورةُ تلك
+ * الصفحةِ اليومَ وبعدَ سنة. فلا تُراجَع على الشبكةِ بعدَ خزنها، بخلافِ الهيكل.
  */
 
-const CACHE = 'awqaf-prep-v20';
+const CACHE = 'awqaf-prep-v21';
+
+/** مخزنُ ما جلبه الطالبُ بنفسِه — بلا رقمٍ فلا يُمحى مع النشر. */
+const MEDIA = 'awqaf-prep-media';
+
+/** أهذا الطلبُ من وسائطِ الطالبِ (كتابٌ أو صورةُ صفحة)؟ */
+const isMedia = (path) => /\/books\/.*\.pdf$/i.test(path) || /\/books\/pages\//.test(path);
 
 /** الهيكلُ الذي لا يقومُ التطبيقُ بدونه — يُجلَب كلُّه عند التنصيب. */
 const SHELL = [
@@ -56,6 +80,18 @@ const SHELL = [
   'assets/fonts/plex-mono-400-latin.woff2',
   'assets/fonts/amiri-quran-400-arabic.woff2',
   'data/manifest.json',
+
+  /*
+   * أحكامُ التجويد (٩٠٨ ك.ب) — ثقيلةٌ لكنّها في الهيكلِ لا في الوسائط.
+   *
+   * لأنّها ليست زينةً تُفقَد فتُحتمَل: شاشتا **التجويد** و**التسميع** كلتاهما
+   * تستدعيان `data.loadTajweed()` أوّلَ ما تُفتَحان، فإن لم يصل الملفُّ لم
+   * تُرسَم الشاشةُ أصلاً. وكان خارجَ التخزينِ فكانت الشاشتانِ ميّتتَين بلا
+   * شبكةٍ — وهما من أنفعِ ما في التطبيقِ للإمامِ في مسجده.
+   *
+   * وثِقلُه يُدفَع مرّةً عند التنصيب، وهو دون ثُلثِ ملفِّ خطٍّ واحدٍ من خطوطنا.
+   */
+  'data/tajweed/juz-amma-rulings.json',
 ];
 
 /**
@@ -104,7 +140,11 @@ self.addEventListener('install', (e) => {
 
 self.addEventListener('activate', (e) => {
   e.waitUntil((async () => {
-    for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k);
+    // يُمحى الهيكلُ القديمُ وحدَه. و`MEDIA` يُستثنى صريحاً: فيه كتبُ الطالبِ
+    // وصفحاتُه، وليس لنا أن نمحوَها عنه كلَّما صحّحنا سطراً في الكود.
+    for (const k of await caches.keys()) {
+      if (k !== CACHE && k !== MEDIA) await caches.delete(k);
+    }
     await self.clients.claim();
   })());
 });
@@ -115,6 +155,27 @@ self.addEventListener('fetch', (e) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
+  // وسائطُ الطالبِ: من مخزنِها الدائم، ولا تُراجَع على الشبكةِ بعدَ خزنها —
+  // فمحتوى `…-16.jpg` لا يتغيّر، ومراجعتُه إنفاقُ بياناتٍ في غير موضعه.
+  if (isMedia(url.pathname)) {
+    e.respondWith((async () => {
+      const media = await caches.open(MEDIA);
+      const hit = await media.match(request, { ignoreSearch: true });
+      if (hit) return hit;
+      try {
+        const res = await fetch(request);
+        if (res && res.ok && res.type === 'basic') media.put(request, res.clone());
+        return res;
+      } catch {
+        return new Response('لا شبكةَ، ولم يُحمَّل هذا الملفُّ بعدُ.', {
+          status: 504,
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        });
+      }
+    })());
+    return;
+  }
 
   e.respondWith((async () => {
     const cache = await caches.open(CACHE);

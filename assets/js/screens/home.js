@@ -12,7 +12,7 @@ export default function homeScreen() {
   const mistakes = store.mistakes(pool);
   const kept = store.correctOnes(pool).length;
   const resume = store.get().resume;
-  const label = data.manifest().tracks[track].label;
+  const label = data.trackLabel(track);
 
   const exam = data.EXAM_BLUEPRINT.reduce(
     (n, b) => n + (data.questionsIn(track, b.subject).length ? b.count : 0),

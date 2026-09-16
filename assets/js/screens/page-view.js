@@ -109,14 +109,32 @@ export function openPage(ref) {
 
     const body = el('div', { style: { flex: '1', minHeight: '0', overflowY: 'auto', padding: '0 20px 4px' } }, img);
     img.addEventListener('error', () => {
+      /*
+       * السببُ يُقال على وجهِه، ولا يُخلَط سببٌ بسبب.
+       *
+       * وكانت الرسالةُ واحدةً: «هذه الصفحة غير مرسومة» — تُقال للإمامِ في مسجدٍ
+       * لا شبكةَ فيه، والصفحةُ **مرسومةٌ** وموجودةٌ على الخادم، وإنّما لم
+       * تُحمَّل بعد. فيُصدَّق أنّها ناقصةٌ من التطبيق، ويَكِلُّ عن طلبها ثانيةً
+       * حيث تُنال — وهذا ضررُ الخبرِ الخاطئ، لا ضررُ انقطاعِ الشبكة.
+       *
+       * وثلاثةُ أسبابٍ لا رابعَ لها: نسخةٌ تجريبيّةٌ لا صورَ فيها، أو انقطاعُ
+       * شبكةٍ وما خُزِّنت، أو كتابٌ ليس في التطبيقِ أصلاً.
+       */
+      const offline = !navigator.onLine;
+      const title = PREVIEW ? 'صور الصفحات ليست في النسخة التجريبية'
+        : offline ? 'لا شبكة — وهذه الصفحة لم تُحمَّل بعد'
+        : hasPdf ? 'هذه الصفحة غير مرسومة'
+        : `${bookTitle(ref.book)} غير مرفوعٍ داخل التطبيق`;
+      const note = PREVIEW
+        ? `المطلوب صفحة ${ar(page)} من ${bookTitle(ref.book)} — وهي في النسخة المنشورة كاملةً.`
+        : offline
+          ? `صفحة ${ar(page)} موجودةٌ في التطبيق، وتُفتَح وتبقى في جهازك إذا فتحتَها مرّةً والشبكةُ موصولة.`
+          : hasPdf ? 'افتح الكتاب كاملاً من الزرّ أدناه.'
+            : `المطلوب صفحة ${ar(page)}. افتح الكتاب من مرجعه الرسميّ أدناه.`;
+
       body.replaceChildren(el('div.card.card--sand', [
-        el('span', { style: { fontSize: '13.5px', fontWeight: '600', color: 'var(--sand-ink)' } },
-          PREVIEW ? 'صور الصفحات ليست في النسخة التجريبية'
-                  : hasPdf ? 'هذه الصفحة غير مرسومة' : `${bookTitle(ref.book)} غير مرفوعٍ داخل التطبيق`),
-        el('span.fine', { style: { color: 'var(--sand-ink2)' } },
-          PREVIEW ? `المطلوب صفحة ${ar(page)} من ${bookTitle(ref.book)} — وهي في النسخة المنشورة كاملةً.`
-                  : hasPdf ? 'افتح الكتاب كاملاً من الزرّ أدناه.'
-                           : `المطلوب صفحة ${ar(page)}. افتح الكتاب من مرجعه الرسميّ أدناه.`),
+        el('span', { style: { fontSize: '13.5px', fontWeight: '600', color: 'var(--sand-ink)' } }, title),
+        el('span.fine', { style: { color: 'var(--sand-ink2)' } }, note),
       ]), bookRefCard(ref.book));
     });
 

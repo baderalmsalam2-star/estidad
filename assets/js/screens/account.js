@@ -12,7 +12,7 @@ export default function accountScreen() {
   const track = store.get().track;
   const pool = data.forTrack(track);
   const subjects = store.bySubject(pool).sort((a, b) => b.mastery - a.mastery);
-  const label = data.manifest().tracks[track].label;
+  const label = data.trackLabel(track);
   const r = store.rank();
   const ch = store.chapters(pool);
 
@@ -79,8 +79,11 @@ export default function accountScreen() {
         ? 'تقدّمك محفوظٌ على جهازك وحده، ولا حسابَ لك ولا كلمةَ سرّ. وتسجيلات التسميع تُحذف تلقائياً بعد ٣٠ يوماً.'
         : 'تقدّمك محفوظٌ على جهازك وحده. لا حساب، ولا خادم، ولا بياناتٍ شخصية. وتسجيلات التسميع تُحذف تلقائياً بعد ٣٠ يوماً.'),
       el('button', {
-        onclick: () => {
-          if (confirm('سيُمحى تقدّمك كلّه من هذا الجهاز. أمتأكّد؟')) { store.reset(); go('track'); }
+        onclick: async () => {
+          if (!confirm('سيُمحى تقدّمك كلّه من هذا الجهاز — ومعه تسجيلات التسميع. أمتأكّد؟')) return;
+          // يُنتظَر محوُ التسجيلاتِ قبل الانتقال، فلا يُقال «مُحي» وهو يُمحى.
+          await store.reset();
+          go('track');
         },
         style: {
           font: 'inherit', fontSize: '13.5px', color: 'var(--wrong)', background: 'none',
@@ -108,9 +111,45 @@ function shareStatsCard() {
 
   const card = el('div.card', { style: { gap: '10px' } });
 
+  const what = 'تُرسَل درجاتُك على الأسئلة مجهولةً ليُعرَف أيُّ سؤالٍ يصعب على الناس فيُراجَع. '
+    + 'يُرسَل: رقمُ السؤال، والدرجة، والمسار، والوقت، ورقمٌ عشوائيٌّ يولّده جهازك لنفسه. '
+    + 'ولا يُرسَل اسمٌ ولا هاتفٌ ولا بريدٌ ولا موضع. ومسحُ تقدّمك يمحو ذلك الرقمَ فيُولَّد غيرُه.';
+
   const draw = () => {
     const on = sync.enabled();
     const waiting = sync.pending();
+
+    /*
+     * ما لم يُسأل الطالبُ بعدُ عُرِض عليه السؤالُ نفسُه بزرَّين، لا مفتاحٌ
+     * يجده مفتوحاً. فالفرقُ بين «أطفئها إن شئتَ» و«أتأذن؟» هو الفرقُ بين
+     * إذنٍ مُدَّعىً وإذنٍ مأخوذ — والأوّلُ لا يُؤخَذ بالسكوت.
+     */
+    if (!sync.decided()) {
+      card.replaceChildren(
+        el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'أتأذن بمشاركة الإحصاء؟'),
+        el('span.fine', { style: { textAlign: 'start' } }, what),
+        el('div', { style: { display: 'flex', gap: '8px', paddingTop: '2px' } }, [
+          el('button.chip', {
+            onclick: () => { sync.setEnabled(true); draw(); },
+            style: {
+              cursor: 'pointer', border: 'none', font: 'inherit', padding: '9px 18px',
+              background: 'var(--green)', color: 'var(--paper)', fontWeight: '600',
+            },
+          }, 'أذِنتُ'),
+          el('button.chip', {
+            onclick: () => { sync.setEnabled(false); draw(); },
+            style: {
+              cursor: 'pointer', border: 'none', font: 'inherit', padding: '9px 18px',
+              background: 'var(--surface)', color: 'var(--ink-3)',
+            },
+          }, 'لا، شكراً'),
+        ]),
+        el('span.fine', { style: { textAlign: 'start', color: 'var(--ink-5)' } },
+          'ولا يُرسَل شيءٌ حتى تأذن. والتطبيقُ يعمل كما هو على الحالَين.'),
+      );
+      return;
+    }
+
     card.replaceChildren(
       el('div.row-base', [
         el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'مشاركة الإحصاء'),
@@ -124,10 +163,7 @@ function shareStatsCard() {
           },
         }, on ? 'مفعَّلة' : 'مُطفأة'),
       ]),
-      el('span.fine', { style: { textAlign: 'start' } },
-        'تُرسَل درجاتُك على الأسئلة مجهولةً ليُعرَف أيُّ سؤالٍ يصعب على الناس فيُراجَع. '
-        + 'يُرسَل: رقمُ السؤال، والدرجة، والمسار، والوقت، ورقمٌ عشوائيٌّ يولّده جهازك لنفسه. '
-        + 'ولا يُرسَل اسمٌ ولا هاتفٌ ولا بريدٌ ولا موضع. ومسحُ تقدّمك يمحو ذلك الرقمَ فيُولَّد غيرُه.'),
+      el('span.fine', { style: { textAlign: 'start' } }, what),
       waiting
         ? el('span.fine', { style: { textAlign: 'start', color: 'var(--ink-5)' } },
             `${ar(waiting)} إجابةً في جهازك لم تُرسَل بعدُ.`)

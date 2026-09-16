@@ -270,6 +270,40 @@ let pageRef = () => null;
 let openPageLayer = () => {};
 let onNavigate = () => {};
 export const setNavigateHook = (fn) => { onNavigate = fn; };
+
+/* ── ما يُطفَأ عند تركِ الشاشة ─────────────────────────────────────────── */
+
+/**
+ * تسجيلُ ما يجب إطفاؤه إذا تركَ الطالبُ الشاشة — والميكروفونُ أوّلُه.
+ *
+ * فشاشةُ التسميعِ تفتح الميكروفونَ بـ`getUserMedia`، ولم تكن تُغلِقه إلا في
+ * `recorder.onstop` — أي إذا ضغط «أوقِف» بنفسه. فإن سحبَ سحبةَ الرجوعِ وهو
+ * يسجِّل، أو لمس تبويباً في الشريط، رُسِمت شاشةٌ أخرى **والميكروفونُ مفتوح**:
+ * النقطةُ الحمراءُ في شريطِ النظامِ باقيةٌ، والصوتُ يُلتقَط، والطالبُ يحسب أنّه
+ * خرج. وهذا في مسجدٍ بين الناسِ أشدُّ ما في البابِ كلِّه.
+ *
+ * فصار لكلِّ شاشةٍ أن تقول ما تُطفئه، ويُطفَأ عنها من مكانٍ واحدٍ لا تُنسى فيه:
+ * عند كلِّ انتقالٍ في `go`، وعند إخفاءِ الصفحةِ نفسِها (`pagehide`) — فالخروجُ
+ * من التطبيقِ تركٌ أيضاً.
+ *
+ * ولا يُطفَأ عند فتحِ طبقةِ صفحةِ الكتابِ وإغلاقها: الطالبُ لم يترك شاشته.
+ */
+const leaving = [];
+
+/** تُنادى من الشاشةِ لتقول: هذا ما يُطفَأ إذا تُرِكتُ. */
+export function onLeave(fn) {
+  if (typeof fn === 'function') leaving.push(fn);
+}
+
+function runLeave() {
+  // تُفرَغ القائمةُ أوّلاً: الإطفاءُ قد يرسم، والرسمُ قد يُسجِّل من جديد.
+  const fns = leaving.splice(0, leaving.length);
+  for (const fn of fns) {
+    try { fn(); } catch { /* إطفاءٌ يُخفِق لا يمنع الانتقال */ }
+  }
+}
+
+window.addEventListener('pagehide', runLeave);
 /** يحقنهما app.js تفادياً لدورة استيرادٍ بين ui وdata وscreens. */
 export const setPageRefResolver = (fn) => { pageRef = fn; };
 export const setPageOpener = (fn) => { openPageLayer = fn; };
@@ -356,6 +390,7 @@ export function go(name, params = {}) {
   const view = routes[name];
   if (!view) throw new Error(`لا توجد شاشة باسم ${name}`);
   onNavigate();
+  runLeave();
   remember(name, params);
   current = name;
 

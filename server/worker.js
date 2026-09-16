@@ -87,6 +87,80 @@ const MAX_PER_DEVICE = 6000;
  */
 const ID_SHAPE = /^[A-Z]{2,4}(-[A-Z]{2,4})?-\d{1,4}$/;
 
+/* ── حدُّ التكرارِ اليوميّ ─────────────────────────────────────────────── */
+
+/**
+ * سقفُ الصفوفِ من مصدرٍ واحدٍ في اليومِ الواحد.
+ *
+ * ── المشكلة ──────────────────────────────────────────────────────────────
+ *
+ * `POST /answers` مفتوحٌ بلا توثيق، ولا سبيلَ إلى توثيقِه: التطبيقُ ملفّاتٌ
+ * ساكنةٌ تنزل كلُّها إلى الجهاز، فأيُّ مفتاحٍ يُشحَن فيه مقروءٌ لمن فتح الكود.
+ * ولا حسابَ للطالبِ ولا كلمةَ سرّ — وذلك مقصودٌ لا نقص.
+ *
+ * فبقيت ثغرةٌ واحدة: حاسوبٌ يكتب حلقةً تخترع UUID جديداً في كلِّ طلب، فيُدخِل
+ * صفوفاً بلا حدّ. و`MAX_PER_DEVICE` لا يردُّه، لأنّ الجهازَ عندَه جديدٌ كلَّ
+ * مرّة. فتصير «أصعبُ الأسئلة» و«نسبةُ الصوابِ» في لوحةِ صاحبِ التطبيقِ من صنعِ
+ * المُرسِل، وهو لا يعلم — وخبرٌ خاطئٌ يُبنى عليه أسوأُ من لا خبر.
+ *
+ * ── وما ليس حلّاً ────────────────────────────────────────────────────────
+ *
+ * كان مكتوباً ههنا أنّ موضعَ الحدِّ حافّةُ Cloudflare وحدَها. وذلك نصفُ الحقّ:
+ * الحافّةُ أقوى وأرخص، لكنّها **ضبطٌ يدويٌّ في لوحةٍ خارج المستودع** — إن لم
+ * يُضبَط نُشِر الخادمُ مكشوفاً، ولا شيءَ في الكودِ يُنبِّه. فلا يُترَك الحدُّ
+ * لخُطوةٍ قد تُنسى.
+ *
+ * ── الحلُّ ههنا ──────────────────────────────────────────────────────────
+ *
+ * عدّادٌ يوميٌّ على مصدرِ الطلبِ، مُلخَّصاً لا صريحاً: يُلخَّص عنوانُ المُرسِل
+ * مع يومِه ومع مِلحٍ سرّيٍّ في `env.IP_SALT` تلخيصاً لا يُرَدُّ. فلا يُخزَّن
+ * عنوانٌ في القاعدةِ ولا في سجلّ، ولا يُوصَل يومٌ بيومٍ — إذ يتبدّل التلخيصُ
+ * مع اليوم. وهذا يُبقي وعدَ «لا يُرسَل موضعُ الطالب» قائماً.
+ *
+ * والسقفُ أُخِذ واسعاً: أكثرُ ما يُجيبه طالبٌ جادٌّ في يومٍ مئتانِ أو ثلاث،
+ * والبنكُ كلُّه ٤٠١٠. فألفانِ يستوعبان بيتاً فيه إخوةٌ على شبكةٍ واحدةٍ
+ * يُذاكرون جميعاً، ويَردُّ الحلقةَ التي تُدخِل مئةَ ألف.
+ *
+ * وإن غاب `IP_SALT` أو غاب العنوانُ لم يُمنَع الإرسال: الإحصاءُ ليس ممّا
+ * يُعطَّل به التطبيق، والسقفُ سقفُ إفسادٍ لا سقفُ أمان.
+ */
+const MAX_PER_DAY = 2000;
+
+/** تلخيصٌ لا يُرَدُّ: عنوانُ المُرسِل + يومُه + مِلحٌ سرّيّ. */
+async function bucketOf(request, env, day) {
+  const ip = request.headers.get('CF-Connecting-IP');
+  if (!ip || !env.IP_SALT) return null;
+  const buf = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(`${env.IP_SALT}|${day}|${ip}`),
+  );
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * يزيد العدّادَ ويُرجِع `false` إن تجاوز السقف.
+ *
+ * والزيادةُ `INSERT … ON CONFLICT DO UPDATE` في طلبٍ واحد، فلا تُقرَأ ثمّ
+ * تُكتَب — إذ طلبانِ متوازيانِ يقرآنِ العددَ نفسَه فيتجاوزانِ السقفَ معاً.
+ */
+async function withinQuota(env, bucket, day, count) {
+  if (!bucket) return true;
+  try {
+    const row = await env.DB.prepare(
+      'INSERT INTO quota (bucket, day, n) VALUES (?, ?, ?)'
+      + ' ON CONFLICT (bucket) DO UPDATE SET n = quota.n + excluded.n, day = excluded.day'
+      + ' RETURNING n',
+    ).bind(bucket, day, count).first();
+    // تنظيفُ ما مضى — رخيصٌ لأنّه على فهرسِ اليوم، ويمنع تراكمَ الصفوف.
+    if (Math.random() < 0.02) {
+      await env.DB.prepare('DELETE FROM quota WHERE day < ?').bind(day - 1).run();
+    }
+    return !row || row.n <= MAX_PER_DAY;
+  } catch {
+    return true;   // القاعدةُ تعذّرت — لا يُمنَع الإرسالُ لأجلِ عدّاد
+  }
+}
+
 async function postAnswers(request, env, cors) {
   const body = await request.json().catch(() => null);
   if (!body || !isUuid(body.device) || !Array.isArray(body.answers)) {
@@ -116,6 +190,13 @@ async function postAnswers(request, env, cors) {
     .bind(body.device).first();
   if (seen && seen.n >= MAX_PER_DEVICE) {
     return json({ error: 'بلغ هذا الجهازُ حدَّه' }, 429, cors);
+  }
+
+  // وسقفُ المصدرِ اليوميّ — وهو الذي يردُّ من يخترع جهازاً في كلِّ طلب.
+  const day = Math.floor(now / 86_400_000);
+  const bucket = await bucketOf(request, env, day);
+  if (!(await withinQuota(env, bucket, day, rows.length))) {
+    return json({ error: 'بُلِغ حدُّ اليومِ من هذا المصدر' }, 429, cors);
   }
 
   const put = env.DB.prepare(

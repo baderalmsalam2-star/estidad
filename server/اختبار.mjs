@@ -135,5 +135,49 @@ is('والصحيحُ صورةً يُقبَل',
   (await (await post({ device: uuid(9), track: 'imam',
     answers: [{ id: 'NHW-036', score: 1 }] })).json()).saved, 1);
 
+/* ── حدُّ التكرارِ اليوميّ ─────────────────────────────────────────────── */
+
+console.log('\nحدُّ المصدرِ اليوميّ');
+
+// المِلحُ والعنوانُ كلاهما لازم: بغيابِ أحدهما لا يُحسَب حدٌّ ولا يُمنَع إرسالٌ
+// — وهو ما تعمل به الفحوصُ كلُّها قبل هذا الموضع.
+const salted = { ...env, IP_SALT: 'pepper-for-test' };
+const postFrom = (ip, body, e = salted) => worker.fetch(new Request('https://x.test/answers', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json', origin: 'https://example.test', 'CF-Connecting-IP': ip },
+  body: JSON.stringify(body),
+}), e);
+
+const many = (n, from = 0) => Array.from({ length: n }, (_, i) => ({
+  id: `GEN-FQH-${String(((i + from) % 999) + 1).padStart(3, '0')}`, score: 1,
+}));
+
+// جهازٌ واحدٌ من عنوانٍ واحد: دفعتان دون السقفِ تُقبَلان.
+is('دفعةٌ من عنوانٍ جديدٍ تُقبَل',
+  (await (await postFrom('203.0.113.7', { device: uuid(40), track: 'imam', answers: many(400) })).json()).saved, 400);
+
+// ثمّ يُخترَع جهازٌ جديدٌ في كلِّ دفعةٍ — وهذا عينُ ما لا يردُّه سقفُ الجهاز.
+let blocked = 0;
+let accepted = 0;
+for (let k = 0; k < 6; k += 1) {
+  const res = await postFrom('203.0.113.7', { device: uuid(50 + k), track: 'imam', answers: many(400, k * 400) });
+  if (res.status === 429) blocked += 1; else accepted += 1;
+}
+is('اختراعُ جهازٍ في كلِّ دفعةٍ يُردُّ عند بلوغِ السقف', blocked > 0, true);
+is('وما قبل السقفِ قُبِل', accepted > 0, true);
+
+// وعنوانٌ آخَرُ لا يُعاقَب بذنبِ الأوّل — العدّادُ لكلِّ مصدرٍ وحدَه.
+is('عنوانٌ آخَرُ لا يمسُّه حدُّ غيرِه',
+  (await postFrom('198.51.100.9', { device: uuid(70), track: 'imam', answers: many(50) })).status, 200);
+
+// ولا يُخزَّن عنوانٌ في القاعدة، ولا ما يُرَدُّ إليه.
+const buckets = db.prepare('SELECT bucket FROM quota').all().map((r) => r.bucket);
+is('لا عنوانَ في جدولِ الحدّ', buckets.some((b) => /203\.0\.113|198\.51\.100/.test(b)), false);
+is('بل تلخيصٌ ستّونيٌّ طولُه ٦٤', buckets.every((b) => /^[0-9a-f]{64}$/.test(b)), true);
+
+// وبغيابِ المِلحِ لا حدَّ — فلا يتعطّل خادمٌ نُشِر بلا ضبطِ `IP_SALT`.
+is('بلا مِلحٍ لا يُمنَع إرسال',
+  (await postFrom('203.0.113.7', { device: uuid(80), track: 'imam', answers: many(10) }, env)).status, 200);
+
 console.log(`\n=== نجح ${pass} · فشل ${fail} ===`);
 process.exit(fail ? 1 : 0);

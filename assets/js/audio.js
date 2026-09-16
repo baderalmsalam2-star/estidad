@@ -53,6 +53,30 @@ export async function sweep() {
   }
 }
 
+/**
+ * يمسح التسجيلاتِ كلَّها — يُنادى من `store.reset` عند «امسح تقدّمي».
+ *
+ * وكان «امسح تقدّمي» يمحو `localStorage` ومعرِّفَ الإحصاءِ ويترك هذه القاعدةَ
+ * كما هي: صوتُ الطالبِ يقرأ القرآنَ باقٍ في جهازه بعدَ أن قيل له «سيُمحى
+ * تقدّمك كلّه من هذا الجهاز» وأجاب «أمتأكّد؟» بنعم. وهو أخصُّ ما في التطبيقِ
+ * من بياناته — لا درجةٌ ولا عدّادٌ، بل صوتُه — وأبقاه الذي وَعَد بمحوه.
+ *
+ * وتُمحى القاعدةُ كلُّها لا صفوفُها: `deleteDatabase` لا يُبقي أثراً ولا حجماً.
+ */
+export function wipe() {
+  return new Promise((resolve) => {
+    try {
+      const req = indexedDB.deleteDatabase(DB_NAME);
+      req.onsuccess = () => resolve(true);
+      req.onerror = () => resolve(false);
+      // قاعدةٌ مفتوحةٌ في لسانٍ آخَر تحجُب الحذفَ ولا تُخفِقه، فلا يُنتظَر أبداً.
+      req.onblocked = () => resolve(false);
+    } catch {
+      resolve(false);
+    }
+  });
+}
+
 /** أفضل صيغة يدعمها المتصفّح — Opus مقدَّمٌ لأن الكلام لا يحتاج جودة موسيقية. */
 export function pickMime() {
   const wanted = ['audio/ogg;codecs=opus', 'audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];

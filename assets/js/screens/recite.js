@@ -8,7 +8,7 @@
 
 import * as data from '../data.js';
 import * as audio from '../audio.js';
-import { el, ar, arTime, go, empty, hideTabs } from '../ui.js';
+import { el, ar, arTime, go, empty, hideTabs, onLeave } from '../ui.js';
 
 /* عائلات الأحكام — منها تُبنى المشتّتات، قريبةً لا بعيدة (SPEC §٦). */
 const FAMILIES = [
@@ -110,8 +110,27 @@ function session(wrap, index) {
 
   const st = {
     blob: null, url: null, recorder: null, stream: null,
-    seconds: 0, timer: null, verified: new Set(),
+    seconds: 0, timer: null, verified: new Set(), actx: null,
   };
+
+  /*
+   * الميكروفونُ يُغلَق بتركِ الشاشةِ كما يُغلَق بزرِّ «أوقِف».
+   *
+   * وكان إغلاقُه في `recorder.onstop` وحدَه، وهو لا يقع إلا بضغطةٍ صريحة. فمن
+   * سحب سحبةَ الرجوعِ وهو يسجِّل، أو لمس تبويباً، بقي الميكروفونُ مفتوحاً على
+   * شاشةٍ أخرى — والتطبيقُ لا يُظهِر ذلك، والنظامُ وحدَه يُظهِره بنقطةٍ حمراء.
+   *
+   * ويُطفَأ ثلاثةُ أشياءٍ لا واحد: مسارُ الصوتِ (وهو الذي يُبقي النقطةَ)، وعدّادُ
+   * الثواني، وسياقُ الصوتِ الذي تُرسَم منه الموجة — فبقاؤه يستنزف البطّارية.
+   * ويُحرَّر الرابطُ المؤقّتُ أيضاً، وإلّا تراكمت في الذاكرةِ نُسخُ التسجيلات.
+   */
+  onLeave(() => {
+    try { if (st.recorder?.state === 'recording') st.recorder.stop(); } catch { /* لا شيء */ }
+    st.stream?.getTracks().forEach((t) => t.stop());
+    clearInterval(st.timer);
+    try { st.actx?.close(); } catch { /* لا شيء */ }
+    if (st.url) URL.revokeObjectURL(st.url);
+  });
 
   /* ملاحظة: كل شيءٍ يُعاد رسمه إلا مشغّل الصوت — يبقى هو نفسه حياً
      طوال الأسئلة، لأنّ إعادة إنشائه تقطع التشغيل على الطالب. */
@@ -156,6 +175,7 @@ function session(wrap, index) {
 
     // موجةٌ حيّةٌ من مستوى الصوت — عرضٌ فقط، لا حكمَ على التلاوة.
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    st.actx = ctx;
     const an = ctx.createAnalyser();
     an.fftSize = 64;
     ctx.createMediaStreamSource(st.stream).connect(an);
