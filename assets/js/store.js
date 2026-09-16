@@ -5,10 +5,38 @@ import * as audio from './audio.js';
 
 const KEY = 'awqaf-prep/v1';
 
-const EMPTY = {
+/**
+ * الحالُ الفارغةُ **دالّةٌ لا كائنٌ واحد**.
+ *
+ * وكان كائناً واحداً يُنسَخ بـ`{ ...EMPTY }`، والنسخُ سطحيّ: فالحقولُ التي
+ * قيمتُها كائنٌ — `answers` و`days` و`memorized` و`reviews` و`exams` — تبقى
+ * **الكائنَ نفسَه** في النسخة. فطالبٌ لا مفتاحَ له في التخزين (أو مفتاحٌ من
+ * نسخةٍ أقدمَ لا يحمل الحقلَ) تُكتَب زياداتُه في كائنِ `EMPTY` نفسِه، فيتلوَّث
+ * «الفارغ» — و`reset()` بعدَه يُرجِع حالاً فيها بقايا.
+ *
+ * فتُبنى جديدةً كلَّ مرّة، ولا يُشارَك كائنٌ بين حالٍ وحال.
+ */
+const empty = () => ({
   track: null,
   // id السؤال → { score: 0..1, at: طابع زمني, type }
   answers: {},
+  /*
+   * «يوم → كم سؤالاً أُجيب فيه» — سجلٌّ يُزاد ولا يُنقَض.
+   *
+   * وكان الوِردُ والسلسلةُ يُشتقّانِ من طوابعِ `answers[].at` وحدَها، وكُتِب
+   * ههنا أنّ ذلك أنقى: «لا سجلَّ زائداً يُحفَظ». وهو خطأٌ في الاشتقاق، لأنّ
+   * `answers` **خريطةٌ** مفتاحُها رقمُ السؤال، فالإجابةُ الثانيةُ على سؤالٍ
+   * تكتب فوقَ الأولى وتنقل طابعَها إلى اليوم.
+   *
+   * فطالبٌ ذاكرَ أمسِ عشرةَ أسئلةٍ ثمّ راجعها اليومَ في «راجع أخطاءك»: انتقلت
+   * طوابعُها كلُّها إلى اليوم، فصار أمسِ يوماً خالياً — فانقطعت سلسلةُ
+   * مواظبتِه، وتبدّل شريطُ أسبوعِه، **بأنّه ذاكر أكثر**. وهذا أسوأُ ما يفعله
+   * عدّادُ مواظبةٍ: يعاقب على المواظبة.
+   *
+   * والعددُ ههنا عددُ **إجاباتٍ** لا أسئلةٍ مختلفة، وهو الصحيحُ لوِردٍ يوميّ:
+   * من أجاب عشرين مرّةً اليومَ فقد بلغ وِردَه، أعادَ أم استجدّ.
+   */
+  days: {},
   // آخر موضعٍ في الدراسة، ليعمل زرّ «تابِع من حيث وقفت»
   resume: null,
   // بطاقات حُفِظت
@@ -22,14 +50,14 @@ const EMPTY = {
   textScale: 1,
   // وقتُ تنبيه الوِرد «HH:MM» — يُحفَظ ليُعرَض، والتنبيهُ نفسُه في تقويم الجهاز
   reminderAt: null,
-};
+});
 
 function read() {
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? { ...EMPTY, ...JSON.parse(raw) } : { ...EMPTY };
+    return raw ? { ...empty(), ...JSON.parse(raw) } : empty();
   } catch {
-    return { ...EMPTY };
+    return empty();
   }
 }
 
@@ -53,12 +81,17 @@ export function setTrack(track) {
 /** score من ٠ إلى ١ — للمقاليّ نسبةُ النقاط التي أشّر عليها، وللموضوعيّ ٠ أو ١. */
 export function record(question, score) {
   const s = Math.max(0, Math.min(1, score));
+  const now = Date.now();
   cache.answers[question.id] = {
     score: s,
-    at: Date.now(),
+    at: now,
     subject: question.subject,
     type: question.type,
   };
+  // يُقيَّد اليومُ في سجلِّه قبلَ الكتابة — فإعادةُ سؤالٍ تزيد اليومَ ولا تنقل
+  // ماضياً. (الشرحُ عند `days` في `empty`.)
+  const k = dayKey(now);
+  cache.days[k] = (cache.days[k] || 0) + 1;
   write();
   // يُقيَّد في طابورٍ محلّيٍّ لا يُرسَل الآن — والإرسالُ لا يُؤثّر في شيءٍ ههنا.
   sync.record(question, s);
@@ -252,12 +285,30 @@ export function setDailyGoal(n) {
   return cache.dailyGoal;
 }
 
-function countsByDay() {
-  const map = new Map();
+/**
+ * تُقرَأ الأيّامُ من سجلِّها. ولمن كان عنده تقدُّمٌ قبلَ وجودِ السجلِّ يُبنى
+ * مرّةً واحدةً من طوابعِ `answers` — وهو أحسنُ ما يُستخرَج منها، وإن كان قد
+ * فقدَ ما نُقِل من الطوابعِ قبلَ اليوم. فالبديلُ أن يستقبلَ الطالبُ التحديثَ
+ * بسلسلةٍ صفراً وشريطٍ خالٍ، وذاك أسوأُ من نقصٍ في ماضٍ لا يُسترَدّ.
+ */
+function backfillDays() {
+  if (cache.days && Object.keys(cache.days).length) return;
+  if (!cache.answers || !Object.keys(cache.answers).length) return;
+  const seeded = {};
   for (const a of Object.values(cache.answers)) {
     if (!a || !a.at) continue;
     const k = dayKey(a.at);
-    map.set(k, (map.get(k) || 0) + 1);
+    seeded[k] = (seeded[k] || 0) + 1;
+  }
+  cache.days = seeded;
+  write();
+}
+
+function countsByDay() {
+  backfillDays();
+  const map = new Map();
+  for (const [k, n] of Object.entries(cache.days || {})) {
+    if (Number.isFinite(n) && n > 0) map.set(k, n);
   }
   return map;
 }
@@ -302,7 +353,7 @@ export const reviewOf = (id) => cache.reviews[id]?.status || null;
 export const allReviews = () => cache.reviews;
 
 export function reset() {
-  cache = { ...EMPTY };
+  cache = empty();
   try {
     localStorage.removeItem(KEY);
   } catch {

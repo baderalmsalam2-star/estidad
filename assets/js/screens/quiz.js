@@ -26,6 +26,24 @@ export default function quizScreen({ questions, mode = 'study', title = '', back
     results: [],           // { q, score } — قد يتكرّر السؤالُ إن أُعيد
     retried: new Set(),    // ما أُعيد مرّةً، فلا يُعاد ثانيةً
     startedAt: Date.now(),
+    /*
+     * نقاطُ الطالبِ قبلَ الجلسة — تُلتقَط ههنا لتُطرَح في الآخِر.
+     *
+     * وكانت ثمرةُ الجلسةِ تُحسَب جمعاً لدرجاتِ أسئلتها: `Σ round(10 × score)`.
+     * وذاك ليس ما يُكسَب، لأنّ `store.points()` تجمع على **`answers`** وهي
+     * خريطةٌ مفتاحُها رقمُ السؤال، فتأخذ آخرَ درجةٍ لكلِّ سؤالٍ لا كلَّ محاولة.
+     *
+     * فمن أعاد عشرةَ أسئلةٍ كان مُتقِناً لها: تُعلِن الشاشةُ «١٠٠ نقطةً جديدة»
+     * ورصيدُه لم يتحرّك نقطةً. ومن كان مُصيباً سؤالاً فأخطأه اليومَ: رصيدُه
+     * **نقصَ** والشاشةُ تُبشِّره بزيادة.
+     *
+     * وأسوأُ منه أثرُه في الرتبة: `before` كانت تُحسَب من `now.points - earned`،
+     * فإذا انتُفخ `earned` هبطَ `before` إلى رتبةٍ أدنى ممّا كان الطالبُ فيه
+     * فعلاً، فتُعلَن «ارتفعت رتبتُك» إلى رتبةٍ هو فيها منذ أسبوع.
+     *
+     * فالثمرةُ فرقٌ يُقاس لا مجموعٌ يُقدَّر: رصيدٌ قبلَ ورصيدٌ بعد.
+     */
+    pointsBefore: store.points(),
     // مُهلةُ الاختبار بالدقائق (صفرٌ = بلا مُهلة). تُحسَب من لحظة البدء لا من
     // لحظة السؤال، فالوقتُ الضائع في سؤالٍ يُنقِص من بقيّةِ الأسئلة كما في القاعة.
     endsAt: minutes ? Date.now() + minutes * 60_000 : 0,
@@ -584,10 +602,18 @@ function resultView(session, result) {
 
   const wrongOnes = (session.final || session.results).filter((r) => r.score < store.CORRECT).map((r) => r.q);
 
-  // ثمرةُ الجلسةِ نقاطاً — تُحسَب كما تُحسَب في المخزن: عشرٌ للمتقَن وما دونه بحسابه.
-  const earned = result.items.reduce((a, r) => a + Math.round(10 * r.score), 0);
+  /*
+   * ثمرةُ الجلسةِ = الرصيدُ الآن ناقصاً الرصيدَ قبلها. (الشرحُ عند
+   * `pointsBefore` في رأس الملفّ.)
+   *
+   * وقد تكون صفراً — إن أعاد ما يعرفه — أو سالبةً إن أخطأ ما كان يُصيبه.
+   * فلا تُعرَض بطاقةُ النقاطِ إلا إذا كُسِب شيءٌ فعلاً، ولا يُقال «نقطةً
+   * جديدة» عن صفر. والسالبُ لا يُشهَّر به: الطالبُ يرى درجتَه ونسبتَه
+   * وأخطاءَه، وتكفيه — ولا يُزاد عليه عدُّ ما خسر.
+   */
   const now = store.rank();
-  const before = store.rank(Math.max(0, now.points - earned));
+  const earned = Math.max(0, now.points - (session.pointsBefore ?? now.points));
+  const before = store.rank(session.pointsBefore ?? now.points);
   const roseUp = before.name !== now.name;
 
   return el('div', { style: { display: 'flex', flexDirection: 'column', flex: '1', minHeight: '0' } }, [
@@ -602,10 +628,14 @@ function resultView(session, result) {
         // المقاليّ يُعطي درجةً جزئية، فالمجموع كسريّ — يُقرَّب للعرض حتى لا يُقرأ «١٦٫٨ من ٣٤».
         el('span', { style: { fontSize: '14px', color: 'var(--ink-3)' } },
           `أصبتَ ما يعادل ${ar(Math.round(sum))} من ${ar(total)} في ${arTime(result.seconds)}`),
-        el('span.chip', {
-          style: { background: 'var(--green-tint)', color: 'var(--green)', fontWeight: '600', marginTop: '4px' },
-          // لا علامةَ زائدٍ: تنقلب في العربية إلى يمين الرقم فتُقرأ «٢٠٠+».
-        }, `${ar(earned)} نقطةً جديدة`),
+        // لا بطاقةَ نقاطٍ إن لم يُكسَب شيء — وإعادةُ ما يُتقِنه لا تُكسِب.
+        earned > 0
+          ? el('span.chip', {
+              style: { background: 'var(--green-tint)', color: 'var(--green)', fontWeight: '600', marginTop: '4px' },
+              // لا علامةَ زائدٍ: تنقلب في العربية إلى يمين الرقم فتُقرأ «٢٠٠+».
+            }, `${ar(earned)} نقطةً جديدة`)
+          : el('span.chip', { style: { marginTop: '4px', color: 'var(--ink-4)' } },
+              'مراجعةٌ — لا نقاطَ جديدة'),
       ]),
 
       roseUp

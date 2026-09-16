@@ -353,29 +353,57 @@ let current = null;
  * (`back` و`again` في الاختبار) لا تُسلسَل. فإن أُعيد تحميلُ الصفحةِ ضاع
  * السجلُّ وبدأ من الشاشةِ الأولى — وهو الصوابُ لا نقص.
  */
+/*
+ * ── السجلُّ موضعٌ في مسارٍ، لا كَوْمةٌ يُرفَع منها ────────────────────────
+ *
+ * كان `trail` كَوْمةً، و`popstate` يُنقِص منها واحداً كلَّما وقع. وذاك يُصيب
+ * الرجوعَ ويُخطئ التقدُّم، لأنّ `popstate` **يقع في الاتّجاهَين**: يقع لزرِّ
+ * الرجوعِ ويقع لزرِّ التقدُّمِ سواءً بسواء، ولا يُفرَّق بينهما إلا بما في
+ * `history.state`.
+ *
+ * فكان زرُّ التقدُّمِ يَرُدُّ الطالبَ خطوةً إلى الوراء: يَرجِع من «الكتاب» إلى
+ * «الكتب»، فيضغط «تقدّم» ليعود إلى الكتاب، فيجد نفسَه في «الرئيسية». ثمّ
+ * تفسدُ الحالُ كلُّها: موضعُ المتصفّحِ في السجلِّ صار أمامَ الكَوْمةِ بخطوتَين،
+ * فيضغط الرجوعَ فتَفرُغ الكَوْمةُ فلا يُوجَد ما يُرجَع إليه — **فيموت زرُّ
+ * الرجوع**، ولا يبقى له طريقٌ إلا شريطُ التنقّل.
+ *
+ * والعلاجُ أن يكون `trail` مساراً و`cursor` موضعاً فيه، وأن يُقرأ الموضعُ
+ * المطلوبُ من `history.state.depth` لا يُفترَض. فالتقدُّمُ يُقدِّم والرجوعُ
+ * يُرجِع، وكلاهما يصل إلى شاشتِه بعينها.
+ */
 const trail = [];
+let cursor = -1;
 let popping = false;
 
 function remember(name, params) {
   if (popping) return;
-  const top = trail[trail.length - 1];
+  const top = trail[cursor];
   // إعادةُ رسمِ الشاشةِ نفسِها ليست انتقالاً، فلا تُقيَّد قيداً يُرجَع إليه.
   if (top && top.name === name) { top.params = params; return; }
+  // انتقالٌ جديدٌ من موضعٍ رُجِع إليه يقطع ما كان أمامَه — كما تفعل المتصفّحات.
+  trail.length = cursor + 1;
   trail.push({ name, params });
+  cursor = trail.length - 1;
   if (trail.length === 1) history.replaceState({ depth: 1 }, '');
   else history.pushState({ depth: trail.length }, '');
 }
 
-window.addEventListener('popstate', () => {
+window.addEventListener('popstate', (e) => {
   // طبقةُ صفحةِ الكتابِ أولى بالرجوع: تُغلَق وتبقى الشاشةُ تحتها.
   if (overlayOpen()) { onNavigate(); return; }
 
-  trail.pop();
-  const prev = trail[trail.length - 1];
-  if (!prev) return;   // لا شاشةَ قبلها — يُترَك للمتصفّح أن يخرج
+  // العمقُ المطلوبُ يُقرَأ من القيدِ نفسِه، فيُعرَف الرجوعُ من التقدُّم.
+  const depth = Number(e.state?.depth ?? history.state?.depth);
+  const target = Number.isFinite(depth) ? depth - 1 : cursor - 1;
+
+  // خارجَ المسار: قيدٌ بقي من تحميلٍ سابقٍ ضاع مسارُه — يُترَك للمتصفّح.
+  if (target < 0 || target >= trail.length) return;
+
+  cursor = target;
+  const to = trail[cursor];
   popping = true;
   try {
-    go(prev.name, prev.params);
+    go(to.name, to.params);
   } finally {
     popping = false;
   }
