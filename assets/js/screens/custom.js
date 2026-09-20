@@ -22,11 +22,52 @@ export default function customScreen() {
   let count = 15;
   let difficulty = null;
 
+  /*
+   * ── الأبوابُ داخلَ الكتاب ────────────────────────────────────────────────
+   *
+   * الكتابُ في هذا التطبيقِ عِلمٌ (الفقه ← دليل الطالب، والتجويد ← غاية المريد)،
+   * وفي العلمِ أبوابٌ: الفقه تسعةٌ وثمانون باباً، والتجويد خمسون. والطالبُ
+   * يُذاكر باباً بعينه — «الطهارة» هذا الأسبوع — فيريد ورقتَه منه لا من الكتابِ
+   * كلِّه.
+   *
+   * ولا تُعرَض الأبوابُ إلا إذا اختار **علماً واحداً**، ولذلك سببان:
+   *
+   *   • أسماءُ الأبوابِ تتكرّر بين العلوم — و«عامّ» في كلِّها — فقائمةٌ مسطَّحةٌ
+   *     عبرَ العلومِ تُصفّي في علمٍ ما قُصِد في غيره.
+   *   • وثلاثُمائةٍ وسبعةٌ وخمسون باباً في شاشةِ اختيارٍ ليست اختياراً.
+   *
+   * وهو موافقٌ لِما يطلبه الطالبُ لفظاً: البابُ **داخلَ** الكتاب — فيُختار
+   * الكتابُ أوّلاً ثمّ يُفتَح ما فيه.
+   *
+   * و`chosen` خاليةٌ ⇐ الأبوابُ كلُّها، كما أنّ `subjects` خاليةٌ ⇐ العلومُ
+   * كلُّها. فلا يُشترَط على الطالبِ اختيارُ بابٍ ليبدأ.
+   */
+  let chosen = new Set();
+  let topicFilter = '';
+  // العلمُ الذي بُنيت عليه `chosen` — فإن تبدّل سقطت، وإلا صفّى بابَ علمٍ في غيره.
+  let topicsFor = null;
+
+  const onlySubject = () => (picked.size === 1 ? [...picked][0] : null);
+
+  /** تُنسى الأبوابُ إذا تبدّل العلمُ المختار — فلا تبقى تصفيةٌ لا محلَّ لها. */
+  const syncTopics = () => {
+    const only = onlySubject();
+    if (only !== topicsFor) { chosen = new Set(); topicFilter = ''; topicsFor = only; }
+  };
+
   const wrap = el('div', { style: { display: 'flex', flexDirection: 'column', flex: '1', minHeight: '0' } });
 
   const paint = () => {
+    syncTopics();
+    const only = onlySubject();
+    const topics = only
+      ? [...(subjects.find((s) => s.subject === only)?.topics || new Map())]
+        .sort((a, b) => b[1] - a[1])
+      : [];
+
     // عدٌّ بلا سحب — السحبُ الموزونُ كان يُعاد في كلِّ نقرةٍ ثمّ تُرمى نتيجتُه.
-    const available = data.countCustom(track, { subjects: [...picked], difficulty });
+    const query = { subjects: [...picked], topics: [...chosen], difficulty };
+    const available = data.countCustom(track, query);
 
     wrap.replaceChildren(
       topbar({ onBack: () => go('home'), title: 'اختبار مخصّص' }),
@@ -39,12 +80,23 @@ export default function customScreen() {
             paint();
           })))),
 
+        // الأبوابُ — لا تظهر إلا على علمٍ واحد، والسببُ عند `chosen` أعلاه.
+        only
+          ? topicsGroup(only, topics)
+          : el('div.stack', [
+              el('span.section-title', 'الأبواب'),
+              el('p.fine', { style: { textAlign: 'start' } },
+                'اختَرْ علماً واحداً لتظهر أبوابُه، فتأخذ ورقتَك من بابٍ بعينه.'),
+            ]),
+
         group('عدد الأسئلة', el('div', { role: 'group', 'aria-label': 'عدد الأسئلة', style: { display: 'flex', gap: '8px' } },
           COUNTS.map((c) => toggle(c, ar(c), c === count, () => { count = c; paint(); })))),
 
         group('الصعوبة', el('div', { role: 'group', 'aria-label': 'الصعوبة', style: { display: 'flex', gap: '8px' } },
           LEVELS.map((l) => {
-            const n = data.countCustom(track, { subjects: [...picked], difficulty: l.v });
+            // عددُ كلِّ صعوبةٍ يُحسَب على الأبوابِ المختارةِ أيضاً، وإلا وعد
+            // الزرُّ بأسئلةٍ من أبوابٍ استبعدها الطالبُ.
+            const n = data.countCustom(track, { ...query, difficulty: l.v });
             return toggle(l.label, `${l.label} — ${ar(n)}`, l.v === difficulty,
               () => { difficulty = l.v; paint(); });
           }))),
@@ -56,13 +108,80 @@ export default function customScreen() {
         el('button.btn', {
           disabled: !available,
           onclick: () => go('quiz', {
-            questions: data.buildCustomExam(track, { subjects: [...picked], count, difficulty }),
+            questions: data.buildCustomExam(track, { ...query, count }),
             mode: 'custom',
-            title: 'اختبار مخصّص',
+            // ويُسمّى البابُ في عنوانِ الورقة، فيُعرَف في «أكمِلْ ما بدأت»
+            // وفي سجلِّ الاختباراتِ ما كانت ورقةً فيه.
+            title: chosen.size === 1 ? `اختبار — ${[...chosen][0]}`
+              : `اختبار مخصّص${only ? ` — ${only}` : ''}`,
           }),
         }, available ? `ابدأ — ${ar(Math.min(count, available))} سؤالاً` : 'لا أسئلة بهذه الشروط')),
     );
   };
+
+  /**
+   * قائمةُ الأبواب — مع مُرشِّحٍ إذا كثُرت.
+   *
+   * والفقهُ تسعةٌ وثمانون باباً: قائمةٌ بهذا الطولِ يُبحَث فيها بالإصبعِ لا
+   * بالعين. فإذا جاوزت اثنَي عشرَ باباً وُضِع فوقها حقلُ ترشيحٍ يكتب فيه
+   * الطالبُ أوّلَ الاسم.
+   *
+   * والحقلُ خارجَ `paint()` بقصد: تلك تُعاد مع كلِّ ضغطةِ باب، فلو بُني فيها
+   * لَذهبَ التركيزُ من الحقلِ ومحيَ ما كُتِب فيه عند أوّلِ اختيار.
+   */
+  const filterBox = el('input.searchbar', {
+    type: 'search',
+    placeholder: 'رشِّح الأبواب…',
+    'aria-label': 'رشِّح الأبواب بالاسم',
+    style: { textAlign: 'start', fontSize: '14px' },
+  });
+  filterBox.addEventListener('input', () => {
+    topicFilter = filterBox.value.trim();
+    paintTopics();
+  });
+
+  const topicsBody = el('div', {
+    role: 'group',
+    'aria-label': 'أبواب الكتاب',
+    style: { display: 'flex', flexWrap: 'wrap', gap: '8px' },
+  });
+
+  /** تُعاد رسمَ الشاراتِ وحدَها — فلا يُمَسُّ حقلُ الترشيحِ ولا يُفقَد تركيزُه. */
+  const paintTopics = () => {
+    const only = onlySubject();
+    if (!only) return;
+    const all = [...(subjects.find((s) => s.subject === only)?.topics || new Map())]
+      .sort((a, b) => b[1] - a[1]);
+    const norm = (x) => String(x).replace(/[ًٌٍَُِّْٰ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه');
+    const shown = topicFilter
+      ? all.filter(([t]) => norm(t).includes(norm(topicFilter)))
+      : all;
+
+    topicsBody.replaceChildren(...(shown.length
+      ? shown.map(([t, n]) => toggle(t, `${t} — ${ar(n)}`, chosen.has(t), () => {
+          if (chosen.has(t)) chosen.delete(t); else chosen.add(t);
+          paint();
+        }))
+      : [el('p.fine', 'لا بابَ بهذا الاسم.')]));
+  };
+
+  function topicsGroup(subject, topics) {
+    paintTopics();
+    return el('div.stack', [
+      el('div.row-base', [
+        el('span.section-title', `أبواب ${subject}`),
+        el('button', {
+          onclick: () => { chosen = new Set(); topicFilter = ''; filterBox.value = ''; paint(); },
+          style: {
+            font: 'inherit', fontSize: '13px', color: chosen.size ? 'var(--green)' : 'var(--ink-5)',
+            background: 'none', border: 'none', cursor: 'pointer', fontWeight: chosen.size ? '600' : '400',
+          },
+        }, chosen.size ? `المختار ${ar(chosen.size)} — امسحْه` : `الكلّ (${ar(topics.length)} باباً)`),
+      ]),
+      topics.length > 12 ? filterBox : null,
+      topicsBody,
+    ]);
+  }
 
   paint();
   return wrap;

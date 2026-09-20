@@ -421,9 +421,21 @@ export const LEVEL_RANGES = {
 };
 
 /** يُطبَّق ما اختاره الطالبُ من شروط — بلا سحبٍ، فيصلح للعدِّ وللبناء. */
-function customPool(track, { subjects = [], difficulty = null, types = null } = {}) {
+/**
+ * تصفيةُ بِركةِ الاختبارِ المخصَّص.
+ *
+ * و`topics` أبوابٌ **داخلَ علمٍ واحد**: الشاشةُ لا تعرضها إلا إذا اختار الطالبُ
+ * علماً واحداً، لأنّ أسماءَ الأبوابِ تتكرّر بين العلوم («عامّ» في كلِّها،
+ * و«المدود» في التجويد كما قد يقع في غيره) — فقائمةٌ مسطَّحةٌ من الأبوابِ عبر
+ * العلومِ تُصفّي في علمٍ ما قُصِد في غيره.
+ *
+ * وخلوُّها يعني «كلَّ الأبواب» كما يعني خلوُّ `subjects` كلَّ العلوم: فلا يُشترَط
+ * على الطالبِ اختيارٌ ليبدأ.
+ */
+function customPool(track, { subjects = [], topics = [], difficulty = null, types = null } = {}) {
   let pool = forTrack(track);
   if (subjects.length) pool = pool.filter((q) => subjects.includes(q.subject));
+  if (topics.length) pool = pool.filter((q) => topics.includes(q.topic || 'عامّ'));
   if (difficulty) {
     const [lo, hi] = LEVEL_RANGES[difficulty] || [];
     if (lo) pool = pool.filter((q) => q.difficulty >= lo && q.difficulty <= hi);
