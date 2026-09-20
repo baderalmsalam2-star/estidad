@@ -51,6 +51,8 @@ export default function accountScreen() {
     // أهونُ من ثلاثةٍ تُفتَح بشروطٍ مختلفة.
     ownerCard(),
 
+    nameCard(),
+
     goalCard(),
 
     textSizeCard(),
@@ -82,7 +84,10 @@ export default function accountScreen() {
       // ويُوضَع المحوُ في يدِه بزرٍّ صريح.
       el('span.fine', sync.available()
         ? 'تقدّمك محفوظٌ على جهازك وحده، ولا حسابَ لك ولا كلمةَ سرّ. وتسجيلات التسميع تُحذف عند فتح التطبيق بعد مضيّ ٣٠ يوماً عليها — أو الآن، بالزرّ أدناه.'
-        : 'تقدّمك محفوظٌ على جهازك وحده. لا حساب، ولا خادم، ولا بياناتٍ شخصية. وتسجيلات التسميع تُحذف عند فتح التطبيق بعد مضيّ ٣٠ يوماً عليها — أو الآن، بالزرّ أدناه.'),
+        // كان مكتوباً «ولا بياناتٍ شخصية»، وقد صار في التطبيقِ اسمٌ يكتبه
+        // الطالبُ إن شاء. فلا يُقال ما ليس كذلك: يُقال إنّه على الجهازِ وحدَه
+        // ولا يخرج منه — وذاك هو الصادق.
+        : 'تقدّمك محفوظٌ على جهازك وحده. لا حساب، ولا خادم. وما تكتبه من اسمٍ يبقى على هذا الجهاز ولا يُرسَل. وتسجيلات التسميع تُحذف عند فتح التطبيق بعد مضيّ ٣٠ يوماً عليها — أو الآن، بالزرّ أدناه.'),
 
       // نسخةٌ احتياطيّة: سفاري على iOS يمحو تخزينَ الموقعِ كلَّه بعد سبعةِ
       // أيّامٍ بلا زيارة (Intelligent Tracking Prevention). فإمامٌ ذاكرَ شهراً
@@ -533,6 +538,66 @@ function reminderCard() {
             },
           }, 'ألغِ الوقت')
         : null,
+    );
+  };
+
+  draw();
+  return card;
+}
+
+/**
+ * اسمُ الطالبِ — يُكتَب أو يُبدَّل أو يُمحى.
+ *
+ * وهو يُسأل عنه في أوّلِ شاشة، ولا بدَّ من بابٍ يرجع إليه: من تخطّاه ثمّ أراده،
+ * ومن كتبه خطأً، ومن أعار جوّالَه فأراد محوَه. وترك الطالبِ بلا سبيلٍ إلى محوِ
+ * ما كتبه عن نفسِه أسوأُ من ألّا يُسأل.
+ *
+ * والحفظُ على «حفِظتُ» لا على كلِّ حرف: الكتابةُ في الحقلِ تُغري بحفظٍ في كلِّ
+ * ضغطة، وذاك يكتب في التخزينِ عشرين مرّةً لاسمٍ واحد.
+ */
+function nameCard() {
+  const card = el('div.card', { style: { gap: '10px' } });
+
+  const draw = () => {
+    const cur = store.name();
+    const box = el('input.searchbar', {
+      type: 'text',
+      autocomplete: 'name',
+      maxlength: '32',
+      placeholder: 'اسمك (اختياري)',
+      'aria-label': 'اسمك',
+      value: cur || '',
+      style: { textAlign: 'start' },
+    });
+    const said = el('span.fine', { style: { textAlign: 'start', color: 'var(--green)', minHeight: '18px' } });
+
+    const save = () => {
+      const now = store.setName(box.value);
+      box.value = now || '';
+      said.textContent = now ? 'حُفِظ ✓' : 'مُحِي ✓';
+      // يُعاد رسمُ البطاقةِ بعد لحظةٍ ليظهر زرُّ المحوِ أو يختفي على حاله.
+      setTimeout(() => { if (card.isConnected) draw(); }, 1400);
+    };
+    box.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
+
+    card.replaceChildren(
+      el('div.row-base', [
+        el('span', { style: { fontSize: '15.5px', fontWeight: '600' } }, 'اسمك'),
+        el('span.fine', cur ? 'في ترويسة الرئيسية' : 'غير مضبوط'),
+      ]),
+      el('span.fine', { style: { textAlign: 'start' } },
+        'يُكتَب في ترويسة الرئيسية ولا يخرج من جهازك — لا يُرسَل إلى خادم، '
+        + 'ولا يظهر في صورة النتيجة التي تُشارِكها.'),
+      box,
+      el('div', { style: { display: 'flex', gap: '10px', alignItems: 'center' } }, [
+        el('button.btn', { style: { flex: '1', fontSize: '14.5px' }, onclick: save }, 'احفظ'),
+        cur
+          ? el('button.btn.btn--ghost', {
+              onclick: () => { store.setName(null); draw(); },
+            }, 'امحُه')
+          : null,
+      ]),
+      said,
     );
   };
 

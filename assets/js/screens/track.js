@@ -37,6 +37,26 @@ export default function trackScreen() {
   const tracks = data.manifest().tracks;
   let picked = store.get().track || 'imam';
 
+  /*
+   * حقلُ الاسمِ — **اختياريٌّ صريحاً، وخارجَ إعادةِ الرسم**.
+   *
+   * وهو مبنيٌّ مرّةً ههنا لا في `render()`: تلك تُنادى مع كلِّ ضغطةٍ على
+   * بطاقةِ مسار، فلو بُني فيها لَمُحي ما كتبه الطالبُ كلَّما بدّل مسارَه —
+   * وهو يبدّل قبل أن يُتابِع.
+   *
+   * ولا يُشترَط ملؤه: «متابعة» تعمل فارغاً، ويبقى العنوانُ «أهلاً بك» كما كان.
+   * وحقلُ اسمٍ إجباريٌّ في تطبيقٍ لا حسابَ فيه ولا خادمَ سؤالٌ بلا موجِب.
+   */
+  const nameBox = el('input.searchbar', {
+    type: 'text',
+    autocomplete: 'name',
+    maxlength: '32',
+    placeholder: 'اسمك (اختياري)',
+    'aria-label': 'اسمك — اختياري، يُكتَب في ترويسة الرئيسية',
+    value: store.name() || '',
+    style: { textAlign: 'start' },
+  });
+
   const pane = el('div.pane');
 
   const render = () => {
@@ -87,10 +107,16 @@ export default function trackScreen() {
       })),
 
       el('div.push.stack', { style: { gap: '14px' } }, [
+        el('div.stack', { style: { gap: '6px' } }, [
+          nameBox,
+          el('span.fine', { style: { textAlign: 'start' } },
+            'يُكتَب في ترويسة الرئيسية ولا يخرج من جهازك — لا يُرسَل إلى خادم، '
+            + 'ولا يظهر في صورة النتيجة التي تُشارِكها. واتركه فارغاً إن شئت.'),
+        ]),
         // التنبيه الذي لا يُخالَف (README §٥.٣)
         el('p.disclaimer', 'الأسئلة اجتهادٌ تدريبيٌّ مبنيٌّ على الكتب المقرَّرة، لا أسئلةَ اختباراتٍ رسمية.'),
         el('button.btn', {
-          onclick: () => { store.setTrack(picked); go('home'); },
+          onclick: () => { store.setName(nameBox.value); store.setTrack(picked); go('home'); },
         }, 'متابعة'),
       ]),
     );

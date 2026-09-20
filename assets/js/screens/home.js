@@ -20,10 +20,25 @@ export default function homeScreen() {
   return el('div.pane', [
     // الترويسةُ على زَلِّيجٍ يتلاشى — فيبدأ التطبيقُ بهويّةٍ لا بسطرٍ مجرَّد.
     el('div.hero', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' } }, [
-      el('div', { style: { display: 'flex', flexDirection: 'column', gap: '2px' } }, [
+      el('div', { style: { display: 'flex', flexDirection: 'column', gap: '2px', minWidth: '0' } }, [
         el('span.meta', `مسار ${label}`),
-        // عنوانُ الرئيسيةِ عنوانٌ لا `span` — انظر `topbar` في ui.js.
-        el('h1.title', 'أهلاً بك'),
+        /*
+         * عنوانُ الرئيسيةِ اسمُ الطالبِ إن كتبه، و«أهلاً بك» إن لم يكتبه.
+         * (وهو عنوانٌ لا `span` — انظر `topbar` في ui.js.)
+         *
+         * والاسمُ يُقصَر في `store.setName` إلى اثنَين وثلاثين محرفاً، ويُصغَّر
+         * حرفُه ههنا إذا طال: العنوانُ ٣٦ بكسلاً بخطِّ أميري، و«عبدالرحمن بن
+         * محمد» فيه اثنان وعشرون محرفاً تكسر الترويسةَ على عرضِ الهاتف.
+         */
+        (() => {
+          const who = store.name();
+          if (!who) return el('h1.title', 'أهلاً بك');
+          return el('h1.title', {
+            style: who.length > 12
+              ? { fontSize: who.length > 20 ? '25px' : '30px', lineHeight: '1.35' }
+              : null,
+          }, who);
+        })(),
       ]),
       el('div', { style: { display: 'flex', gap: '8px' } }, [
         el('button.iconbtn', {
