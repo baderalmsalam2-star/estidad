@@ -4,7 +4,8 @@ import * as data from './data.js';
 import * as store from './store.js';
 import * as audio from './audio.js';
 import * as sync from './sync.js';
-import { defineRoutes, go, el, setDevMode, setPageRefResolver, setPageOpener, setNavigateHook, setOverlayProbe } from './ui.js';
+import { defineRoutes, go, el, setDevMode, setPageRefResolver, setPageOpener, setNavigateHook, setOverlayProbe, currentRoute } from './ui.js';
+import * as version from './version.js';
 
 import trackScreen from './screens/track.js';
 import homeScreen from './screens/home.js';
@@ -82,6 +83,18 @@ const onProgress = (done, total) => {
     : 'يُرتَّب المنهج…';
 };
 
+/*
+ * التجديدُ التلقائيّ — فلا ينتظر الطالبُ فتحةً تاليةً ليصلَه الإصلاح.
+ *
+ * و`busy` تمنع إعادةَ الصفحةِ على من هو في ورقةٍ أو في تسجيل: الأولى تُذهِب
+ * إجابةً كُتِبت ولم تُسجَّل بعد، والثانية تقطع الميكروفونَ في وسطِ تلاوة.
+ * فيُؤجَّل إلى أن يخرج، و`setNavigateHook` أدناه هي التي تلتقط خروجَه.
+ *
+ * والشرحُ كلُّه في `watchForUpdate` في `version.js`.
+ */
+const BUSY = new Set(['quiz', 'recite']);
+const whenFree = version.watchForUpdate({ busy: () => BUSY.has(currentRoute()) });
+
 setPageRefResolver(data.pageRefOf);
 setPageOpener(openPage);
 // أي انتقالٍ بين الشاشات يُغلق طبقة الصفحة إن كانت مفتوحة.
@@ -90,7 +103,11 @@ setPageOpener(openPage);
 // يُنادى من `popstate` (وقد استُهلِك القيدُ بالرجوعِ نفسِه) ومن `go` (ولا
 // يقع مع طبقةٍ مفتوحةٍ إلا برمجياً، ومنازعةُ السجلِّ في أثناء الانتقالِ أسوأُ
 // من قيدٍ يتيم). وأمّا ✕ وEscape فتُناديان `closePage()` بلا وسيط.
-setNavigateHook(() => closePage(true));
+setNavigateHook(() => {
+  closePage(true);
+  // وكلُّ انتقالٍ بين الشاشات فرصةٌ لتجديدٍ أُجِّل لانشغالِ الطالب.
+  if (whenFree) whenFree();
+});
 setOverlayProbe(isPageOpen);
 
 /**
