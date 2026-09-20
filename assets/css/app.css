@@ -755,8 +755,29 @@ mark.hit { background: var(--green-tint); color: inherit; border-radius: 4px; pa
   text-align: center; padding: 6px 0 2px;
 }
 
-/* السطر المعلَّق على الشاشة نفسها — يُلحَق بكل شاشةٍ من `go()`. */
-.screen > .credit { flex-shrink: 0; padding: 10px 0 18px; }
+/* الاسمُ رابطٌ إلى واتساب، وموضعُ لمسٍ تامٌّ لا سطرٌ رفيع.
+
+   وحرفُه ١١٫٥ بكسلاً فسطرُه نحوُ إحدى وعشرين — أي رابطٌ لا تُصيبه إصبعٌ، وأولى
+   الناسِ بهذا التطبيقِ كبارُ السنّ. فيُوسَّع إلى ٤٤ ارتفاعاً بـ`inline-flex`،
+   وحشوٌ جانبيٌّ يُبعِده عن حرفِ «بواسطة» فلا يُضغَط أحدُهما مكانَ الآخر.
+
+   ولونُه لونُ السطرِ نفسِه لا لونُ رابط: الاعتمادُ في الذيلِ ليس دعوةً
+   تُزاحِم ما فوقَها، وإنّما يُعرَف أنّه يُضغَط بخطٍّ تحته خفيفٍ عند اللمس.
+   (والشرحُ كلُّه عند `credit` في ui.js.) */
+.credit-name {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 44px; padding: 0 10px;
+  color: inherit; text-decoration: none;
+  border-radius: var(--r-chip);
+}
+.credit-name:hover, .credit-name:focus-visible { text-decoration: underline; }
+.credit-name:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+
+/* السطر المعلَّق على الشاشة نفسها — يُلحَق بكل شاشةٍ من `go()`.
+
+   والحشوُ نُقِص بقدرِ ما زاد الرابطُ في ارتفاعه، فبقي ذيلُ الشاشةِ كما كان:
+   كان ١٠ + ٢١ + ١٨ = ٤٩ بكسلاً، وصار ٠ + ٤٤ + ٤ = ٤٨. */
+.screen > .credit { flex-shrink: 0; padding: 0 0 4px; }
 
 /* لا يراها الطالب — تُفعَّل بـ?dev=1 فقط */
 .devbadge {
