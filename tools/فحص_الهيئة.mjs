@@ -14,11 +14,23 @@
  */
 
 import { execSync } from 'node:child_process';
+import { mkdirSync } from 'node:fs';
 const root = execSync('npm root -g', { encoding: 'utf8' }).trim();
 const pw = await import(`${root}/playwright/index.js`);
 const chromium = pw.chromium || pw.default.chromium;
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
-const S = '/tmp/claude-0/-home-user/48112700-91c7-5fe7-a711-4a3efca4e45f/scratchpad';
+/*
+ * موضعُ اللقطات — في شجرةِ المشروعِ لا في مجلّدٍ مؤقّتٍ لجلسةٍ بعينها.
+ *
+ * وكان مكتوباً ههنا مسارُ `/tmp/…` لجلسةِ عملٍ واحدةٍ انقضت، مرفوعاً في
+ * المستودع. فمن استنسخَ المشروعَ وشغّل الفحصَ سقطت الكتابةُ عنده (لا مجلّدَ
+ * بهذا الاسم) — فحصٌ لا يعمل إلا على حاسوبٍ واحدٍ في الدنيا.
+ *
+ * و`work/` مستثنًى في `.gitignore` أصلاً، فلا تُرفَع اللقطات. و`OUT` تُبدِّله
+ * لمن أراد موضعاً آخَر.
+ */
+const S = process.env.OUT || new URL('../work/فحص', import.meta.url).pathname;
+mkdirSync(S, { recursive: true });
 const p = await b.newPage({ viewport: { width: 393, height: 852 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 const bad = []; p.on('pageerror', (e) => bad.push(e.message));
 const fails = [];

@@ -16,7 +16,7 @@ export default function flashcardsScreen() {
   const wrap = el('div', { style: { display: 'flex', flexDirection: 'column', flex: '1', minHeight: '0' } });
 
   const paint = () => {
-    const { q, count, items, caveats, numbered } = cards[i];
+    const { q, count, items, caveats, numbered, stated } = cards[i];
     const known = store.isMemorized(q.id);
 
     wrap.replaceChildren(
@@ -34,7 +34,7 @@ export default function flashcardsScreen() {
           el('button.flashcard', {
             onclick: () => { flipped = !flipped; paint(); },
             style: { font: 'inherit', textAlign: 'start', cursor: 'pointer', color: 'inherit' },
-          }, flipped ? back(q, count, items, caveats, numbered) : front(q)),
+          }, flipped ? back(q, count, items, caveats, numbered, stated) : front(q)),
         ]),
 
         el('div.btn-row', { style: { marginTop: 'auto' } }, [
@@ -66,13 +66,20 @@ export default function flashcardsScreen() {
     ];
   }
 
-  function back(q, count, items, caveats, numbered) {
+  function back(q, count, items, caveats, numbered, stated) {
     return [
       el('span.chip', `${q.subject}${q.topic ? ' · ' + q.topic : ''}`),
       count ? el('span.count', count) : null,
       // لا تُرقَّم البنود إلا إذا فُصلت عن القيود بيقين، وإلا ناقض الترقيمُ
       // العددَ المذكور فعلَّم الطالب خطأً.
       el('ol', items.map((t, n) => el('li', numbered ? `${ar(n + 1)} — ${t}` : `— ${t}`))),
+      // وإن كان العددُ المذكورُ غيرَ عددِ ما سيقَ قيل ذلك في البطاقةِ نفسِها،
+      // فلا يحفظ الطالبُ ناقصاً وهو يحسبه تامّاً. (وموضعُ إصلاحِه البياناتُ
+      // لا هذه الشاشة — انظر `flashcardsOf` في data.js.)
+      stated
+        ? el('span.fine', { style: { color: 'var(--sand-ink3)' } },
+            `العددُ في الكتاب ${ar(stated)}، والمذكورُ ههنا ${ar(items.length)} — فالبطاقةُ ناقصةٌ، راجِعْ صفحتَها.`)
+        : null,
       caveats && caveats.length
         ? el('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '8px', borderTop: '1px solid var(--hairline)' } },
             [el('span.fine', { style: { color: 'var(--sand-ink3)' } }, 'قيود:'),

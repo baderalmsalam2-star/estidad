@@ -8,13 +8,23 @@
 
 import * as data from '../data.js';
 import * as store from '../store.js';
-import { el, ar, pct, go, empty, hideTabs, devMode, frac } from '../ui.js';
+import * as owner from '../owner.js';
+import { el, ar, pct, go, hideTabs, frac } from '../ui.js';
 import { openPage, bookTitle } from './page-view.js';
 
 export default function reviewScreen() {
-  if (!devMode()) {
-    return empty('هذه الشاشة للمراجعة', 'تُفتَح بـ ?dev=1 فقط.');
-  }
+  /*
+   * الحارسُ كلمةُ المالكِ لا عَلَمٌ في الرابط.
+   *
+   * وكان `devMode()` وحدَه، وهو يُضبَط بـ`?dev=1` — أي أنّ بابَ الإدارةِ
+   * يُفتَح بحرفٍ يُكتَب في شريطِ العنوان. فيرى الفاتحُ البنكَ كلَّه بإجاباته،
+   * ويكتب قراراتِ اعتمادٍ في تخزينِ الجهاز، ثمّ يُصدِّرها ملفّاً. وسائرُ
+   * أبوابِ الإدارةِ خلفَ سبعِ نقراتٍ وكلمةِ سِرّ، فلمَ يُستثنى هذا؟
+   *
+   * و`devMode` يبقى لِما هو له: شارةُ «لم يُقابَل» على السؤال — إظهارُ خبرٍ
+   * لا فتحُ باب.
+   */
+  if (!owner.isOwner()) { go('signin'); return null; }
   hideTabs();
 
   // كل سؤالٍ لم يُقابَل بعد — مرتَّباً: ما فيه عددٌ أولاً، فهو مكمن الخطأ.

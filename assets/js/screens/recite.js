@@ -128,6 +128,9 @@ function session(wrap, index) {
     try { if (st.recorder?.state === 'recording') st.recorder.stop(); } catch { /* لا شيء */ }
     st.stream?.getTracks().forEach((t) => t.stop());
     clearInterval(st.timer);
+    // وحلقةُ الموجة: مؤقّتٌ في حالِ التخفيف، وإطارُ عرضٍ في غيرها.
+    clearTimeout(st.wave);
+    cancelAnimationFrame(st.wave);
     try { st.actx?.close(); } catch { /* لا شيء */ }
     if (st.url) URL.revokeObjectURL(st.url);
   });
@@ -138,7 +141,14 @@ function session(wrap, index) {
   const audioEl = el('audio', { preload: 'metadata' });
   const bars = Array.from({ length: 14 }, () => el('span', { style: { height: '30%' } }));
   const wave = el('div.wave', bars);
-  const clock = el('span.num', { style: { fontSize: '12.5px', color: 'var(--ink-4)' } }, '٠:٠٠');
+  // ومؤقِّتُ التسجيلِ معزولُ الاتّجاهِ كمؤقِّتِ الاختبار — حَرْزاً لا علاجاً،
+  // والشرحُ عند `frac` في ui.js. وكان أخوه معزولاً وهذا بلا عزلٍ بلا فرق.
+  const clock = el('span.num', {
+    style: {
+      fontSize: '12.5px', color: 'var(--ink-4)',
+      direction: 'ltr', unicodeBidi: 'isolate',
+    },
+  }, '٠:٠٠');
   const playBtn = el('button.iconbtn.iconbtn--lg', { 'aria-label': 'تشغيل' }, '▶');
   player.append(playBtn, wave, clock);
 
@@ -148,6 +158,23 @@ function session(wrap, index) {
     b.dataset.on = v > 70 ? '1' : '0';
   });
   setWave(() => 22);
+
+  /*
+   * من طلب تخفيفَ الحركةِ في نظامه لا تنطُّ عنده الموجة.
+   *
+   * وقاعدةُ `prefers-reduced-motion` في `app.css` تُلغي انتقالاتِ CSS، وهذه
+   * الموجةُ ليست انتقالاً: هي `requestAnimationFrame` تكتب ارتفاعَ أعمدتِها
+   * الأربعةَ عشرَ ستّينَ مرّةً في الثانيةِ طولَ التسجيل. فالقاعدةُ لا تمسُّها، وهي
+   * أشدُّ ما في التطبيقِ حركةً — ومن أطفأ الحركةَ إنّما أطفأها لدُوارٍ أو
+   * صداعٍ أو نوبةٍ تُثيرها، لا لذوق.
+   *
+   * ولا يُطفَأ الخبرُ، إنّما يُهدَّأ: تبقى الموجةُ تتحرّك مرّتَين في الثانيةِ
+   * على متوسّطِ المستوى — فيُعلَم أنّ التسجيلَ جارٍ وأنّ الصوتَ يصل، ويذهب
+   * النطّ. و«التسجيلُ جارٍ» مكتوبٌ فوقَها على كلِّ حال.
+   */
+  const calm = (() => {
+    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
+  })();
 
   /* ── التسجيل ── */
 
@@ -181,10 +208,23 @@ function session(wrap, index) {
     ctx.createMediaStreamSource(st.stream).connect(an);
     const buf = new Uint8Array(an.frequencyBinCount);
     const tick = () => {
-      if (st.recorder?.state !== 'recording') { ctx.close(); return; }
+      // قد يكون `onLeave` أغلقَه قبلَ هذا الإطار — فالإغلاقُ مرّتَين يرمي.
+      if (st.recorder?.state !== 'recording') {
+        try { ctx.close(); } catch { /* أُغلِق قبلُ */ }
+        return;
+      }
       an.getByteFrequencyData(buf);
-      setWave((i) => (buf[i % buf.length] / 255) * 100);
-      requestAnimationFrame(tick);
+      if (calm) {
+        // مستوًى واحدٌ هادئ، يُحدَّث كلَّ نصفِ ثانية.
+        let sum = 0;
+        for (let i = 0; i < buf.length; i += 1) sum += buf[i];
+        const level = (sum / buf.length / 255) * 100;
+        setWave(() => Math.max(14, level));
+        st.wave = setTimeout(tick, 500);
+      } else {
+        setWave((i) => (buf[i % buf.length] / 255) * 100);
+        st.wave = requestAnimationFrame(tick);
+      }
     };
 
     st.recorder.start();

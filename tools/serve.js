@@ -18,6 +18,13 @@ const TYPES = {
   '.woff2': 'font/woff2',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
+  // صورُ صفحاتِ الكتبِ وأغلفتُها كلُّها JPEG. وكانت تُخدَم
+  // `application/octet-stream` فيُنزِّلها المتصفّحُ بدل أن يرسمها، فلا تُرى
+  // الصفحةُ المقابَلةُ في التطوير، ويُظَنُّ الخللُ في الكود.
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.ico': 'image/x-icon',
   '.pdf': 'application/pdf',
   '.webmanifest': 'application/manifest+json; charset=utf-8',
 };

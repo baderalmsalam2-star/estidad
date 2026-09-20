@@ -33,6 +33,7 @@ const EMPTY = {
   on: null,       // لم يُسأل بعدُ — والإرسالُ لا يقع حتى يقول «نعم» صريحاً
   queue: [],      // ما لم يصل بعدُ: [{ id, score, at }]
   sentAt: 0,
+  dropped: 0,     // ما أُسقِط من الطابورِ لبلوغِ سقفِه — لا يُكتَم عن الطالب
 };
 
 function read() {
@@ -115,10 +116,39 @@ function deviceId() {
  */
 const HOUR = 3_600_000;
 
+/**
+ * سقفُ الطابور — وقد رُفِع فوقَ بنكِ الأسئلةِ كلِّه.
+ *
+ * وكان ألفَين، والبنكُ ٤٠١٠. فطالبٌ مواظبٌ انقطعت عنه الشبكةُ أسبوعاً يبلغ
+ * السقفَ فيُسقَط أقدمُ ما عنده بلا خبر: لا هو عند الخادمِ ولا في جهازه، وصاحبُ
+ * التطبيقِ يرى أرقاماً ناقصةً لا يعلم أنّها ناقصة.
+ */
+const MAX_QUEUE = 5000;
+
+/** كم أُسقِط من الطابورِ منذ آخِرِ إرسال — يُعرَض في «حسابي» ولا يُكتَم. */
+export const dropped = () => cache.dropped || 0;
+
 export function record(question, score) {
   if (!enabled()) return;
-  cache.queue.push({ id: question.id, score, at: Math.floor(Date.now() / HOUR) * HOUR });
-  if (cache.queue.length > 2000) cache.queue = cache.queue.slice(-2000);
+  const row = { id: question.id, score, at: Math.floor(Date.now() / HOUR) * HOUR };
+
+  /*
+   * السؤالُ الواحدُ صفٌّ واحدٌ في الطابور، لا صفٌّ لكلِّ محاولة.
+   *
+   * والخادمُ `ON CONFLICT (device, question) DO UPDATE` — أي أنّ الصفَّ
+   * الثانيَ يمحو الأوّلَ عنده على كلِّ حال. فإرسالُ المحاولاتِ كلِّها إنفاقُ
+   * شبكةٍ في غيرِ موضعه، وهو الذي كان يُنفِخ الطابورَ حتى يبلغ السقفَ
+   * فيُسقِط الأقدم. ويُبقى الموضعُ كما هو فلا يتقدّم الجديدُ على ما قبلَه.
+   */
+  const at = cache.queue.findIndex((q) => q.id === row.id);
+  if (at >= 0) cache.queue[at] = row;
+  else cache.queue.push(row);
+
+  if (cache.queue.length > MAX_QUEUE) {
+    const over = cache.queue.length - MAX_QUEUE;
+    cache.queue = cache.queue.slice(over);
+    cache.dropped = (cache.dropped || 0) + over;
+  }
   write();
 }
 
@@ -126,7 +156,31 @@ export function record(question, score) {
  * يُفرِغ الطابور. يُنادى عند ختم الجلسة وعند إقلاع التطبيق — لا في أثناء السؤال.
  * ولا يُرمى منه خطأ: فشلُ الإرسالِ يُبقي الطابورَ ويُعيد `false` لا غير.
  */
+/**
+ * يُفرِغ الطابورَ كلَّه لا دفعةً واحدةً منه.
+ *
+ * وكانت `flush` تبعث خمسَ مئةٍ ثمّ تقف، ولا تُنادى إلا عند ختمِ جلسةٍ أو عند
+ * الإقلاع. فمن في طابورِه ألفان لا يُفرَّغ إلا في أربعِ جلسات، والطابورُ في
+ * أثناء ذلك ينمو من جديد — فلا يلحق. والأرقامُ عند صاحبِ التطبيقِ تنقص أبداً.
+ *
+ * والحدُّ `ROUNDS` ليس تجميلاً: هو يقطع الحلقةَ لو أجاب الخادمُ نجاحاً ولم
+ * ينقص الطابورُ (خللٌ لا يُتوقَّع لكنّه يُشلُّ به اللسان).
+ */
+const ROUNDS = 20;
+
 export async function flush(track) {
+  let sent = false;
+  for (let i = 0; i < ROUNDS; i += 1) {
+    const before = cache.queue.length;
+    // eslint-disable-next-line no-await-in-loop -- الدفعاتُ متتابعةٌ بقصد
+    if (!(await flushOnce(track))) return sent;
+    sent = true;
+    if (!cache.queue.length || cache.queue.length >= before) return true;
+  }
+  return sent;
+}
+
+async function flushOnce(track) {
   if (!enabled() || !cache.queue.length || !navigator.onLine) return false;
 
   const batch = cache.queue.slice(0, 500);
@@ -162,6 +216,7 @@ export async function flush(track) {
 
     cache.queue = cache.queue.slice(batch.length);
     cache.sentAt = Date.now();
+    // ولا يُصفَّر `dropped` ههنا: ما سقط سقط، ولا يُعيده نجاحُ ما بعدَه.
     write();
     return true;
   } catch {

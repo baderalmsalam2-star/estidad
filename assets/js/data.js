@@ -212,6 +212,18 @@ function normText(s) {
     .trim();
 }
 
+/**
+ * المعرِّفُ الذي طُوِي ← المعرِّفُ الذي بقي.
+ *
+ * يُبنى منه نقلُ إجابةِ الطالب: من أجاب عن السؤالِ بمعرِّفِه المطويِّ قبل أن
+ * يُطوى لا تضيع إجابتُه بطيِّه. (يُستعمَل في `store.prune` عند الإقلاع.)
+ */
+export function aliases() {
+  const m = new Map();
+  for (const d of state.duplicates || []) m.set(d.dropped, d.kept);
+  return m;
+}
+
 /** المكرَّراتُ التي طُويت — تُعرَض في لوحةِ المشرف ليُقرِّر فيها. */
 export const duplicates = () => state.duplicates || [];
 
@@ -467,10 +479,16 @@ export function buildCustomExam(track, { count = 15, ...opts } = {}) {
  *
  * ويبقى الترتيبُ على حاله: الخطأُ أوّلاً، ثمّ الجديد، ثمّ المراجعة.
  */
-export function buildWird(track, n, scoreOf, answeredAt = () => 0) {
+/**
+ * و`correct` تُمرَّر ولا تُكتَب رقماً ههنا: العتبةُ مِلكُ `store` (هي
+ * `store.CORRECT`)، و`data` لا يعرف عن تقدُّمِ الطالبِ شيئاً — لذلك تُمرَّر
+ * إليه `scoreOf` و`answeredAt` أصلاً. وكان `0.7` مكتوباً في سطرَين ههنا،
+ * فكان تبديلُ العتبةِ في `store` يُبدِّل «الأخطاء» ولا يُبدِّل وِردَ اليوم.
+ */
+export function buildWird(track, n, scoreOf, answeredAt = () => 0, correct = 0.7) {
   const pool = forTrack(track);
   const weak = pool
-    .filter((q) => { const s = scoreOf(q.id); return s !== null && s < 0.7; })
+    .filter((q) => { const s = scoreOf(q.id); return s !== null && s < correct; })
     .sort((a, b) => scoreOf(a.id) - scoreOf(b.id));
   const fresh = pool.filter((q) => scoreOf(q.id) === null);
 
@@ -485,7 +503,7 @@ export function buildWird(track, n, scoreOf, answeredAt = () => 0) {
   if (chosen.length < n) {
     const taken = new Set(chosen.map((q) => q.id));
     const settled = pool
-      .filter((q) => !taken.has(q.id) && (scoreOf(q.id) ?? -1) >= 0.7)
+      .filter((q) => !taken.has(q.id) && (scoreOf(q.id) ?? -1) >= correct)
       .sort((a, b) => (answeredAt(a.id) || 0) - (answeredAt(b.id) || 0));
     chosen.push(...settled.slice(0, n - chosen.length));
   }
@@ -515,17 +533,56 @@ export function flashcardsOf(track) {
   return forTrack(track)
     .filter((q) => Array.isArray(q.keyPoints) && q.keyPoints.length >= 3)
     .map((q) => {
-      // إن هُيكلت الإجابة (tools/هيكلة_الإجابات.py) فالعدد والبنود مفصولان
-      // بيقين، فتُرقَّم البنود بأمان. وإلا فلا ترقيم.
-      if (q.answer && Array.isArray(q.answer.items)) {
-        return { q, count: q.answer.countWord, items: q.answer.items,
-                 caveats: q.answer.caveats || [], numbered: true };
+      /*
+       * القيودُ تُقرأ في الفرعَين معاً — وكانت في الفرعِ الأوّلِ وحدَه.
+       *
+       * فسؤالٌ فيه `answer.caveats` ولا `answer.items` له يمضي إلى الفرعِ
+       * الثاني، فتُكتَب `caveats: []` وتُهدَر قيودُه. ومنها ما يُنبِّه على
+       * اختلافِ الوثيقةِ على نفسها — وذاك أنفعُ ما في البطاقةِ لا زينةٌ فيها.
+       */
+      const caveats = (q.answer && Array.isArray(q.answer.caveats)) ? q.answer.caveats : [];
+
+      /*
+       * والفرعُ المُهيكَلُ يُشترَط فيه أن تكون بنودُه **ثلاثاً فأكثر**، لا أن
+       * تكون `items` مصفوفةً فحسب.
+       *
+       * فـ`GEN-SLT-007` عنده `answer.items = []` و`keyPoints` اثنتا عشرةَ
+       * نقطةً حاضرة: فكانت المصفوفةُ الفارغةُ تجتاز `Array.isArray` فيُؤخَذ
+       * الفرعُ الأوّلُ بصفرِ بندٍ، ثمّ يُسقِطه `items.length >= 3` — فيسقط
+       * سؤالٌ تامٌّ من بطاقاتِ الحفظِ بسببِ حقلٍ فارغٍ يَحجُب ما تحته.
+       */
+      if (q.answer && Array.isArray(q.answer.items) && q.answer.items.length >= 3) {
+        /*
+         * ولا تُرقَّم البنودُ إلا إذا صدَّق عددُها العددَ المذكور.
+         *
+         * فأربعةَ عشرَ بطاقةً تكتب عدداً وتُرقِّم تحته بنوداً أقلَّ أو أكثر:
+         * «ثمانيةٌ وعشرونَ حرفاً» ثمّ أربعةُ بنود، «تَرتيبٌ واحِدٌ» ثمّ تسعة.
+         * وأصلُه في أداةِ الهيكلة: `count` أُخِذ من لفظِ العددِ في نصِّ الكتاب،
+         * و`items` من البنودِ المذكورة، والكتابُ يذكر العددَ ولا يسوق بنودَه
+         * كلَّها. والبطاقةُ أداةُ حفظٍ تُكرَّر حتى ترسخ، فترقيمٌ يُناقِض عدداً
+         * يُرسِّخ الخطأَ لا يُنبِّه عليه — وهو عينُ ما يُحذِّر منه تعليقُ
+         * الشاشةِ نفسِها.
+         *
+         * وليس لنا أن نُصلِح البياناتِ ههنا (الكتابُ هو الحَكَم، والبنكُ لم
+         * يُراجِعه عالِمٌ بعد)، فيُقال ما هو: العددُ عددُ الكتابِ، والمذكورُ
+         * منه كذا. و`short` هو الفرق، ويُعرَض صريحاً في البطاقة.
+         */
+        const n = q.answer.count;
+        const agrees = typeof n !== 'number' || n === q.answer.items.length;
+        return {
+          q,
+          count: q.answer.countWord,
+          items: q.answer.items,
+          caveats,
+          numbered: agrees,
+          stated: agrees ? null : n,
+        };
       }
       const first = q.keyPoints[0] || '';
       const countMatch = first.match(/^العدد[:：]\s*(.+)$/);
       const count = countMatch ? countMatch[1].trim() : (first.match(NUMBER_WORDS) || [])[0] || null;
       const items = countMatch ? q.keyPoints.slice(1) : q.keyPoints;
-      return { q, count, items, caveats: [], numbered: false };
+      return { q, count, items, caveats, numbered: false, stated: null };
     })
     .filter((c) => c.items.length >= 3);
 }

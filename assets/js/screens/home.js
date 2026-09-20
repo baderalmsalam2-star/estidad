@@ -54,6 +54,10 @@ export default function homeScreen() {
     // وكان تحت ثلاثِ بطاقاتٍ يُمرَّر إليها، فيبدأ من الكتب كلَّ مرّة.
     resume ? resumeCard(track, resume) : null,
 
+    // ورقةٌ فُتِحت ولم تُختَم — تُعرَض فوقَ «تابِع» لأنّها أخصُّ منها: تلك
+    // بابٌ من المنهج، وهذه ورقةٌ بعينها وقف فيها وفيها مؤقِّتُها.
+    paperCard(),
+
     rankCard(),
 
     masteryCard(pool),
@@ -239,7 +243,7 @@ function wirdCard(track) {
       // «ابدأ — ٢٠ سؤالاً» وتُفتَح جلسةٌ من سؤالَين.
     }, (() => {
       const want = left || goal;
-      const have = data.buildWird(track, want, store.scoreOf, store.answeredAt).length;
+      const have = data.buildWird(track, want, store.scoreOf, store.answeredAt, store.CORRECT).length;
       if (!have) return 'لا أسئلةَ في مسارك';
       return done ? `زِدْ ${ar(have)} سؤالاً` : `ابدأ — ${ar(have)} سؤالاً`;
     })()),
@@ -284,7 +288,7 @@ function openExam(track, count) {
  * جعل ذلك نادراً، لكنّ «نادر» ليس «مستحيل»: مسارٌ لا أسئلةَ فيه أصلاً.)
  */
 function openWird(track, n) {
-  const questions = data.buildWird(track, n, store.scoreOf, store.answeredAt);
+  const questions = data.buildWird(track, n, store.scoreOf, store.answeredAt, store.CORRECT);
   if (!questions.length) {
     alert('لا أسئلةَ في مسارك الآن. تأكّدْ من وصولِ ملفّاتِ الأسئلةِ ثمّ أعِدْ فتحَ التطبيق.');
     return;
@@ -307,6 +311,66 @@ function openWird(track, n) {
  *
  * ويُقال «بقي كذا» لا «كذا من كذا»: الباقي هو ما يعنيه، وهو الذي ينقص كلَّ يوم.
  */
+/**
+ * «أكمِلْ ما بدأت» — ورقةٌ فُتِحت ولم تُختَم.
+ *
+ * ── لِمَ ──────────────────────────────────────────────────────────────────
+ *
+ * جلسةُ الأسئلةِ كانت في ذاكرةِ الصفحةِ وحدَها. فالجوّالُ يُخلي صفحةَ المتصفّحِ
+ * من الذاكرةِ وهو في الجيب — وذلك يقع كثيراً، وليس عَطَباً في المتصفّحِ بل
+ * تدبيرُه للذاكرة — فيرجع الإمامُ إلى التطبيقِ فيجد الرئيسيةَ وقد ذهبت ورقتُه
+ * من السؤالِ الثاني والعشرين، وذهب ترتيبُها ومؤقِّتُها معها.
+ *
+ * ── وما يُستعاد وما لا يُستعاد ────────────────────────────────────────────
+ *
+ * يُستعاد: أسئلةُ الورقةِ بترتيبها، وموضعُ الوقوف، وما بقي من الوقت.
+ * ولا يُستعاد: ورقةُ النتيجةِ عن الأسئلةِ التي أُجيبت قبل الانقطاع — درجاتُها
+ * محفوظةٌ في تقدُّمِ الطالبِ ولا تضيع، لكنّها لا تُجمَع في نتيجةِ هذه الورقة.
+ * فلا يُقال «أكمِلِ الاختبار» في اختبارٍ نتيجتُه ناقصة، بل يُقال ما هو.
+ */
+function paperCard() {
+  const p = store.paper();
+  if (!p || !p.ids.length) return null;
+
+  // مضى وقتُها ⇐ لا تُستأنَف، وتُنسى بلا كلام.
+  if (p.endsAt && p.endsAt <= Date.now()) { store.setPaper(null); return null; }
+
+  // سؤالٌ لم يعد في البنك (بنكٌ تبدّل، أو مكرَّرٌ طُوِي) يُسقَط ولا تُسقَط الورقة.
+  const qs = p.ids.map((id) => data.questionById(id)).filter(Boolean);
+  if (qs.length < 2) { store.setPaper(null); return null; }
+  const at = Math.min(p.index, qs.length - 1);
+  if (at >= qs.length - 1) { store.setPaper(null); return null; }
+
+  return el('div.stack', { style: { gap: '10px' } }, [
+    el('div.row-base', [
+      el('span.section-title', 'أكمِلْ ما بدأت'),
+      el('button', {
+        onclick: () => { store.setPaper(null); go('home'); },
+        style: { font: 'inherit', fontSize: '13px', color: 'var(--ink-5)', background: 'none', border: 'none', cursor: 'pointer' },
+      }, 'اترُكها'),
+    ]),
+    el('button.card', {
+      style: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+      onclick: () => go('quiz', {
+        questions: qs,
+        mode: p.mode,
+        title: p.title,
+        startAt: at,
+        endsAt: p.endsAt || 0,
+      }),
+    }, [
+      el('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'start', flex: '1', minWidth: '0' } }, [
+        el('span', { style: { fontFamily: 'var(--serif)', fontSize: '24px', fontWeight: '700' } },
+          p.title || 'جلسةُ أسئلة'),
+        el('span.fine', `وقفتَ عند ${ar(at + 1)} من ${ar(qs.length)}${p.endsAt ? ' — وفيها مُهلة' : ''}`),
+        el('div.bar', { style: { marginTop: '2px' } },
+          el('i', { style: { width: `${Math.round((at / qs.length) * 100)}%` } })),
+      ]),
+      el('span.iconbtn.iconbtn--lg', { style: { marginInlineStart: '14px' } }, '▶'),
+    ]),
+  ]);
+}
+
 function resumeCard(track, resume) {
   const topic = resume.topic === 'الكتاب كاملاً' ? null : resume.topic;
   const qs = data.questionsIn(track, resume.subject, topic);

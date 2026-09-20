@@ -30,7 +30,7 @@
  * الصفحةِ اليومَ وبعدَ سنة. فلا تُراجَع على الشبكةِ بعدَ خزنها، بخلافِ الهيكل.
  */
 
-const CACHE = 'awqaf-prep-v28';
+const CACHE = 'awqaf-prep-v29';
 
 /** مخزنُ ما جلبه الطالبُ بنفسِه — بلا رقمٍ فلا يُمحى مع النشر. */
 const MEDIA = 'awqaf-prep-media';
@@ -46,6 +46,8 @@ const SHELL = [
   'assets/css/app.css',
   'assets/css/fonts.css',
   'assets/js/app.js',
+  // رسالةُ «متصفّحك أقدمُ…» — خارجَ الوحدات بقصد، وتُخزَّن كما يُخزَّن الهيكل.
+  'assets/js/compat.js',
   'assets/js/ui.js',
   'assets/js/data.js',
   'assets/js/store.js',
@@ -80,7 +82,19 @@ const SHELL = [
   'assets/fonts/plex-mono-400-latin.woff2',
   'assets/fonts/amiri-quran-400-arabic.woff2',
   'data/manifest.json',
+
+  /*
+   * أيقوناتُ التطبيق — كلُّها، لا `apple-touch-icon` وحدَها.
+   *
+   * وهي ٢٤ ك.ب جميعاً. وكانت خارجَ التخزين، فمن أضاف التطبيقَ إلى شاشتِه
+   * الرئيسيةِ وهو بلا شبكة — وذلك أشبهُ الأحوالِ بحالِ الإمامِ في مسجده —
+   * وجد أيقونةً فارغةً أو رمادَ النظام. والأيقونةُ أوّلُ ما يُرى، وفراغُها
+   * يقول «هذا شيءٌ معطوب» قبل أن يُفتَح.
+   */
   'assets/icons/apple-touch-icon.png',
+  'assets/icons/icon-192.png',
+  'assets/icons/icon-512.png',
+  'assets/icons/icon-maskable-512.png',
 
   /*
    * أحكامُ التجويد (٩٠٨ ك.ب) — ثقيلةٌ لكنّها في الهيكلِ لا في الوسائط.
@@ -127,6 +141,29 @@ async function coverUrls() {
   }
 }
 
+/**
+ * أيصلح هذا الردُّ للخزن؟
+ *
+ * و`res.ok` تقبل ٢٠٦ (Partial Content) — وهي تقع في ملفّاتِ الصوتِ وPDF حين
+ * يطلب المتصفّحُ مدًى منها. فخزنُها يُخلِّف في المخزنِ قطعةً تُرَدُّ بعدُ
+ * كأنّها الملفُّ كلُّه، فيُفتَح الكتابُ ناقصاً بلا شبكةٍ ولا يُعرَف السبب.
+ * فيُشترَط ٢٠٠ حرفاً.
+ */
+const keepable = (res) => !!res && res.status === 200 && res.type === 'basic';
+
+/**
+ * خزنٌ لا يُخلِّف رفضاً غيرَ مُعالَج.
+ *
+ * و`cache.put` كانت تُنادى بلا `catch`: فإن امتلأ القرصُ (والوسائطُ ٢٧ م.ب
+ * للكتابِ الواحد) أو أخرجَ المتصفّحُ المخزنَ في أثناءِ الكتابة، رُفِض الوعدُ
+ * ولا مُلتَقِط — فيُسجَّل `unhandledrejection` في العامل، وقد يُنهيه المتصفّحُ
+ * لأجله. والزيارةُ تمضي كأنّ شيئاً خُزِّن وهو لم يُخزَّن.
+ *
+ * و`waitUntil` عند المُنادي تُبقي العاملَ حيّاً حتى تتمَّ الكتابة: العاملُ
+ * يُنهى بعد الردِّ مباشرةً، فكتابةٌ لم تتمَّ تُقطَع في منتصفها.
+ */
+const store = (cache, request, res) => cache.put(request, res).catch(() => {});
+
 self.addEventListener('install', (e) => {
   e.waitUntil((async () => {
     const cache = await caches.open(CACHE);
@@ -166,7 +203,7 @@ self.addEventListener('fetch', (e) => {
       if (hit) return hit;
       try {
         const res = await fetch(request);
-        if (res && res.ok && res.type === 'basic') media.put(request, res.clone());
+        if (keepable(res)) e.waitUntil(store(media, request, res.clone()));
         return res;
       } catch {
         return new Response('لا شبكةَ، ولم يُحمَّل هذا الملفُّ بعدُ.', {
@@ -184,7 +221,7 @@ self.addEventListener('fetch', (e) => {
 
     const fromNet = fetch(request)
       .then((res) => {
-        if (res && res.ok && res.type === 'basic') cache.put(request, res.clone());
+        if (keepable(res)) e.waitUntil(store(cache, request, res.clone()));
         return res;
       })
       .catch(() => null);

@@ -2,6 +2,7 @@
 
 import * as data from '../data.js';
 import * as store from '../store.js';
+import * as owner from '../owner.js';
 import { el, ar, pct, go, topbar } from '../ui.js';
 import * as sync from '../sync.js';
 
@@ -19,6 +20,11 @@ import * as sync from '../sync.js';
  *     تُقرأ إحصاءَ طلاب.
  */
 export default function adminScreen({ section = null } = {}) {
+  // لا تُفتَح اللوحةُ إلا لصاحبِ التطبيق. وكانت تُفتَح بـ`go('admin')` من
+  // شاشةِ المالكِ وحدَها، فكان الحارسُ في الطريقِ لا في الباب — ومن كتبَ
+  // المَسلَكَ بيده دخل.
+  if (!owner.isOwner()) { go('signin'); return null; }
+
   const track = store.get().track;
   const pool = data.forTrack(track);
   const all = data.allQuestions();

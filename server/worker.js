@@ -39,15 +39,43 @@ const allowedOrigins = (env) =>
  */
 function corsHeaders(env, origin) {
   const allowed = allowedOrigins(env);
+  // `Vary: Origin` في الأصلِ لا في فرعٍ واحد: الردُّ يتبدّل بترويسةِ `Origin`
+  // في كلِّ الأحوالِ (تُبعَث الترويسةُ أو تُحذَف)، فخزنُ ردٍّ لأصلٍ ورَدُّه
+  // لأصلٍ آخَرَ خطأٌ في الأحوالِ كلِّها. وكانت في الفرعِ الأخيرِ وحدَه.
   const base = {
     'access-control-allow-methods': 'GET, POST, OPTIONS',
     'access-control-allow-headers': 'content-type, x-admin-key',
     'access-control-max-age': '86400',
+    vary: 'Origin',
   };
   if (!allowed.length) return base;                    // غيرُ مضبوط — لا ترويسةَ خاوية
   if (allowed.includes('*')) return { ...base, 'access-control-allow-origin': '*' };
   if (allowed.includes(origin)) return { ...base, 'access-control-allow-origin': origin };
-  return { ...base, 'access-control-allow-origin': allowed[0], vary: 'Origin' };
+  return { ...base, 'access-control-allow-origin': allowed[0] };
+}
+
+/**
+ * موازنةُ سرٍّ بسرٍّ في زمنٍ لا يتبع موضعَ الاختلاف.
+ *
+ * و`a !== b` في النصوصِ تقطع عند أوّلِ محرفٍ مختلف، فزمنُها يتبع طولَ البادئةِ
+ * الموافقة. ولا أدّعي أنّ ذلك يُستغَلُّ عبر شبكةِ Cloudflare — تفاوتُ التوجيهِ
+ * وبردُ العازلِ يغرِقان فرقَ النانوثواني — لكنّه سرٌّ يُوازَن موازنةً تُفشي
+ * زمنَها، وثمنُ رفعِ ذلك ثلاثةُ أسطر.
+ *
+ * والتلخيصُ قبل الموازنةِ يُوحِّد الطولَ أيضاً، فلا يُفشى طولُ السرِّ الصحيح.
+ */
+async function sameSecret(given, want) {
+  if (typeof given !== 'string' || typeof want !== 'string') return false;
+  const enc = new TextEncoder();
+  const [a, b] = await Promise.all([
+    crypto.subtle.digest('SHA-256', enc.encode(given)),
+    crypto.subtle.digest('SHA-256', enc.encode(want)),
+  ]);
+  const x = new Uint8Array(a);
+  const y = new Uint8Array(b);
+  let diff = 0;
+  for (let i = 0; i < x.length; i += 1) diff |= x[i] ^ y[i];   // بلا قطعٍ مبكِّر
+  return diff === 0;
 }
 
 const json = (body, status, extra) =>
@@ -217,9 +245,21 @@ async function postAnswers(request, env, cors) {
     if (typeof a?.id !== 'string' || !ID_SHAPE.test(a.id)) continue;
     const score = Number(a.score);
     if (!Number.isFinite(score) || score < 0 || score > 1) continue;
-    // وقتُ الجهاز لا يُؤتمَن على إطلاقه: يُقبَل ما كان في نافذةٍ معقولةٍ حولَ الآن.
+    /*
+     * وقتُ الجهاز لا يُؤتمَن على إطلاقه: يُقبَل ما كان في نافذةٍ معقولةٍ، وما
+     * خرج عنها خُتِم بـ`now`.
+     *
+     * والنافذةُ **غيرُ متناظرة**: الماضي سنةٌ (وهي مدّةُ البقاءِ نفسُها)،
+     * والمستقبلُ دقيقةٌ واحدةٌ سماحاً لانزياحِ ساعةِ الجهازِ لا غير. وكانت
+     * `Math.abs(...) < 366 يوماً` فتقبل طابعاً بعد سنةٍ من اليوم — وذاك
+     * يُفلِت من `sweep` (فـ`at` أكبرُ من أيِّ قطعٍ) فيبقى الصفُّ أبداً،
+     * ويُفسِد أيَّ استعلامٍ زمنيٍّ يُضاف بعدُ.
+     */
     const at = Number(a.at);
-    const stamp = Number.isFinite(at) && Math.abs(now - at) < 366 * 86_400_000 ? at : now;
+    const inWindow = Number.isFinite(at)
+      && at <= now + 60_000
+      && at > now - 366 * 86_400_000;
+    const stamp = inWindow ? at : now;
     rows.push([body.device, a.id, score, body.track, stamp]);
   }
   if (!rows.length) return json({ saved: 0 }, 200, cors);
@@ -335,15 +375,24 @@ const MIN_ANSWERS = 5;
  */
 const MAX_KEY_TRIES = 40;
 
+/**
+ * أرقامُ الطلابِ لا تُخزَّن في وسيطٍ ولا في المتصفّح.
+ *
+ * والردُّ موثَّقٌ بترويسةٍ لا بكعكة، فبعضُ الوسائطِ يعدُّه قابلاً للخزنِ إذ لا
+ * `Authorization` فيه ولا `Set-Cookie`. و`no-store` تقطع ذلك من أصله.
+ */
+const PRIVATE_HEADERS = { 'cache-control': 'no-store' };
+
 async function getStats(request, env, cors) {
+  const head = { ...cors, ...PRIVATE_HEADERS };
   const given = request.headers.get('x-admin-key');
-  if (!env.ADMIN_KEY || given !== env.ADMIN_KEY) {
+  if (!env.ADMIN_KEY || !(await sameSecret(given, env.ADMIN_KEY))) {
     const day = Math.floor(Date.now() / 86_400_000);
     const bucket = await bucketOf(request, env, day);
     // يُعَدُّ الإخفاقُ حتى في حالِ الضبطِ الناقص، فلا يُترَك بابٌ بلا عدّاد.
     const within = await withinQuota(env, bucket ? `key:${bucket}` : null, day, 1, MAX_KEY_TRIES);
-    if (!within) return json({ error: 'كثُرت المحاولاتُ من هذا المصدر' }, 429, cors);
-    return json({ error: 'مفتاحُ المشرف مطلوب' }, 401, cors);
+    if (!within) return json({ error: 'كثُرت المحاولاتُ من هذا المصدر' }, 429, head);
+    return json({ error: 'مفتاحُ المشرف مطلوب' }, 401, head);
   }
 
   const day = 86_400_000;
@@ -385,5 +434,5 @@ async function getStats(request, env, cors) {
     byTrack: Object.fromEntries((byTrack.results || []).map((r) => [r.track, r.n])),
     hardest: (hardest.results || []).map((r) => ({ id: r.question, n: r.n, avg: r.avg })),
     easiest: (easiest.results || []).map((r) => ({ id: r.question, n: r.n, avg: r.avg })),
-  }, 200, cors);
+  }, 200, head);
 }

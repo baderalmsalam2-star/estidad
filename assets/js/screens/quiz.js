@@ -9,7 +9,7 @@ import { el, ar, pct, arTime, go, pageCite, devBadge, empty, reportLink } from '
 import { resultCard, shareCard, shareText } from '../share.js';
 import * as sync from '../sync.js';
 
-export default function quizScreen({ questions, mode = 'study', title = '', back = null, again = null, pool = null, minutes = 0 }) {
+export default function quizScreen({ questions, mode = 'study', title = '', back = null, again = null, pool = null, minutes = 0, startAt = 0, endsAt = 0 }) {
   if (!questions || !questions.length) {
     return empty('لا أسئلة هنا', 'جرّب باباً آخر أو غيّر شروط الاختبار.');
   }
@@ -22,7 +22,8 @@ export default function quizScreen({ questions, mode = 'study', title = '', back
     back: back || (() => go('home')),
     again,                 // يلتقط دفعةً جديدة من البابِ نفسِه
     pool,                  // أسئلةُ الباب كلِّه — لبيان موقعِ الطالب منه
-    index: 0,
+    // يبدأ من أوّلها، إلا ورقةً استُؤنِفت فتبدأ من موضعِ الوقوف.
+    index: Math.min(Math.max(0, startAt), questions.length - 1),
     results: [],           // { q, score } — قد يتكرّر السؤالُ إن أُعيد
     retried: new Set(),    // ما أُعيد مرّةً، فلا يُعاد ثانيةً
     startedAt: Date.now(),
@@ -46,9 +47,13 @@ export default function quizScreen({ questions, mode = 'study', title = '', back
     pointsBefore: store.points(),
     // مُهلةُ الاختبار بالدقائق (صفرٌ = بلا مُهلة). تُحسَب من لحظة البدء لا من
     // لحظة السؤال، فالوقتُ الضائع في سؤالٍ يُنقِص من بقيّةِ الأسئلة كما في القاعة.
-    endsAt: minutes ? Date.now() + minutes * 60_000 : 0,
+    // و`endsAt` تُمرَّر كما هي عند الاستئناف، فلا يُستأنَف اختبارٌ بمُهلةٍ كاملةٍ
+    // من جديد — الوقتُ الذي مضى مضى.
+    endsAt: endsAt || (minutes ? Date.now() + minutes * 60_000 : 0),
     over: false,
   };
+
+  savePaper(session);
 
   const host = el('div', { style: { display: 'flex', flexDirection: 'column', flex: '1', minHeight: '0' } });
   // نفادُ الوقت يختم الجلسةَ، وما لم يُجَب يُحسَب صفراً في ورقةِ الاختبارِ
@@ -88,8 +93,10 @@ function header(session, onClose) {
  */
 function clock(session) {
   const box = el('span.num', {
-    // الوقتُ «د:ث» يقلبه اتجاهُ الصفحة فيُقرأ «٠٠:٧٠» بدل «٧٠:٠٠»، فيُعزَل
-    // اتجاهُه عن اتجاهِ ما حوله.
+    // عزلُ الاتّجاهِ حَرْزٌ لا علاجُ عَطَبٍ قائم: قِسْتُ «١٢:٠٥» بالعزلِ
+    // وبغيرِه فكان الرسمُ واحداً — النقطتان `CS` بين رقمَين `AN` تصيران
+    // `AN` (UAX #9 W4) فيصير الكلُّ جريةً واحدةً. وإنّما يبقى لئلّا تكون
+    // الصحّةُ معلَّقةً بصنفِ كلِّ محرفٍ يدخل. والشرحُ عند `frac` في ui.js.
     style: {
       fontSize: '13px', fontWeight: '600', padding: '4px 10px', borderRadius: 'var(--r-chip)',
       direction: 'ltr', unicodeBidi: 'isolate',
@@ -328,8 +335,29 @@ function objectiveView(host, session, q) {
       },
     }, 'تحقّق');
 
+    /*
+     * ومخرجٌ لمن لا يعرف الجواب — كنظيرِه في المقاليّ.
+     *
+     * فسؤالُ الإكمالِ كان بابَين لا ثالثَ لهما: أن يكتب شيئاً يُحتسَب عليه
+     * خطأً، أو أن يُنهيَ الجلسةَ كلَّها بـ✕. و«تحقّق» لا يعمل على حقلٍ فارغ،
+     * و«التالي» لا يُفتَح حتى يُجيب. فمن وقف على كلمةٍ في وسطِ اختبارٍ من
+     * أربعين سؤالاً خسِر الأربعين.
+     *
+     * ويُسجَّل صفراً صريحاً لا «تخطّياً» لا يُحسَب: ذاك يُفسِد قياسَ الإتقانِ
+     * وسِجِلَّ الأخطاء، وهو عينُ ما صُحِّح في المقاليّ.
+     */
+    const defer = el('button.btn.btn--ghost', {
+      onclick: () => {
+        if (answered) return;
+        check.remove();
+        defer.remove();
+        input.disabled = true;
+        settle(false);
+      },
+    }, 'أجِّلْه');
+
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') check.click(); });
-    wrap.append(...head, input, explainSlot, el('div.push.stack', [check, nextBtn]));
+    wrap.append(...head, input, explainSlot, el('div.push.stack', [check, defer, nextBtn]));
   }
 
   return wrap;
@@ -534,10 +562,32 @@ function missedBlock(session) {
   ]);
 }
 
+/**
+ * تُقيَّد الورقةُ في التخزينِ عند كلِّ انتقال — فتُستأنَف إن أُخلِيت الصفحة.
+ *
+ * ولا تُحفَظ الجلسةُ كلُّها: فيها دوالُّ (`back` و`again`) وأسئلةٌ كاملة، وذلك
+ * لا يُسلسَل ولا يُحتاج إليه. إنّما يُحفَظ أقلُّ ما تُبنى منه الورقةُ ثانيةً:
+ * أرقامُ أسئلتها بترتيبها (وقد يزيد فيها `requeueIfWrong` فتُلتقَط في حينها)،
+ * وموضعُ الوقوف، ونهايةُ الوقتِ إن كانت.
+ *
+ * وما أُجيب محفوظٌ في `store.answers` أصلاً، فالمُستأنَفُ يكمل ولا يُعيد.
+ */
+function savePaper(session) {
+  store.setPaper({
+    mode: session.mode,
+    title: session.title,
+    ids: session.questions.map((q) => q.id),
+    index: session.index,
+    endsAt: session.endsAt || 0,
+    at: Date.now(),
+  });
+}
+
 function advance(host, session) {
   requeueIfWrong(session);
   session.index += 1;
   if (session.index < session.questions.length) {
+    savePaper(session);
     renderQuestion(host, session);
     host.closest('.screen')?.scrollTo({ top: 0 });
   } else {
@@ -572,6 +622,8 @@ function fillUnanswered(session) {
 }
 
 function finishSession(host, session) {
+  // خُتِمت الورقةُ — فلا يبقى في الرئيسيةِ زرُّ «أكمِلْ ما بدأت» يدعو إليها.
+  store.setPaper(null);
   const seconds = Math.round((Date.now() - session.startedAt) / 1000);
 
   fillUnanswered(session);

@@ -3,3 +3,5 @@ node_modules/
 *.log
 work/
 نسخة-واحدة.html
+__pycache__/
+*.pyc

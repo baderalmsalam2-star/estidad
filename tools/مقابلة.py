@@ -90,6 +90,7 @@ def main():
     report = '--report' in sys.argv
     cache = {}
     hints, stats = {}, collections.Counter()
+    documented = set()
 
     for f in sorted(glob.glob(str(ROOT / 'data' / 'banks' / '*.json'))):
         bank = json.load(open(f, encoding='utf-8'))
@@ -100,6 +101,7 @@ def main():
                 stats['بلا كتابٍ نصّي'] += 1
                 continue
             if q.get('bookPage'):
+                documented.add(q['id'])
                 stats['موثَّقٌ سلفاً'] += 1
                 continue
 
@@ -134,6 +136,32 @@ def main():
                 mark = '✓' if q['id'] in hints else '—'
                 print(f"{mark} {q['id']:<12} {subject:<14} ص{hit['page'] if hit else '?':<5} "
                       f"ثقة {c:<6} {q['question'][:44]}")
+
+    # ── لا يُكتَب ترشيحٌ لا يُقرَأ ─────────────────────────────────────────
+    #
+    # والتطبيقُ لا يقرأ الترشيحَ إلا في حالَين معاً: أن يكون للسؤالِ **صورةُ
+    # صفحةٍ** على القرص (`pages-index.json`)، وألّا يكون له `bookPage` موثَّقٌ
+    # أصلاً — فالموثَّقُ يسبقُ المرشَّحَ فلا يُنظَر في الثاني.
+    #
+    # وكان الملفُّ يُكتَب بلا هذا الشرطِ فبلغ مائةً وأربعين ترشيحاً، ثلاثةُ
+    # أرباعها ميّتٌ لا يُقرأُ أبداً: يُحمَّل في كلِّ إقلاعٍ ويُفحَص في كلِّ
+    # سؤال، ويُقرأُ في المراجعةِ عملاً قائماً وليس بشيء — وذاك أسوأُ من ثِقَلِه.
+    index_path = ROOT / 'books' / 'pages-index.json'
+    index = json.loads(index_path.read_text(encoding='utf-8')) if index_path.exists() else {}
+    drawn = {b: set(v.get('pages', [])) for b, v in index.items()}
+
+    kept, dead_page, dead_doc = {}, 0, 0
+    for qid, h in hints.items():
+        if qid in documented:
+            dead_doc += 1
+            continue
+        if h['page'] not in drawn.get(h['book'], set()):
+            dead_page += 1
+            continue
+        kept[qid] = h
+    stats['أُسقِط — لا صورةَ لصفحته'] = dead_page
+    stats['أُسقِط — له صفحةٌ موثَّقةٌ أصلاً'] = dead_doc
+    hints = kept
 
     out = ROOT / 'data' / 'page-hints.json'
     out.write_text(json.dumps(hints, ensure_ascii=False, indent=1), encoding='utf-8')

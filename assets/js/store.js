@@ -50,6 +50,18 @@ const empty = () => ({
   textScale: 1,
   // وقتُ تنبيه الوِرد «HH:MM» — يُحفَظ ليُعرَض، والتنبيهُ نفسُه في تقويم الجهاز
   reminderAt: null,
+  /*
+   * ورقةٌ مفتوحةٌ لم تُختَم — { mode, title, ids, index, endsAt, at }.
+   *
+   * ولِمَ تُحفَظ؟ لأنّ جلسةَ الأسئلةِ كانت في ذاكرةِ الصفحةِ وحدَها: يقف
+   * الإمامُ في السؤالِ الثاني والعشرين من أربعين، فيَرِدُه اتصالٌ أو يُخلي
+   * المتصفّحُ الصفحةَ من الذاكرةِ وهو في الجيب (وذلك يقع على الجوّالِ كثيراً)
+   * — فيرجع فيجد الرئيسيةَ، والورقةُ ذهبت بمؤقِّتها وترتيبِها.
+   *
+   * وما أُجيب محفوظٌ في `answers` على كلِّ حال، فالضائعُ **سياقُ الورقة** لا
+   * التقدُّم: أيُّ أسئلةٍ كانت، وأين وقف، وكم بقي من الوقت.
+   */
+  paper: null,
 });
 
 /**
@@ -84,6 +96,18 @@ function sane(raw) {
   d.textScale = num(raw.textScale, 1, 2, 1);
   if (Array.isArray(raw.exams)) d.exams = raw.exams.filter((x) => obj(x)).slice(0, 20);
   if (obj(raw.resume)) d.resume = raw.resume;
+  // الورقةُ المفتوحةُ تُفحَص حقلاً حقلاً: ما فيها يُبنى عليه رسمُ شاشةٍ كاملة.
+  const paper = obj(raw.paper);
+  if (paper && Array.isArray(paper.ids) && paper.ids.every((x) => typeof x === 'string')) {
+    d.paper = {
+      mode: typeof paper.mode === 'string' ? paper.mode : 'study',
+      title: typeof paper.title === 'string' ? paper.title : '',
+      ids: paper.ids.slice(0, 200),
+      index: num(paper.index, 0, paper.ids.length, 0),
+      endsAt: num(paper.endsAt, 0, Number.MAX_SAFE_INTEGER, 0),
+      at: num(paper.at, 0, Number.MAX_SAFE_INTEGER, 0),
+    };
+  }
   if (obj(raw.memorized)) d.memorized = obj(raw.memorized);
   if (obj(raw.reviews)) d.reviews = obj(raw.reviews);
 
@@ -196,6 +220,63 @@ export const answeredAt = (id) => cache.answers[id]?.at ?? 0;
 export const seenCount = () => Object.keys(cache.answers).length;
 
 /**
+ * تنظيفُ ما لم يعد له سؤالٌ في البنك — مرّةً عند الإقلاع.
+ *
+ * ── العَطَب ──────────────────────────────────────────────────────────────
+ *
+ * `answers` مُفهرَسٌ بمعرِّفِ السؤال، و`points()` و`seenCount()` تجمعان على
+ * مفاتيحِه لا على أسئلةِ البنك. فسؤالٌ حُذِف من بنكه — أو طُوِي مكرَّراً، أو
+ * بُدِّل معرِّفُه — تبقى إجابتُه في الجهازِ تُحسَب أبداً: يُقال للطالبِ «أجبتَ
+ * عن ٤١٢ سؤالاً» وفي المنهجِ ٤٠٠، وتبقى له نقاطٌ على شيءٍ لا وجودَ له، وقد
+ * يرتفع بها إلى رُتبةٍ لا يستحقُّها. ولا يُصلِحه شيءٌ سوى «امسح تقدّمي».
+ *
+ * ── ولمَ لا يُحذَف رأساً ─────────────────────────────────────────────────
+ *
+ * لأنّ أكثرَ ما «يُحذَف» ههنا مطويٌّ لا محذوف: `dedupe` تطوي معرِّفاً على
+ * معرِّف. فيُنقَل المطويُّ إلى الباقي (الأعلى درجةً منهما، والأحدثُ وقتاً)،
+ * ولا يُمحى إلا ما لا بديلَ له.
+ *
+ * ── وحارسٌ لازم ──────────────────────────────────────────────────────────
+ *
+ * لا يُنادى هذا إلا وقد وصلت البنوكُ كلُّها (`data.missingBanks` خالية): بنكٌ
+ * سقط في شبكةٍ ضعيفةٍ يجعل أسئلتَه «غيرَ موجودة»، فيُمحى بها تقدُّمُ شهر.
+ */
+export function prune(liveIds, aliases = new Map()) {
+  if (!(liveIds instanceof Set) || !liveIds.size) return 0;
+  let changed = 0;
+
+  for (const [id, a] of Object.entries(cache.answers)) {
+    if (liveIds.has(id)) continue;
+    const to = aliases.get(id);
+    if (to && liveIds.has(to)) {
+      const cur = cache.answers[to];
+      // يُبقى الأنفعُ للطالب: الأعلى درجةً، وعند التساوي الأحدثُ وقتاً.
+      if (!cur || (a.score ?? 0) > (cur.score ?? 0)
+        || ((a.score ?? 0) === (cur.score ?? 0) && (a.at ?? 0) > (cur.at ?? 0))) {
+        cache.answers[to] = { ...a };
+      }
+    }
+    delete cache.answers[id];
+    changed += 1;
+  }
+
+  for (const key of ['memorized', 'reviews']) {
+    const rec = cache[key];
+    if (!rec || typeof rec !== 'object') continue;
+    for (const id of Object.keys(rec)) {
+      if (liveIds.has(id)) continue;
+      const to = aliases.get(id);
+      if (to && liveIds.has(to) && rec[to] === undefined) rec[to] = rec[id];
+      delete rec[id];
+      changed += 1;
+    }
+  }
+
+  if (changed) write();
+  return changed;
+}
+
+/**
  * مقاسُ الخطّ — **خيارٌ لا أصل**: الأصلُ يبقى كما صُمِّم، ومن احتاج كبَّر.
  *
  * وكثيرٌ من الأئمة كبارُ سنّ، والقياساتُ في التطبيق كلُّها بالبكسل فلا تتبع
@@ -229,6 +310,14 @@ export function setResume(resume) {
   write();
 }
 
+/** الورقةُ المفتوحةُ إن كانت — تُقرَأ عند الإقلاعِ لتُعرَض «أكمِلْ ما بدأت». */
+export const paper = () => cache.paper;
+
+export function setPaper(p) {
+  cache.paper = p || null;
+  write();
+}
+
 export function saveExam(result) {
   cache.exams.unshift(result);
   cache.exams = cache.exams.slice(0, 20);
@@ -244,20 +333,28 @@ export function toggleMemorized(id) {
 
 export const isMemorized = (id) => !!cache.memorized[id];
 
-/** ما أخطأ فيه الطالب أو قصّر: أقلّ من ٧٠٪ — هذه مادة «مراجعة الأخطاء». */
-export function mistakes(questions) {
-  return questions.filter((q) => {
-    const a = cache.answers[q.id];
-    return a && a.score < 0.7;
-  });
-}
-
 /**
  * الحدُّ الفاصلُ بين الصوابِ والخطأ — سبعون في المائة، وهو حدٌّ **واحدٌ** في
  * التطبيق كلِّه: به يُعَدُّ السؤالُ صواباً فيخرج من دورةِ الأسئلة إلى صندوقِ
  * المراجعة، وبه يُعَدُّ خطأً فيُعاد على الطالب حتى يُصيبه.
+ *
+ * وكان مكتوباً رقماً `0.7` في أربعةِ مواضعَ خارجَ هذا التصريح — ثلاثةٌ منها
+ * تحت التصريحِ نفسِه في هذا الملفّ، فكان الوصفُ «حدٌّ واحد» يكذبُ سطراً تحته.
+ * ومن بدّله ههنا ظنَّ أنّه بدّله، فتصير «الأخطاء» على حدٍّ و«المُتقَن» على
+ * حدٍّ آخَر، ولا شيءَ يُخفِق فيُنبِّه.
+ *
+ * والتصريحُ فوقَ أوّلِ مستعملٍ له لا تحته: `const` لا تُرفَع، فوضعُه أسفلَ
+ * الملفِّ يُغري بكتابةِ الرقمِ فيما قبلَه.
  */
 export const CORRECT = 0.7;
+
+/** ما أخطأ فيه الطالب أو قصّر: دون `CORRECT` — هذه مادة «مراجعة الأخطاء». */
+export function mistakes(questions) {
+  return questions.filter((q) => {
+    const a = cache.answers[q.id];
+    return a && a.score < CORRECT;
+  });
+}
 
 /** أصابه: فلا يُعرَض عليه في جلسةٍ تلقائيةٍ بعدُ، إلا أن يفتح صندوقَ المراجعة. */
 export const isCorrect = (id) => (cache.answers[id]?.score ?? -1) >= CORRECT;

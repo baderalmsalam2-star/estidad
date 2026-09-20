@@ -115,11 +115,41 @@ console.log(`المسالك: ${(routes || []).length} · تُفتَح ههنا $
   + ` · في التدفُّق ${IN_FLOW.length} · في فحصٍ آخَر ${Object.keys(ELSEWHERE).length}`);
 for (const [r, where] of Object.entries(ELSEWHERE)) console.log(`  · ${r} ← ${where}`);
 
+/*
+ * بابا الإدارةِ محروسانِ بكلمةِ المالك، فيُفتَح لهما ههنا أو يُخفِق الفحص.
+ *
+ * وشاشتا `admin` و`review` تبدآنِ بـ`if (!owner.isOwner()) { go('signin'); }`.
+ * فلو تُرِك الفحصُ كما كان لَمضى أخضرَ وهو لا يفتحهما البتّة: يُرسَم `signin`
+ * فيه `.screen > *` وفيه `.credit`، فيجتاز التحقُّقَين ولا يُفحَص من اللوحةِ
+ * حرفٌ واحد — وهو عينُ «تحقُّقٌ يُخطَّى في صمتٍ فلا يُخفِق أبداً».
+ *
+ * والدخولُ يُكتَب في التخزينِ رأساً: `owner.isOwner()` تُوازِن ما في المفتاحِ
+ * بـ`PASS_SHA`، وهو مكتوبٌ في `owner.js` — فيُقرَأ منه ولا تُطلَب كلمةُ سِرٍّ
+ * ليعملَ الفحصُ عند كلِّ أحد. (ولا يُفتَح بهذا بابٌ: التلخيصُ في المستودعِ
+ * أصلاً، والكلمةُ نفسُها ليست فيه.)
+ */
+const OWNED = new Set(['admin', 'review']);
+const signedIn = await page.evaluate(async () => {
+  const src = await fetch('/assets/js/owner.js').then((r) => r.text());
+  const sha = /export const PASS_SHA = '([0-9a-f]{64})'/.exec(src)?.[1];
+  const key = /const KEY = '([^']+)'/.exec(src)?.[1];
+  if (!sha || !key) return false;
+  localStorage.setItem(key, sha);
+  return true;
+});
+if (!signedIn) errors.push('تعذّر الدخولُ بصفةِ المالك — لم تُفحَص شاشتا الإدارة');
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForTimeout(1400);
+
 for (const s of SCREENS) {
   await go(s);
   const n = await page.locator('.screen > *').count();
   if (!n) errors.push(`${s}: الشاشة فارغة`);
   if (!(await page.locator('.credit').count())) errors.push(`${s}: سطر الاعتماد مفقود`);
+  // وشاشةُ إدارةٍ تُرَدُّ إلى الدخولِ ليست مفحوصة، وإن رُسِمت بلا خطأ.
+  if (OWNED.has(s) && (await has('دخول المشرف'))) {
+    errors.push(`${s}: رُدَّ إلى شاشةِ الدخول — لم تُفحَص`);
+  }
   process.stdout.write(`${s} `);
 }
 console.log();
