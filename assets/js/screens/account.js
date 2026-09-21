@@ -69,9 +69,13 @@ export default function accountScreen() {
 
     // التنبيهان اللذان لا يُخفَيان عن الطالب (README §٥.٣ و§٥.٤)
     el('div.card.card--sand', { style: { gap: '8px' } }, [
-      el('span', { style: { fontSize: '13.5px', fontWeight: '600', color: 'var(--sand-ink)' } }, 'قبل أن تعتمد على هذه الأسئلة'),
+      el('div.row-base', [
+        el('span', { style: { fontSize: '13.5px', fontWeight: '600', color: 'var(--sand-ink)' } }, 'قبل أن تعتمد على هذه الأسئلة'),
+        el('span.chip', { style: { background: 'rgba(95,82,48,.12)', color: 'var(--sand-ink)' } }, 'تجريبيّ'),
+      ]),
+      el('span.fine', { style: { color: 'var(--sand-ink2)' } }, data.disclaimer()),
       el('span.fine', { style: { color: 'var(--sand-ink2)' } },
-        'هي اجتهادٌ تدريبيٌّ مبنيٌّ على الكتب المقرَّرة، لا أسئلةَ اختباراتٍ رسمية — والوزارة لا تنشر نماذج أسئلة. والفقه على المذهب الحنبليّ، فالصواب ما في دليل الطالب لا ما اشتُهر في غيره.'),
+        'والفقه على المذهب الحنبليّ، فالصواب ما في دليل الطالب لا ما اشتُهر في غيره.'),
     ]),
 
     el('div.card', { style: { gap: '8px' } }, [

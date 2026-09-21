@@ -22,6 +22,7 @@
 
 import base64
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -134,33 +135,70 @@ def font(name):
     return f'url(data:font/woff2;base64,{b64}) format("woff2")'
 
 
-def facts():
-    """أرقامُ البطاقة — تُحسَب من البنوكِ نفسِها لا من رقمٍ مُجمَل.
+def facts(base):
+    """أرقامُ البطاقة — تُؤخَذ من **التطبيقِ العامل**، لا تُحسَب ههنا ثانيةً.
 
-    و`totals.verifiedAgainstSourceBook` ثلاثةُ آلافٍ وستُّ مئةٍ واثنان وخمسون،
-    وكانت البطاقةُ تقول عنها «موثَّقٌ على صفحةِ الكتابِ برقمِها». وذلك أكثرُ
-    ممّا وقع: أربعُ مئةٍ وستةٌ وستون منها قوبِلت على **نصِّ OCR** لا على صورةِ
-    صفحةٍ مطبوعة — ولوحةُ المشرفِ في التطبيقِ تفرِّق بينهما صريحاً.
+    ── لِمَ لا تُقرأ من البنوكِ رأساً ───────────────────────────────────────
 
-    فتُحسَب ههنا من `provenance` كما تُحسَب ثَمَّ: ما قوبِل على صورةٍ وحدَه.
-    وبطاقةُ نشرٍ تُرسَل إلى الناسِ أولى ما يُضبَط فيه اللفظ — والتطبيقُ كلُّه
-    قائمٌ على ألّا يُقال ما لم يقع.
+    لأنّ التطبيقَ يطوي المكرَّرَ عند التحميل (`dedupe` في `data.js`): سؤالٌ
+    بمعرِّفَين يُعَدُّ واحداً عنده. فالبنوكُ على القرصِ أربعةُ آلافٍ وعشرة،
+    والتطبيقُ يُري الطالبَ أربعةَ آلافٍ وأربعة. فلو عدَّت البطاقةُ من القرصِ
+    لقالت رقماً لا يجده في التطبيق.
+
+    والفرقُ ستّةُ أسئلةٍ لا غير — لكنّ بطاقةً تُرسَل إلى الناسِ لا تُبنى على
+    «الفرقُ يسير»: هي أوّلُ ما يُصدَّق فيه أو يُكذَّب.
+
+    ── ولمَ لا يُنسَخ حسابُ الطيِّ ههنا ────────────────────────────────────
+
+    لأنّه منطقٌ مكتوبٌ مرّةً في `data.js` (تطبيعُ النصِّ، ثمّ ترجيحُ أيِّ
+    المكرَّرَين يبقى). ونسخُه في بايثون يعمل اليومَ ويكذب يومَ يُعدَّل هناك
+    ولا يُعدَّل ههنا — ولا شيءَ يُنبِّه.
+
+    فيُسأل التطبيقُ نفسُه: يُفتَح في Chromium ويُنادى `data.provenance()`.
+    ويلزمه خادمُ التطويرِ عاملاً (`node tools/serve.js`)، وإن لم يكن قيلَ
+    ذلك صريحاً ولم تُبنَ بطاقةٌ بأرقامٍ مظنونة.
     """
     md = json.loads((ROOT / 'data' / 'manifest.json').read_text(encoding='utf-8'))
-    on_page = 0
-    for bank in sorted((ROOT / 'data' / 'banks').glob('*.json')):
-        for q in json.loads(bank.read_text(encoding='utf-8')).get('questions', []):
-            if q.get('provenance') in ('generated-from-page', 'collated-on-page'):
-                on_page += 1
+    ask = OUT / 'اسأل.mjs'
+    OUT.mkdir(parents=True, exist_ok=True)
+    ask.write_text(f"""
+import {{ execSync }} from 'node:child_process';
+const root = execSync('npm root -g', {{ encoding: 'utf8' }}).trim();
+const pw = await import(`${{root}}/playwright/index.js`);
+const chromium = pw.chromium || pw.default.chromium;
+const b = await chromium.launch({{ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' }});
+const p = await b.newPage();
+await p.goto('{base}', {{ waitUntil: 'networkidle' }});
+await p.waitForFunction(async () => {{
+  const d = await import('/assets/js/data.js');
+  return d.allQuestions().length > 0;
+}}, {{ timeout: 40000 }});
+const out = await p.evaluate(async () => {{
+  const d = await import('/assets/js/data.js');
+  return {{ ...d.provenance(), missing: d.missingBanks().length }};
+}});
+await b.close();
+console.log(JSON.stringify(out));
+""", encoding='utf-8')
+    try:
+        raw = subprocess.run(['node', str(ask)], check=True, capture_output=True,
+                             text=True).stdout.strip().splitlines()[-1]
+    except subprocess.CalledProcessError as e:
+        sys.exit('تعذّر سؤالُ التطبيقِ عن أرقامه. شغّلِ الخادمَ أوّلاً:\n'
+                 '    node tools/serve.js &\n'
+                 f'ثمّ أعِدِ الأمر. (العنوان المُجرَّب: {base})\n' + (e.stderr or '')[-400:])
+    f = json.loads(raw)
+    if f['missing']:
+        sys.exit(f"لم تصل {f['missing']} من البنوكِ إلى التطبيق، فأرقامُه ناقصة. "
+                 'أصلِحِ الخادمَ ثمّ أعِدِ الأمر.')
     return {
-        'questions': md['totals']['questions'],
-        'onPage': on_page,
+        'questions': f['total'],
+        'onPage': f['onPage'],
         'tracks': len(md['tracks']),
     }
 
 
-def page(url, w, h, tall, t):
-    f = facts()
+def page(url, w, h, tall, t, f):
     pad = 96 if tall else 64
 
     # المربّعةُ نصفُ ارتفاعِ الستوري وفيها البطاقةُ والتذييلُ نفسُهما، فلا تسع
@@ -168,6 +206,8 @@ def page(url, w, h, tall, t):
     bullets = [
         f"<b>{ar(f['questions'])} سؤالاً</b> — منها <b>{ar(f['onPage'])}</b> "
         'قوبِل على صورةِ صفحةِ الكتاب برقمِها',
+        # بندٌ لا يُطوى في المربّعة: هو سببُ الإطلاقِ التجريبيِّ كلِّه.
+        '<b>لم يُراجِعها عالِمٌ بعد</b> — فأبلِغْنا بأيِّ خطأ',
         f"<b>{ar(f['tracks'])} مسارات:</b> الأئمة · المؤذنون · المتقاعدون",
         'محرّكُ التجويد: جزءُ عمَّ كلمةً كلمة',
         'التسميعُ الصوتيّ، وبطاقاتُ الحفظ، واختبارٌ بوقت',
@@ -177,7 +217,13 @@ def page(url, w, h, tall, t):
         '<b>مجاناً</b> — بلا حساب، وما تكتبه يبقى على جهازك',
     ]
     if not tall:
-        bullets = [bullets[0], bullets[1], bullets[4], bullets[5]]
+        # المربّعةُ نصفُ ارتفاعِ الستوري فلا تسع الكلّ. ويُختار بالمعنى لا
+        # بالرقم — فترتيبُ القائمةِ يتبدّل، والرقمُ الثابتُ يكسر البناءَ أو
+        # يُسقِط بنداً غيرَ الذي قُصِد (وقد وقع).
+        keep = ('قوبِل على صورةِ صفحةِ الكتاب', 'لم يُراجِعها عالِمٌ بعد',
+                'يعمل بلا إنترنت', 'مجاناً')
+        bullets = [b for b in bullets if any(k in b for k in keep)]
+        assert len(bullets) == len(keep), 'بندٌ في قائمةِ المربّعة لم يُوجَد'
     items = '\n  '.join(f'<li><i>●</i><span>{b}</span></li>' for b in bullets)
 
     # وتُطوى الشطرةُ التمهيديةُ في المربّعة أيضاً: معناها مكرَّرٌ في أوّل بند،
@@ -201,6 +247,12 @@ body {{ width: {w}px; height: {h}px; background: {t['bg']};
 .wrap {{ position: relative; width: 100%; height: 100%; padding: {pad}px;
          display: flex; flex-direction: column; gap: {'34' if tall else '22'}px }}
 .top {{ display: flex; align-items: center; gap: 22px }}
+/* شارةُ التجريبِ في الترويسةِ لا في الذيل: تُرى في أوّلِ نظرةٍ إلى الصورةِ
+   وهي تمرُّ في ستوري، ولا تحتاج إلى أن يقرأ الناظرُ إلى آخرها. */
+.beta {{ margin-inline-start: auto; flex-shrink: 0; text-align: center;
+         font-size: {26 if tall else 20}px; font-weight: 600; line-height: 1.3;
+         color: {t['accent']}; border: 2px solid {t['accent']};
+         border-radius: 999px; padding: {'14px 22px' if tall else '10px 16px'} }}
 .top svg {{ flex-shrink: 0 }}
 .name {{ font-family: Amiri; font-weight: 700; font-size: {56 if tall else 40}px; line-height: 1.2 }}
 /* أميري يرفع الشدّةَ والفتحةَ فوق حدِّ السطر، فسطرٌ ضيّقٌ يقذفها فوق العنوان
@@ -235,7 +287,7 @@ li i {{ font-style: normal; color: {t['accent']}; font-size: {30 if tall else 24
 
 <div class="wrap">
 
-<div class="top">{mark_svg(t['mark_bg'], t['mark_fg'], 96 if tall else 80)}<div class="name">منصة الاستعداد<br>لاختبارات الوظائف الدينية</div></div>
+<div class="top">{mark_svg(t['mark_bg'], t['mark_fg'], 96 if tall else 80)}<div class="name">منصة الاستعداد<br>لاختبارات الوظائف الدينية</div><span class="beta">نسخة<br>تجريبية</span></div>
 
 <!-- بلا حركاتٍ عن قصد: أميري يركّب الشدّةَ فوق الفتحةِ فترتفع فوق حدِّ السطر،
      فتبدو في القياس الكبير علامةً شاردةً معلّقةً فوق الكلمة. -->
@@ -258,16 +310,19 @@ li i {{ font-style: normal; color: {t['accent']}; font-size: {30 if tall else 24
 
 <div class="foot">
   <span class="dev">تم تطوير التطبيق بواسطة بدر المسلم</span>
-  <span class="fine">الأسئلةُ اجتهادٌ تدريبيٌّ مبنيٌّ على الكتب المقرَّرة، وليست أسئلةَ اختباراتٍ رسمية،
-  ولا يُنسَب هذا التطبيق إلى جهةٍ رسمية.</span>
+  <span class="fine">إطلاقٌ تجريبيّ: الأسئلةُ والأجوبةُ استُخرِجت من الكتب المقرَّرة آلياً ولم
+  يُراجِعها عالِمٌ بعد — فالصوابُ ما في الكتاب. وليست أسئلةَ اختباراتٍ رسمية، ولا يُنسَب هذا
+  التطبيق إلى جهةٍ رسمية.</span>
 </div>
 
 </div>
 </body></html>"""
 
 
-def build(url, themes):
+def build(url, themes, base):
     OUT.mkdir(parents=True, exist_ok=True)
+    f = facts(base)
+    print(f"أرقامُ التطبيق: {f['questions']} سؤالاً · {f['onPage']} على صورةِ صفحة")
     one = len(themes) == 1
     shots = []
     for theme in themes:
@@ -275,7 +330,7 @@ def build(url, themes):
         for name, w, h, tall in [('ستوري', 1080, 1920, True), ('مربّعة', 1080, 1080, False)]:
             stem = name if one else f'{theme}-{name}'
             html = OUT / f'{stem}.html'
-            html.write_text(page(url, w, h, tall, t), encoding='utf-8')
+            html.write_text(page(url, w, h, tall, t, f), encoding='utf-8')
             shots.append((html, OUT / f'{stem}.png', w, h))
 
     # الرسمُ بـChromium ليأتيَ الخطُّ العربيُّ بضبطه كما في التطبيق.
@@ -313,4 +368,4 @@ if __name__ == '__main__':
         picked = [want]
     else:
         sys.exit(f'نمطٌ غيرُ معروف: {want} — المتاح: {" · ".join(THEMES)} · الكل')
-    build(sys.argv[1], picked)
+    build(sys.argv[1], picked, os.environ.get('BASE', 'http://127.0.0.1:3000/'))

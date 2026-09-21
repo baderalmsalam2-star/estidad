@@ -63,7 +63,10 @@ export default function trackScreen() {
     pane.replaceChildren(
       el('div.stack', { style: { gap: '14px' } }, [
         MARK(),
-        el('h1.display', { style: { marginTop: '8px' } }, 'اختر مسارك'),
+        // شارةُ الإطلاقِ التجريبيّ — تُرى قبل أن يختار مساراً، فلا يدخل
+        // على أربعةِ آلافِ جوابٍ وهو يحسبها نسخةً مستقرّةً مراجَعة.
+        el('span.chip', { style: { alignSelf: 'flex-start', marginTop: '10px' } }, 'نسخة تجريبية'),
+        el('h1.display', { style: { marginTop: '2px' } }, 'اختر مسارك'),
         el('p.lede', { style: { maxWidth: '300px' } }, 'يُفلتَر المنهج كلّه على مسارك: الكتب، والأسئلة، ومقدار الحفظ.'),
       ]),
 
@@ -113,8 +116,9 @@ export default function trackScreen() {
             'يُكتَب في ترويسة الرئيسية ولا يخرج من جهازك — لا يُرسَل إلى خادم، '
             + 'ولا يظهر في صورة النتيجة التي تُشارِكها. واتركه فارغاً إن شئت.'),
         ]),
-        // التنبيه الذي لا يُخالَف (README §٥.٣)
-        el('p.disclaimer', 'الأسئلة اجتهادٌ تدريبيٌّ مبنيٌّ على الكتب المقرَّرة، لا أسئلةَ اختباراتٍ رسمية.'),
+        // التنبيه الذي لا يُخالَف (README §٥.٣) — ونصُّه في `data.disclaimer`
+        // موضعاً واحداً، وأرقامُه تُحسَب من البنكِ لحظتَها فلا تتقادم.
+        el('p.disclaimer', data.disclaimer()),
         el('button.btn', {
           onclick: () => { store.setName(nameBox.value); store.setTrack(picked); go('home'); },
         }, 'متابعة'),
