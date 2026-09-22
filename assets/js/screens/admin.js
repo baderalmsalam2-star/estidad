@@ -281,7 +281,67 @@ function bankHealth(all) {
         ]))),
 
     duplicatesCard(),
+    unclearCard(),
   ]);
+}
+
+/**
+ * أسئلةٌ قد لا تُفهَم وحدَها — **مرشَّحاتٌ للنظر، لا أحكام**.
+ *
+ * والعلّةُ في التوليد: البنكُ مُولَّدٌ من جُمَلِ الكتابِ على ترتيبها، والكتابُ
+ * يَسوق المسألةَ ثمّ يَعطِف عليها بضميرٍ يعود إلى ما قبلَه. فتخرج من الجملةِ
+ * الثانيةِ أسئلةٌ نحو «متى لا يَجِبُ عَلَيها التَّسليمُ؟» — و«ها» تعود إلى
+ * امرأةٍ ذُكِرت في السؤالِ الذي قبلَه لا في هذا. وهي تُقرَأ في الكتابِ سليمةً
+ * لأنّ ما قبلَها حاضر، وتُقرَأ في الاختبارِ مُعمّاةً لأنّها تُسحَب وحدَها.
+ *
+ * وأوّلُ من أبلغَ عن هذا أبلغَ عنه: «هذا السؤال غير واضح لاستعمال الضمير؟
+ * التصريح أوضح».
+ *
+ * ── ولمَ «مرشَّحات» لا «أخطاء» ─────────────────────────────────────────
+ *
+ * التمييزُ بين ضميرٍ مرجعُه في السؤالِ وضميرٍ مرجعُه خارجَه لا يُقطَع به
+ * بقاعدةٍ نصّيّة. وجرّبتُ ثلاثَ قواعدَ: واحدةٌ أعطت ٢٨٠ أكثرُها سليم، وثانيةٌ
+ * أعطت ٢١٦ لأنّ «إذا…» صدرُ سؤالٍ صحيحٌ في العربية، وهذه أضيقُها. فيُعرَض ما
+ * التقطته على أنّه ما يستحقُّ النظر، ولا يُسمّى خطأً ولا يُعدَّل سؤالٌ آلياً.
+ */
+function unclearCard() {
+  const rows = data.unclear();
+  if (!rows.length) return null;
+
+  let shown = 12;
+  const card = el('div.card', { style: { gap: '10px' } });
+
+  const draw = () => {
+    card.replaceChildren(
+      el('span', { style: { fontSize: '13.5px', fontWeight: '600' } },
+        `قد لا يُفهَم وحدَه — ${ar(rows.length)} سؤالاً`),
+      el('span.fine', { style: { textAlign: 'start' } },
+        'ضميرٌ مرجعُه في السؤالِ الذي قبلَه في الكتابِ لا في السؤالِ نفسِه. '
+        + 'وهذه **مرشَّحاتٌ للنظر لا أخطاءٌ مقطوعٌ بها** — القاعدةُ نصّيّةٌ تُخطئ '
+        + 'في الجهتَين، والحكمُ لك. والإصلاحُ تصريحٌ بالاسمِ مكانَ الضمير.'),
+      ...rows.slice(0, shown).map(({ q, why }) => el('div', {
+        style: { display: 'flex', flexDirection: 'column', gap: '3px', paddingTop: '8px', borderTop: '1px solid var(--hairline)' },
+      }, [
+        el('div.row', { style: { fontSize: '12px', color: 'var(--ink-5)' } }, [
+          el('span.num', q.id),
+          el('span', `${why}${q.bookPage ? ` · ${q.bookPage}` : ''}`),
+        ]),
+        el('span', { style: { fontSize: '13.5px', lineHeight: '1.7' } }, q.question),
+      ])),
+      shown < rows.length
+        ? el('button', {
+            onclick: () => { shown += 20; draw(); },
+            style: {
+              font: 'inherit', fontSize: '13px', color: 'var(--green)', fontWeight: '600',
+              background: 'none', border: 'none', cursor: 'pointer', textAlign: 'start', padding: '6px 0 0',
+            },
+          }, `أظهِرِ الباقي (${ar(rows.length - shown)})`)
+        : null,
+    );
+  };
+
+  draw();
+  return card;
 }
 
 /**
