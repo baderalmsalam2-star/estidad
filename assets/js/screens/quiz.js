@@ -193,6 +193,8 @@ function selfGradeView(host, session, q) {
     q.correctionNote
       ? el('p.fine', { style: { color: 'var(--sand-ink3)' } }, `تصحيح: ${q.correctionNote}`)
       : null,
+    // موضعُ المسألةِ بعنوانِه في الكتاب — انظر `explainCard` أدناه.
+    bookPlace(q),
     // الطالبُ أوّلُ من يقع على الخطأ، فله قناةٌ يُبلِّغ بها من موضع السؤال.
     reportLink(q),
   ]);
@@ -363,6 +365,21 @@ function objectiveView(host, session, q) {
   return wrap;
 }
 
+/**
+ * موضعُ المسألةِ في الكتاب — بعنوانِه كما هو، لا بوصفٍ نخترعه له.
+ *
+ * وهو في البيانات لكلِّ سؤالٍ من الأربعةِ آلاف (`reference`: «كتاب الغصب»،
+ * «كتاب الصلاة — سنن الأفعال»، «سورة النبأ: ٢٣») ولم يكن يُعرَض قطّ. والطالبُ
+ * يقرأ الجوابَ فيريد أن يرجع إليه في كتابه: الصفحةُ تُعطيه الموضعَ بالرقم،
+ * وهذا يُعطيه إيّاه بالاسمِ الذي يَعرِفه من فهرسِ الكتاب.
+ *
+ * وهو كذلك ما يمنع تكرارَ بلاغٍ وقعَ: أنّ التطبيقَ سمّى «كتابَ الغصب» باباً.
+ * فإذا نُقِل العنوانُ نقلاً لم يُسَمَّ شيءٌ بغيرِ اسمه.
+ */
+const bookPlace = (q) => (q.reference
+  ? el('span.fine', { style: { textAlign: 'start' } }, `في الكتاب: ${q.reference}`)
+  : null);
+
 function explainCard(q, correct) {
   const answerText = q.type === 'fill' ? (Array.isArray(q.answer) ? q.answer[0] : q.answer) : null;
   // `explain-in`: ترتفع البطاقةُ قليلاً وتظهر — خبرٌ بأنّ جواباً جديداً وصل،
@@ -379,6 +396,7 @@ function explainCard(q, correct) {
       : null,
     el('p', { style: { fontSize: '14.5px', lineHeight: '1.95', color: '#4a4238' } },
       q.explanation || q.modelAnswer || ''),
+    bookPlace(q),
     reportLink(q),
   ]);
 }
