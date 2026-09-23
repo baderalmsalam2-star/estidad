@@ -59,6 +59,27 @@ export function el(spec, props = null, children = null) {
   if (classes.length) node.className = classes.join(' ');
 
   for (const [k, v] of Object.entries(props || {})) {
+    /**
+     * ── سمةُ `aria-*` المنطقيّةُ تُكتَب «true»/«false» نصّاً ──────────────
+     *
+     * الأصلُ أنّ `false` تُتخطّى و`true` تُكتَب `''` — وهو الصوابُ في سماتِ
+     * HTML المنطقيّة (`disabled`, `hidden`): وجودُها هو المعنى.
+     *
+     * و`aria-*` على خلافِ ذلك: قيمتُها **نصٌّ** لا وجودٌ وعدم. فـ`aria-pressed=""`
+     * قيمةٌ غيرُ صالحةٍ يردُّها المتصفّحُ إلى `undefined`، وحذفُها عند `false`
+     * يُسقِط الزرَّ من كونِه زرَّ تبديلٍ أصلاً. فكانت `'aria-pressed': on`
+     * تكتبها منطقيّةً في `track.js` و`custom.js` — **١٠٧ عنصرَ اختيارٍ** لا
+     * تصل حالتُها قارئَ الشاشةِ البتّة، ومنها بطاقاتُ المسارِ في أوّلِ شاشة:
+     * يسمع الأعمى ثلاثةَ أزرارٍ متشابهةٍ ولا يُعلَم أيُّها مسارُه.
+     *
+     * وعُولِجَ في `el` لا في الموضعَين: الفخُّ في الواجهةِ لا في مستعمِلِها،
+     * ولو عُولِجَ هناك لوقعَ فيه ثالثٌ. و`account.js` كان يكتبها نصّاً بيدِه
+     * (`on ? 'true' : 'false'`) فيبقى على صحّتِه.
+     */
+    if (typeof v === 'boolean' && k.startsWith('aria-')) {
+      node.setAttribute(k, v ? 'true' : 'false');
+      continue;
+    }
     if (v === null || v === undefined || v === false) continue;
     if (k === 'class') node.className += (node.className ? ' ' : '') + v;
     else if (k === 'style') Object.assign(node.style, v);
@@ -207,11 +228,23 @@ export function reportLink(q) {
     + `\n\nالسؤال: ${q.question}\n\nالخطأ الذي وجدتُه: `);
   if (!href) return null;
 
+  /**
+   * وله حدُّ اللمسِ ٤٤ — وقد كان ١٤٦٫٣×**٢٢**.
+   *
+   * وقاعدةُ الـ٤٤ في `app.css` على `button, [role="button"], a.btn, summary`
+   * فلا تبلغ `<a>` مجرَّدةً. وهذا بعينه البابُ الذي جاءت منه البلاغاتُ كلُّها
+   * (كتاب الغصب، والضميرُ بلا مرجع) — وارتفاعُه نصفُ الحدّ: إصبعُ رجلٍ في
+   * السبعين تقع فوقَه أو تحتَه فيُفتَح السؤالُ التالي مكانَه.
+   *
+   * والحشوُ رأسيٌّ لا `min-height` وحدَه: `inline-flex` بارتفاعٍ أدنى يُوسِّع
+   * الصندوقَ ولا يُوسِّع المضغوطَ في بعضِ المحرّكاتِ القديمة.
+   */
   return el('a', {
     href, target: '_blank', rel: 'noopener',
     style: {
       display: 'inline-flex', alignItems: 'center', gap: '6px', alignSelf: 'flex-start',
-      fontSize: '12.5px', color: 'var(--ink-6)', textDecoration: 'none', paddingTop: '2px',
+      fontSize: '12.5px', color: 'var(--ink-6)', textDecoration: 'none',
+      minHeight: '44px', paddingTop: '11px', paddingBottom: '11px',
     },
   }, [el('span', { style: { display: 'flex' }, html: WHATSAPP_MARK }), 'في هذا السؤال خطأ؟ أبلِغْنا']);
 }
@@ -534,7 +567,23 @@ export function defineRoutes(map) {
 export function go(name, params = {}) {
   const view = routes[name];
   if (!view) throw new Error(`لا توجد شاشة باسم ${name}`);
-  onNavigate();
+  /**
+   * ويُمرَّر **المقصِدُ** إلى الخُطّاف.
+   *
+   * كان يُنادى بلا وسيط، والخُطّافُ في `app.js` يسأل `currentRoute()` — وهي لم
+   * تتبدَّلْ بعد (`current = name` في السطرِ التالي). فكان يقرأ الشاشةَ
+   * **المتروكة** لا المقصودة، فانقلبَ شرطُ الانشغالِ رأساً على عقب: التجديدُ
+   * يقع عند **دخولِ** الاختبار (لأنّ المتروكةَ الرئيسيةُ وهي ليست مشغولة)،
+   * ولا يقع عند الخروجِ منه (لأنّ المتروكةَ الاختبارُ وهو مشغول).
+   *
+   * أي أنّ الحارسَ الذي وُضِع لئلّا تُعاد الصفحةُ على من هو في ورقةٍ صار
+   * يُعيدها عليه في أوّلِ سؤالٍ بعينه. (أُثبِت بدورةِ نشرٍ حقيقيّة.)
+   *
+   * ولا يُنقَل النداءُ إلى ما بعد `current = name` لأنّ `closePage` فيه يُغلِق
+   * طبقةَ الشاشةِ المتروكة — فهو يريد القديمَ. فيُعطى كلٌّ ما يحتاج: النداءُ
+   * في موضعه، والمقصِدُ وسيطاً.
+   */
+  onNavigate(name);
   runLeave();
   remember(name, params);
   current = name;

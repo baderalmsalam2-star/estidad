@@ -9,7 +9,37 @@ import { el, ar, pct, arTime, go, pageCite, devBadge, empty, reportLink } from '
 import { resultCard, shareCard, shareText } from '../share.js';
 import * as sync from '../sync.js';
 
+/**
+ * ── الرجوعُ ثمّ التقدُّمُ لا يُصفِّرانِ الورقة ─────────────────────────────
+ *
+ * سجلُّ المتصفّحِ يحفظ وسائطَ الشاشةِ كما دخلَها الطالبُ أوّلَ مرّة. فمن كان في
+ * اختبارٍ بمُهلةٍ عند السؤالِ الرابعَ عشرَ ثمّ ضغطَ «رجوع» ثمّ «تقدُّم»، أُعيد
+ * بناءُ الشاشةِ بـ`startAt: 0` و`endsAt: 0` — فرجعَ إلى السؤالِ الأوّل
+ * و**بدأت المُهلةُ من جديد**. وهو في اختبارٍ يُقاس بالوقت: يَخسَر موضعَه أو
+ * يربح مُهلةً كاملةً، وكلاهما فساد.
+ *
+ * والورقةُ محفوظةٌ في `store.paper()` أصلاً (فيها الأسئلةُ وموضعُ الوقوفِ
+ * ونهايةُ الوقت)، وإنّما كانت تُقرَأ من الرئيسيّةِ وحدَها. فتُقرَأ ههنا كذلك:
+ * إن دخلَ الطالبُ شاشةَ الاختبارِ بلا موضعٍ ولا وقتٍ، ووُجِدت ورقةٌ محفوظةٌ
+ * **هي هذه بعينها** (أسئلتُها بترتيبها)، استُؤنِفت من موضعها.
+ *
+ * والمقابلةُ على أرقامِ الأسئلةِ بترتيبها لا على العنوان: العنوانُ يتكرّر
+ * («وِرد اليوم» كلَّ يوم)، والترتيبُ يُميِّز الورقةَ من غيرها.
+ */
+function resumeOf(questions, mode, startAt, endsAt) {
+  if (startAt || endsAt) return null;
+  const p = store.paper();
+  if (!p || p.mode !== mode || !Array.isArray(p.ids)) return null;
+  if (p.ids.length !== questions.length) return null;
+  for (let i = 0; i < questions.length; i += 1) {
+    if (p.ids[i] !== questions[i].id) return null;
+  }
+  return { startAt: p.index || 0, endsAt: p.endsAt || 0 };
+}
+
 export default function quizScreen({ questions, mode = 'study', title = '', back = null, again = null, pool = null, minutes = 0, startAt = 0, endsAt = 0 }) {
+  const resumed = resumeOf(questions, mode, startAt, endsAt);
+  if (resumed) { startAt = resumed.startAt; endsAt = resumed.endsAt; }
   if (!questions || !questions.length) {
     return empty('لا أسئلة هنا', 'جرّب باباً آخر أو غيّر شروط الاختبار.');
   }
@@ -52,6 +82,28 @@ export default function quizScreen({ questions, mode = 'study', title = '', back
     endsAt: endsAt || (minutes ? Date.now() + minutes * 60_000 : 0),
     over: false,
   };
+
+  /**
+   * ── ورقةٌ انتهت مُهلتُها وصاحبُها خارجَ التطبيق ──────────────────────────
+   *
+   * كانت تُستأنَف كما هي، فيقع هذا التسلسلُ كلُّه **قبل أن يرجع `host`**:
+   * `renderQuestion` ← `header` ← `clock` ← `tick()` — وهي تُنادى تزامنيّاً في
+   * آخِر `clock` — فتجد `left <= 0` فتُنادي `onTimeout` ← `finishSession`.
+   * فتُختَم جلسةٌ لم تبدأ، على شجرةٍ لم تُركَّب بعد، و`session.results` خاليةٌ
+   * لأنّ الأجوبةَ لا تُحفَظ في الورقةِ المؤجَّلةِ — إنّما يُحفَظ الموضع.
+   *
+   * فيُكتَب في سجلِّ الطالبِ **اختبارٌ بصفرٍ لم يُجِبْ فيه بحرف**: يفتح
+   * «حسابي» فيجد في تاريخِه صفراً لم يستحقَّه، وفي تاريخِه يقرأ حالَه.
+   *
+   * ولا يُختَم بما أجاب لأنّ ما أجابَ لم يُحفَظ — فلا يُقدَّر له مجموعٌ ولا
+   * يُخترَع. تُطوى الورقةُ ويُقال له لِمَ، ويُترَك له بابُ البدء من جديد.
+   */
+  if (session.endsAt && session.endsAt <= Date.now()) {
+    store.setPaper(null);
+    return empty('انتهت مُهلةُ هذه الورقة',
+      'نفد وقتُها وأنت خارجَ التطبيق، فطُوِيَت ولم تُحسَب عليك. '
+      + 'ابدأْ ورقةً جديدةً من الرئيسية.');
+  }
 
   savePaper(session);
 

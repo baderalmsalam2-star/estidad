@@ -122,10 +122,63 @@ export const allBookLinks = () => state.bookLinks;
  */
 export const bookCoverSrc = (book) => state.covers[book] || null;
 
+/**
+ * ── الطلبُ المُعلَّقُ يُقطَع: صمتُ عشرين ثانيةً إخفاق ─────────────────────
+ *
+ * كان `fetch` بلا مهلةٍ ولا `AbortController` في التطبيق كلِّه، و`Promise.all`
+ * في `load()` ينتظر إلى الأبد. وقِيسَ إقلاعٌ حقيقيٌّ على ١٥٠ كيلوبت: وصل
+ * «١٣ من ١٨» عند الثانيةِ ٢٥ ثمّ **وقفَ ٤٢٠ ثانيةً كاملة** — لا خطأَ ولا زرَّ
+ * ولا سبيل. والإمامُ في المسجدِ يُغلِق ويُعيد الفتحَ فيبدأ من أوّله.
+ *
+ * والمفارقةُ أنّ معالجةَ «بنكٌ لم يصل» مكتوبةٌ وتامّةٌ (`missingBanks` وبطاقتُها
+ * في الرئيسية) — ولا تُستدعى، لأنّ الطلبَ لم يسقط بل عُلِّق. فالمعالجةُ كانت
+ * موجودةً والبابُ إليها مسدوداً.
+ *
+ * ── ولِمَ مهلةُ سكونٍ لا مهلةٌ كلّيّة ──────────────────────────────────────
+ *
+ * لأنّ المهلةَ الكلّيّةَ لا تُفرِّق بين **بطيءٍ يعمل** و**واقفٍ لا يعمل**:
+ * أكبرُ بنكٍ ٢٩٩ ك.ب مضغوطاً، فيحتاج على ١٥٠ كيلوبت نحوَ ١٦ ثانيةً وهو سليم —
+ * فأيُّ مهلةٍ تكفي الواقفَ تقتل البطيء. فيُقرأ الجسمُ قطعةً قطعةً ويُصفَّر
+ * العدَّادُ مع كلِّ قطعةٍ تصل: ما دامت البتّاتُ تجري فلا قطع، وإن سكتَ عشرين
+ * ثانيةً قُطِع — وهو حدٌّ واسعٌ لا يبلغه اتّصالٌ حيٌّ.
+ *
+ * و`AbortController` لا `AbortSignal.timeout`: الثانيةُ سفاري ١٦ والأرضيّةُ
+ * ١٤٫٥. و`res.body` سفاري ١٤٫١ — ومن لا يعرفه يرجع إلى `res.json()` بلا مهلةِ
+ * سكون، فلا يخسر شيئاً كان عنده.
+ */
+const STALL_MS = 20_000;
+
 async function getJSON(path) {
-  const res = await fetch(path);
-  if (!res.ok) throw new Error(`تعذّر تحميل ${path} (${res.status})`);
-  return res.json();
+  const ctrl = new AbortController();
+  let timer = setTimeout(() => ctrl.abort(), STALL_MS);
+  const bump = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => ctrl.abort(), STALL_MS);
+  };
+
+  try {
+    const res = await fetch(path, { signal: ctrl.signal });
+    if (!res.ok) throw new Error(`تعذّر تحميل ${path} (${res.status})`);
+    if (!res.body || typeof res.body.getReader !== 'function') return await res.json();
+
+    const reader = res.body.getReader();
+    const parts = [];
+    let size = 0;
+    for (;;) {
+      // eslint-disable-next-line no-await-in-loop
+      const { done, value } = await reader.read();
+      if (done) break;
+      bump();
+      parts.push(value);
+      size += value.length;
+    }
+    const buf = new Uint8Array(size);
+    let at = 0;
+    for (const part of parts) { buf.set(part, at); at += part.length; }
+    return JSON.parse(new TextDecoder().decode(buf));
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /**

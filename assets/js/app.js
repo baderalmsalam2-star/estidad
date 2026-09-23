@@ -93,7 +93,12 @@ const onProgress = (done, total) => {
  * والشرحُ كلُّه في `watchForUpdate` في `version.js`.
  */
 const BUSY = new Set(['quiz', 'recite']);
-const whenFree = version.watchForUpdate({ busy: () => BUSY.has(currentRoute()) });
+// و«المشغول» يُقاس على الشاشةِ المقصودةِ لا المتروكة: الخُطّافُ يُنادى قبل أن
+// تتبدّلَ `currentRoute()`، فيُمرَّر إليه المقصِدُ ويُسأل عنه. وشرحُه في `go`.
+let heading = null;
+const whenFree = version.watchForUpdate({
+  busy: () => BUSY.has(heading ?? currentRoute()),
+});
 
 setPageRefResolver(data.pageRefOf);
 setPageOpener(openPage);
@@ -103,10 +108,16 @@ setPageOpener(openPage);
 // يُنادى من `popstate` (وقد استُهلِك القيدُ بالرجوعِ نفسِه) ومن `go` (ولا
 // يقع مع طبقةٍ مفتوحةٍ إلا برمجياً، ومنازعةُ السجلِّ في أثناء الانتقالِ أسوأُ
 // من قيدٍ يتيم). وأمّا ✕ وEscape فتُناديان `closePage()` بلا وسيط.
-setNavigateHook(() => {
+setNavigateHook((to) => {
   closePage(true);
   // وكلُّ انتقالٍ بين الشاشات فرصةٌ لتجديدٍ أُجِّل لانشغالِ الطالب.
-  if (whenFree) whenFree();
+  // و`heading` تُقرأ داخلَ `busy` أعلاه، ثمّ تُرَدُّ فلا تبقى بعد الانتقال.
+  heading = to ?? null;
+  try {
+    if (whenFree) whenFree();
+  } finally {
+    heading = null;
+  }
 });
 setOverlayProbe(isPageOpen);
 
@@ -123,6 +134,18 @@ function registerWorker() {
 
 data.load({ onProgress })
   .then(() => {
+    /*
+     * متصفّحٌ دون الأرضيّة: لا تُرسَم شاشةٌ فوق رسالتِه.
+     *
+     * `compat.js` يكتب رسالتَه في `#screen`، و`go()` تُنادي `replaceChildren`
+     * فتمحوها — قِيسَ: ظهرت ٩٢ملّي ومُحِيت ٢٩١. فيُقرأ عَلَمُه ههنا، قبل أوّلِ
+     * رسم. وشرحُه كلُّه في `compat.js`.
+     *
+     * ويُقرأ من `window` لأنّ `compat.js` ليس وحدةً — وهو كذلك عمداً: يُخاطِب
+     * متصفّحاً لا يعرف الوحدات.
+     */
+    if (window.__estidadTooOld) return;
+
     // المسارُ يُقرَأ من تخزينِ المتصفّح، وما فيه ليس ممّا يُؤتمَن: يبقى من
     // نسخةٍ قديمةٍ، أو يُعدَّل بيد. وقيمةٌ لا يعرفها المنهجُ كانت تُسقِط الرئيسيةَ
     // بـ`TypeError` فلا شاشةَ تُرسَم ولا بابَ للخروجِ من العَطَب. فيُنسى ما لا

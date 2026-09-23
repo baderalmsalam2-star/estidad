@@ -240,14 +240,25 @@ function rows(d, byId) {
  * `collationOf` في `data.js`. فصارت البطاقةُ تُعلِن **الدرجةَ الأولى وحدَها**
  * رقماً كبيراً، وتُفصِّل الثلاثَ تحتَها من `provenance` نفسِه، فلا يُجمَع في
  * رقمٍ ما ليس من جنسٍ واحد.
+ *
+ * ── ثمّ وقعَ التناقضُ ثانيةً، وهذه المرّةَ بين الشاشتَين ──────────────────
+ *
+ * كان هذا التعليقُ يقول «تُفصِّل الثلاثَ من `provenance` نفسِه» وهو يكذبُ
+ * السطرَ تحتَه: `onText` كانت تُحسَب من `bookVerified`. فافترقَ ما يُقال
+ * للطالبِ (`data.disclaimer()`) عمّا يُقال لصاحبِ التطبيقِ ههنا بـ**٤٤ سؤالاً**:
+ * ٣٩٧ «لم يُقابَل» عنده، و٣٥٣ عندك. والأربعةُ والأربعون `provenance` خاليةٌ
+ * مع `bookVerified` وصفحةِ كتابٍ حاضرة — أي مُقابَلةٌ يداً، وهي أوثقُ ما في
+ * البنك، ويُقال للطالبِ عنها «لم يُقابَل بعد».
+ *
+ * فصار الحسابُ في موضعٍ واحدٍ (`data.provenance()`) تقرؤه الشاشتان، فلا يفترقانِ
+ * ولو تبدّلَ التصنيف. وهذا السطرُ هو الذي بُني عليه الإطلاقُ التجريبيُّ كلُّه.
  */
 function bankHealth(all) {
-  const n = all.length;
-  const onImage = all.filter((q) => q.provenance === 'generated-from-page'
-    || q.provenance === 'collated-on-page').length;
-  const onText = all.filter((q) => q.bookVerified
-    && q.provenance !== 'generated-from-page' && q.provenance !== 'collated-on-page').length;
-  const none = n - onImage - onText;
+  const p = data.provenance();
+  const n = p.total;
+  const onImage = p.onPage;
+  const onText = p.ocr;
+  const none = p.uncollated;
   const corrected = all.filter((q) => q.correctionNote).length;
 
   return el('div.stack', [
