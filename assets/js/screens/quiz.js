@@ -186,7 +186,7 @@ function selfGradeView(host, session, q) {
       el('span', { style: { fontSize: '13px', fontWeight: '600', color: 'var(--green)' } }, 'الإجابة النموذجية'),
       // شارة الصفحة — ورقة الثقة الوحيدة في تطبيقٍ فرديٍّ بلا جهة اعتماد.
       // وبجانبها شارة المطوّر إن كان الوضع مفعَّلاً.
-      el('span', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, [pageCite(q), devBadge(q)]),
+      el('span', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, [levelBadge(q), pageCite(q), devBadge(q)]),
     ]),
     el('p', { style: { fontFamily: 'var(--serif)', fontSize: '18px', lineHeight: '1.9' } },
       q.modelAnswer || q.explanation || ''),
@@ -380,6 +380,21 @@ const bookPlace = (q) => (q.reference
   ? el('span.fine', { style: { textAlign: 'start' } }, `في الكتاب: ${q.reference}`)
   : null);
 
+/**
+ * درجةُ السؤالِ المُعلَنة.
+ *
+ * كانت في البيانات لكلِّ سؤالٍ ولا تُعرَض قطّ، فيقرأ الطالبُ خطأَه في سؤالٍ
+ * درجتُه ٩ كما يقرؤه في سؤالٍ درجتُه ٢ — ويحسبهما سواءً في الدلالةِ على حالِه.
+ *
+ * و«المُعلَنة» قيدٌ لازم: هي تقديرُ المولِّدِ لا قياساً على الطلاب. ولوحةُ
+ * المشرفِ تقابلها بما قِيس فعلاً (`admin.js`: «أُعلِن ٧ وقِيس ٤»)، فلا تُقدَّم
+ * ههنا على أنّها حكمٌ مقطوعٌ به — ولذلك جاءت في `title` لا في نصِّ الشارة.
+ */
+const levelBadge = (q) => (q.difficulty
+  ? el('span.levelcite', { title: `درجةٌ مُعلَنة: ${ar(q.difficulty)} من ٩` },
+    `${data.levelName(q.difficulty)} ${ar(q.difficulty)}`)
+  : null);
+
 function explainCard(q, correct) {
   const answerText = q.type === 'fill' ? (Array.isArray(q.answer) ? q.answer[0] : q.answer) : null;
   // `explain-in`: ترتفع البطاقةُ قليلاً وتظهر — خبرٌ بأنّ جواباً جديداً وصل،
@@ -389,7 +404,7 @@ function explainCard(q, correct) {
       el('span', {
         style: { fontSize: '13px', fontWeight: '600', color: correct ? 'var(--green)' : 'var(--wrong)' },
       }, correct ? 'أصبتَ' : 'راجِعها'),
-      el('span', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, [pageCite(q), devBadge(q)]),
+      el('span', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, [levelBadge(q), pageCite(q), devBadge(q)]),
     ]),
     answerText && !correct
       ? el('p', { style: { fontFamily: 'var(--serif)', fontSize: '18px', lineHeight: '1.8' } }, answerText)
@@ -719,6 +734,26 @@ function resultView(session, result) {
             }, `${ar(earned)} نقطةً جديدة`)
           : el('span.chip', { style: { marginTop: '4px', color: 'var(--ink-4)' } },
               'مراجعةٌ — لا نقاطَ جديدة'),
+        /**
+         * ── والنسبةُ ليست تنبُّؤاً ────────────────────────────────────────
+         *
+         * بلغَنا من إمامٍ يستعدُّ فعلاً: «أحسّ وايد صعبة … قاعد أفكّر ما أختبر
+         * إذا جذيه مستواها». قرأَ نسبتَه ههنا فحسبها تقديراً لنتيجتِه في
+         * الاختبار، فهمَّ أن يترُك الاختبارَ أصلاً.
+         *
+         * والفرقُ بنيويٌّ لا في الشدّةِ وحدَها: الأسئلةُ مولَّدةٌ **صفحةً صفحة**،
+         * فتسأل عن قيدٍ في سطرٍ من الصفحة؛ والممتحِنُ يسأل عمّا لا يسع الإمامَ
+         * جهلُه. وفوق ذلك ٣٩٥٣ من ٤٠١٠ أسئلةً **مقاليّة** — استرجاعٌ مفتوحٌ من
+         * الذاكرة، وهو أشقُّ من التعرُّف بفارقٍ معلوم.
+         *
+         * فيُقال هذا تحت الرقمِ نفسِه، لا في صفحةِ «عن التطبيق» التي لا تُقرأ.
+         * ويُقال في كلِّ ورقةٍ لا عند الرقمِ المنخفضِ وحدَه: إن لم يُقَلْ إلا
+         * لمن أخفق صار مواساةً، وهو خبرٌ عن التطبيقِ صادقٌ على كلِّ حال.
+         */
+        el('span.fine', {
+          style: { textAlign: 'center', marginTop: '10px', maxWidth: '31ch', lineHeight: '1.8' },
+        }, 'والأسئلةُ ههنا أدقُّ ممّا يُسأل في الاختبار — مولَّدةٌ من صفحاتِ '
+          + 'الكتبِ بتفصيلها، فلا تَقِسْ بنسبتِك فيها نتيجتَك فيه.'),
       ]),
 
       roseUp

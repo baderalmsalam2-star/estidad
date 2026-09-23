@@ -432,6 +432,15 @@ button.chip, a.chip {
    الأبيضِ عليه إلى ٤٫٣٧:١. وبـ٠٫١٢ يبلغ ٤٫٩٣ والشارةُ تبقى مُبينةً. */
 .card--green .pagecite { background: rgba(250, 247, 241, 0.12); color: var(--paper); }
 
+/* شارةُ الدرجةِ المُعلَنة — تقف بجانبِ شارةِ الصفحةِ فتأخذ قياسَها، ولها
+   لونُ الحيادِ لا لونُ الثقة: الصفحةُ توثيقٌ، والدرجةُ تقديرٌ. */
+.levelcite {
+  font-family: var(--sans); font-size: 11.5px;
+  color: var(--ink-3); background: var(--surface);
+  padding: 4px 10px; border-radius: var(--r-chip); white-space: nowrap;
+}
+.card--green .levelcite { background: rgba(250, 247, 241, 0.12); color: var(--paper); }
+
 /* ─── حدُّ موضعِ اللمس ───────────────────────────────────────────────────── */
 
 /*

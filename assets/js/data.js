@@ -540,6 +540,62 @@ export const LEVEL_RANGES = {
   hard: [6, 9],
 };
 
+/**
+ * اسمُ المَدى الذي تقع فيه درجةُ السؤال.
+ *
+ * وهي أسماءُ أزرارِ «اختبار مخصّص» بعينها (`custom.js`: سهل · متوسط · صعب)
+ * لئلّا يُسمَّى الشيءُ الواحدُ باسمَين في شاشتَين. وقد جُرِّبت «مبتدئ» فإذا هي
+ * اسمُ أوّلِ الرُّتَبِ في `store.js` — فتقع الكلمةُ مرّتين في شاشةِ الرئيسيةِ
+ * بمعنيَين: رتبةُ الطالبِ ودرجةُ السؤال.
+ */
+export function levelName(difficulty) {
+  const d = difficulty || 1;
+  if (d <= 3) return 'سهل';
+  if (d <= 5) return 'متوسط';
+  return 'صعب';
+}
+
+/**
+ * ── سقفُ الوِرد: يبدأ من السهلِ ويرتفع بما أثبتَه الطالب ─────────────────
+ *
+ * كان وِردُ اليومِ يسحب الجديدَ من السُّلَّمِ كلِّه مخلوطاً (١–٩). والتوزيعُ في
+ * البنكِ ليس مستوياً: ١٠٩٠ سؤالاً في ١–٣، و**٢٥٦٤ في ٤–٥**، و٣٥٦ في ٦–٩.
+ * فأوّلُ ورقةٍ يراها المبتدئُ ثُلثاها في المتوسّطِ فما فوق، وهو لم يفتح كتاباً
+ * بعد. وقد بلغَنا من إمامٍ يستعدُّ فعلاً: «أحسّ وايد صعبة … قاعد أفكّر ما
+ * أختبر إذا جذيه مستواها». فالتطبيقُ الذي وُضِع ليُشجِّع على الاختبارِ صرفَه
+ * عنه — وهذا أسوأُ ما يفعله تطبيقُ استعداد.
+ *
+ * فصار للوِردِ سقفٌ يرتفع بالإتقانِ لا بالزمنِ ولا بعددِ ما مرَّ عليه:
+ *
+ *   • يبدأ عند **٣**.
+ *   • فإذا أجاب `need` سؤالاً في المَدى وكان متوسّطُ درجاتِه فيه فوق العتبة،
+ *     ارتفعَ السقفُ إلى المَدى الذي يليه: ٣ ← ٥ ← ٩.
+ *
+ * والمقياسُ إتقانُ المَدى نفسِه لا معدَّلٌ عامّ: من أصابَ السهلَ كلَّه وتعثّر
+ * في المتوسّطِ لا يُرفَع إلى المتقدِّم لأنّ معدَّلَه الكلِّيَّ مرتفع.
+ *
+ * وأخطاؤه لا يمسُّها السقف: ما أخطأ فيه يعود إليه مهما كانت درجتُه — وإلا
+ * اختفى الصعبُ الذي أخطأ فيه بمجرّدِ أنّه أخطأ، وهو عينُ ما يحتاج مراجعتَه.
+ */
+const CEILINGS = [3, 5, 9];
+
+export function wirdCeiling(track, scoreOf, correct = 0.7, need = 12) {
+  const pool = forTrack(track);
+  let ceiling = CEILINGS[0];
+  for (let i = 0; i < CEILINGS.length - 1; i += 1) {
+    const lo = i === 0 ? 0 : CEILINGS[i - 1] + 1;
+    const done = pool.filter((q) => {
+      const d = q.difficulty || 1;
+      return d >= lo && d <= CEILINGS[i] && scoreOf(q.id) !== null;
+    });
+    if (done.length < need) break;
+    const mean = done.reduce((s, q) => s + scoreOf(q.id), 0) / done.length;
+    if (mean < correct) break;
+    ceiling = CEILINGS[i + 1];
+  }
+  return ceiling;
+}
+
 /** يُطبَّق ما اختاره الطالبُ من شروط — بلا سحبٍ، فيصلح للعدِّ وللبناء. */
 /**
  * تصفيةُ بِركةِ الاختبارِ المخصَّص.
@@ -622,7 +678,9 @@ export function buildWird(track, n, scoreOf, answeredAt = () => 0, correct = 0.7
   const weak = pool
     .filter((q) => { const s = scoreOf(q.id); return s !== null && s < correct; })
     .sort((a, b) => scoreOf(a.id) - scoreOf(b.id));
-  const fresh = pool.filter((q) => scoreOf(q.id) === null);
+  // الجديدُ وحدَه محكومٌ بالسقف — والأخطاءُ فوق تعود مهما صعُبت.
+  const ceiling = wirdCeiling(track, scoreOf, correct);
+  const fresh = pool.filter((q) => scoreOf(q.id) === null && (q.difficulty || 1) <= ceiling);
 
   const rand = mulberry32(Math.floor(Date.now() / 86_400_000));
   const take = Math.min(weak.length, Math.floor(n / 3));

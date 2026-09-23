@@ -262,6 +262,16 @@ function wirdCard(track) {
       if (!have) return 'لا أسئلةَ في مسارك';
       return done ? `زِدْ ${ar(have)} سؤالاً` : `ابدأ — ${ar(have)} سؤالاً`;
     })()),
+
+    // وسقفُ الوِردِ يُقال ولا يُترَك خفيّاً: الطالبُ يرى «مبتدئ» فيعلم أنّ ما
+    // بين يديه ليس منتهى البنك، ويعلم بأيِّ شيءٍ يرتفع — بالإتقانِ لا بالأيّام.
+    (() => {
+      const ceiling = data.wirdCeiling(track, store.scoreOf, store.CORRECT);
+      return el('span.fine', { style: { textAlign: 'center' } },
+        ceiling >= 9
+          ? 'ودرجتُه الآن: المنهجُ كلُّه — بلغتَ أصعبَ ما فيه.'
+          : `ودرجتُه الآن: ${data.levelName(ceiling)} — يرتفع كلّما أتقنتَ ما فيه.`);
+    })(),
   ]);
 }
 
