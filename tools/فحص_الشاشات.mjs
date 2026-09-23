@@ -166,18 +166,37 @@ await page.getByRole('button', { name: 'ابدأ الدراسة' }).click();
 await page.waitForTimeout(600);
 if (!(await page.locator('.bar').count())) errors.push('جلسة: لا شريطَ تقدّم');
 
+/*
+ * ── وما لا يُبلَغ يُعَدُّ إخفاقاً ──────────────────────────────────────────
+ *
+ * كانت التحقُّقاتُ الثلاثةُ كلُّها داخلَ `if (await reveal.count())` بلا `else`.
+ * فبُدِّل نصُّ زرِّ الكشفِ في `quiz.js` تبديلاً متعمَّداً، فمضى الفحصُ
+ * **بصفرِ أخطاء** ولم يُفحَص «أصبتُ الكلَّ» ولا «لم أُجِبْ بشيء» ولا أنّها
+ * تُبلِغ مئةً في المائة — ثلاثةٌ تُخطَّى في صمت.
+ *
+ * والعلاجُ مكتوبٌ في المشروعِ أصلاً (`unreached` في `فحص_الهيئة.mjs`) ولم
+ * يُنقَل إلى ههنا. وكذلك يُرجَع بعد تسجيلِ نقصِ الشارة: كان يُسجِّل النقصَ ثمّ
+ * يضغط الشارةَ المفقودةَ على كلِّ حال، فينهار بـ`TimeoutError` غيرِ ملتقَطٍ
+ * بدل سطرِ خطأٍ يُقرَأ.
+ */
 const reveal = page.locator('.btn').filter({ hasText: 'أظهر الإجابة' }).first();
-if (await reveal.count()) {
+if (!(await reveal.count())) {
+  errors.push('لم يُبلَغ: زرُّ «أظهر الإجابة النموذجية» — فلم تُفحَص شاشةُ التصحيحِ الذاتيّ');
+} else {
   await reveal.click();
   await page.waitForTimeout(300);
+  let missing = false;
   for (const label of ['أصبتُ الكلَّ', 'لم أُجِبْ بشيء']) {
     if (!(await page.locator('.chip').filter({ hasText: label }).count())) {
       errors.push(`تصحيح: زرُّ «${label}» مفقود`);
+      missing = true;
     }
   }
-  await page.locator('.chip').filter({ hasText: 'أصبتُ الكلَّ' }).click();
-  await page.waitForTimeout(250);
-  if (!(await has('١٠٠٪'))) errors.push('تصحيح: «أصبتُ الكلَّ» لم يُبلِغ مئةً في المائة');
+  if (!missing) {
+    await page.locator('.chip').filter({ hasText: 'أصبتُ الكلَّ' }).click();
+    await page.waitForTimeout(250);
+    if (!(await has('١٠٠٪'))) errors.push('تصحيح: «أصبتُ الكلَّ» لم يُبلِغ مئةً في المائة');
+  }
 }
 
 /* ── الاختبارُ بمُهلة ───────────────────────────────────────────────── */

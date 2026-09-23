@@ -17,7 +17,24 @@ export async function current() {
   try {
     if (!globalThis.caches) return null;
     const keys = await caches.keys();
-    return keys.find((k) => k.startsWith('awqaf-prep-')) || null;
+    /*
+     * ومخزنُ الوسائطِ ليس نسخةً.
+     *
+     * كان الشرطُ `startsWith('awqaf-prep-')` — و`awqaf-prep-media` يبدأ بها
+     * أيضاً. وترتيبُ `caches.keys()` ترتيبُ الإنشاء: فمن فتحَ صفحةَ كتابٍ
+     * (فأُنشئ `MEDIA`) ثمّ ضغطَ «جدِّد التطبيق الآن» — وهو يمحو الهيكلَ ويُبقي
+     * الوسائطَ — صار `MEDIA` أوّلَ المفاتيح. فيُعرَض للطالب تحت «نسخة التطبيق»:
+     * `awqaf-prep-media` — **ثمّ لا يتبدّل مع أيِّ نشرٍ أبداً**، فيُقرَأ «لم يصل
+     * التحديث» على الدوام.
+     *
+     * وهذه البطاقةُ إنّما وُضِعت لأنّ الشكوى تكرّرت: يُنشَر إصلاحٌ ولا يظهر،
+     * ولا يُعرَف أالنشرُ تأخّر أم الجهازُ بقي على القديم. فصارت هي نفسُها
+     * تكذب الجواب.
+     *
+     * فيُطلَب شكلُ رقمِ النسخةِ صريحاً (`awqaf-prep-v٣٦`) لا بادئتُه، كما
+     * استُثنِي `MEDIA` صراحةً في `refresh` أدناه.
+     */
+    return keys.find((k) => /^awqaf-prep-v\d+$/.test(k)) || null;
   } catch {
     return null;
   }

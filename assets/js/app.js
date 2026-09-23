@@ -51,7 +51,8 @@ store.applyTextScale();
 audio.sweep();
 
 // وضع المطوّر: ?dev=1 يُظهر شارة «لم يُقابَل» على الأسئلة التي لم تُقابَل حرفياً
-// على الكتاب، و?dev=0 يُطفئها. لا يراها الطالب.
+// على الكتاب، و?dev=0 يُطفئها. والشارةُ لا تظهر إلا لمن دخلَ بصفةِ المالك —
+// فالمَسلَكُ مفتوحٌ للجميع والشارةُ ليست كذلك (انظر `devBadge` في `ui.js`).
 const devParam = new URLSearchParams(location.search).get('dev');
 if (devParam !== null) setDevMode(devParam === '1');
 

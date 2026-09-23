@@ -16,6 +16,8 @@
  *
  *     node tools/serve.js &        # ثمّ
  *     node tools/فحص_الوصول.mjs
+ *
+ * ويُبدَّل العنوانُ بـ`ESTIDAD_BASE` إن كان الخادمُ على غيرِ ٣٠٠٠.
  */
 
 import { execSync } from 'node:child_process';
@@ -23,7 +25,9 @@ const root = execSync('npm root -g', { encoding: 'utf8' }).trim();
 const pw = await import(`${root}/playwright/index.js`);
 const chromium = pw.chromium || pw.default.chromium;
 
-const BASE = process.env.ESTIDAD_BASE || 'http://127.0.0.1:8931';
+// والافتراضُ منفذُ `tools/serve.js` نفسُه (٣٠٠٠). وكان ٨٩٣١ فيسقط الفحصُ
+// بـ`ERR_CONNECTION_REFUSED` على من شغَّله كما يأمر الرأسُ أعلاه.
+const BASE = process.env.ESTIDAD_BASE || 'http://127.0.0.1:3000';
 
 let fails = 0;
 const ok = (m) => console.log(`✓ ${m}`);
@@ -51,11 +55,44 @@ await p.evaluate(async () => {
 const SCREENS = ['track', 'home', 'books', 'search', 'recite', 'account', 'flashcards',
   'custom', 'tajweed', 'library', 'mastered', 'admin'];
 
-const goTo = (n) => p.evaluate(async (name) => {
-  const { go } = await import('./assets/js/ui.js');
-  go(name);
-  await new Promise((r) => setTimeout(r, 550));
-}, n);
+/**
+ * ── ولوحةُ المشرفِ تُفتَح فعلاً، وإلا أخفقَ الفحص ─────────────────────────
+ *
+ * كانت `admin` في القائمةِ ويُقال في ثلاثةِ مواضعَ «الشاشاتُ الاثنتا عشرة» —
+ * وهي لا تُفتَح البتّة: `adminScreen` تبدأ بـ`if (!owner.isOwner()) go('signin')`،
+ * فيُقاس `signin` ويُنسَب القياسُ إلى اللوحة. وزُرِعت في اللوحةِ ثلاثُ مخالفاتٍ
+ * متعمَّدةٍ (تباينُ ١:١، وزرٌّ ١٠×١٠، وأرقامٌ لاتينيّةٌ في نصٍّ عربيّ) فمرَّ
+ * الفحصُ **بصفرِ إخفاق** — وهو «تحقُّقٌ يُخطَّى في صمتٍ فلا يُخفِق أبداً».
+ *
+ * فيُسجَّل الدخولُ كما في `فحص_الشاشات.mjs`، ويُوضَع حارسٌ كحارسِه: إن رُدَّت
+ * الشاشةُ إلى الدخولِ أخفقَ الفحصُ صريحاً ولم يمضِ.
+ */
+const signedIn = await p.evaluate(async () => {
+  const src = await fetch('/assets/js/owner.js').then((r) => r.text());
+  const sha = /export const PASS_SHA = '([0-9a-f]{64})'/.exec(src)?.[1];
+  const key = /const KEY = '([^']+)'/.exec(src)?.[1];
+  if (!sha || !key) return false;
+  localStorage.setItem(key, sha);
+  return true;
+});
+if (!signedIn) bad('تعذّر الدخولُ بصفةِ المالك — لن تُفحَص لوحةُ المشرف');
+await p.reload({ waitUntil: 'load' });
+await p.waitForTimeout(3000);
+
+const OWNED = new Set(['admin']);
+
+const goTo = async (n) => {
+  await p.evaluate(async (name) => {
+    const { go } = await import('./assets/js/ui.js');
+    go(name);
+    await new Promise((r) => setTimeout(r, 550));
+  }, n);
+  if (!OWNED.has(n)) return;
+  // الحارس: شاشةُ الدخولِ لها عنوانُها، فيُعرَف أنّ اللوحةَ لم تُرسَم.
+  const fellBack = await p.evaluate(() => /هذا البابُ لصاحب التطبيق|دخول المشرف/
+    .test(document.getElementById('screen').innerText));
+  if (fellBack) bad(`لم تُفتَح «${n}» — رُدَّت إلى شاشةِ الدخول، فما بعدَها ليس قياساً لها`);
+};
 
 console.log('\nتباينُ النصّ (٤٫٥:١)');
 

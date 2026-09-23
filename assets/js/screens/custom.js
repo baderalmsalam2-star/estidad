@@ -57,7 +57,26 @@ export default function customScreen() {
 
   const wrap = el('div', { style: { display: 'flex', flexDirection: 'column', flex: '1', minHeight: '0' } });
 
-  const paint = () => {
+  /**
+   * ── التركيزُ يبقى على الزرِّ المضغوطِ بعد إعادةِ الرسم ────────────────────
+   *
+   * `paint()` تُعيد بناءَ الشجرةِ كلِّها، ومنها الزرُّ المضغوطُ نفسُه. فكان
+   * التركيزُ يسقط إلى `<main id="screen">`، ويلزم **١٦ ضغطةَ Tab** للرجوعِ إلى
+   * البابِ الذي يليه. والاختيارُ ههنا متعدِّدٌ بقصد — تسعةٌ وثمانون باباً تُضَمُّ
+   * بالضغط — فاختيارُ خمسةِ أبوابٍ بلوحةِ المفاتيحِ ثمانون ضغطة.
+   *
+   * فيُحفَظ `data-key` قبل الرسمِ ويُرَدُّ التركيزُ إلى صاحبِه بعدَه. و`focus`
+   * بـ`preventScroll` كما في سائرِ المشروع، فلا تقفز الصفحةُ مع كلِّ ضغطة.
+   */
+  const keepFocus = (draw) => {
+    const key = document.activeElement?.getAttribute?.('data-key') || null;
+    draw();
+    if (!key) return;
+    const back = wrap.querySelector(`[data-key="${CSS.escape(key)}"]`);
+    if (back) back.focus({ preventScroll: true });
+  };
+
+  const paint = () => keepFocus(() => {
     syncTopics();
     const only = onlySubject();
     const topics = only
@@ -74,7 +93,7 @@ export default function customScreen() {
 
       el('div', { style: { flex: '1', minHeight: '0', overflowY: 'auto', padding: '18px 24px 0', display: 'flex', flexDirection: 'column', gap: '22px' } }, [
         group('العلوم', el('div', { role: 'group', 'aria-label': 'العلوم', style: { display: 'flex', flexWrap: 'wrap', gap: '8px' } },
-          subjects.map((s) => toggle(s.subject, `${s.subject} — ${ar(s.total)}`, picked.has(s.subject), () => {
+          subjects.map((s) => toggle(`s:${s.subject}`, `${s.subject} — ${ar(s.total)}`, picked.has(s.subject), () => {
             if (picked.has(s.subject)) picked.delete(s.subject); else picked.add(s.subject);
             if (!picked.size) picked.add(s.subject);
             paint();
@@ -90,14 +109,14 @@ export default function customScreen() {
             ]),
 
         group('عدد الأسئلة', el('div', { role: 'group', 'aria-label': 'عدد الأسئلة', style: { display: 'flex', gap: '8px' } },
-          COUNTS.map((c) => toggle(c, ar(c), c === count, () => { count = c; paint(); })))),
+          COUNTS.map((c) => toggle(`n:${c}`, ar(c), c === count, () => { count = c; paint(); })))),
 
         group('الصعوبة', el('div', { role: 'group', 'aria-label': 'الصعوبة', style: { display: 'flex', gap: '8px' } },
           LEVELS.map((l) => {
             // عددُ كلِّ صعوبةٍ يُحسَب على الأبوابِ المختارةِ أيضاً، وإلا وعد
             // الزرُّ بأسئلةٍ من أبوابٍ استبعدها الطالبُ.
             const n = data.countCustom(track, { ...query, difficulty: l.v });
-            return toggle(l.label, `${l.label} — ${ar(n)}`, l.v === difficulty,
+            return toggle(`d:${l.v}`, `${l.label} — ${ar(n)}`, l.v === difficulty,
               () => { difficulty = l.v; paint(); });
           }))),
 
@@ -117,7 +136,7 @@ export default function customScreen() {
           }),
         }, available ? `ابدأ — ${ar(Math.min(count, available))} سؤالاً` : 'لا أسئلة بهذه الشروط')),
     );
-  };
+  });
 
   /**
    * قائمةُ الأبواب — مع مُرشِّحٍ إذا كثُرت.
@@ -158,7 +177,7 @@ export default function customScreen() {
       : all;
 
     topicsBody.replaceChildren(...(shown.length
-      ? shown.map(([t, n]) => toggle(t, `${t} — ${ar(n)}`, chosen.has(t), () => {
+      ? shown.map(([t, n]) => toggle(`t:${t}`, `${t} — ${ar(n)}`, chosen.has(t), () => {
           if (chosen.has(t)) chosen.delete(t); else chosen.add(t);
           paint();
         }))
@@ -190,9 +209,15 @@ export default function customScreen() {
 const group = (title, body) =>
   el('div.stack', [el('span.section-title', title), body]);
 
+/**
+ * و`key` تُكتَب `data-key` ليُعرَف الزرُّ بعد إعادةِ الرسم — انظر `keepFocus`.
+ * وهي مُنَسَّقةٌ ببادئةٍ عند المُنادي (`s:` للعلوم، `t:` للأبواب…) لأنّ الأسماءَ
+ * تتكرّر بين المجموعات.
+ */
 function toggle(key, label, on, onclick) {
   return el('button', {
     onclick,
+    'data-key': key,
     'aria-pressed': on,
     style: {
       font: 'inherit', fontSize: '13.5px', cursor: 'pointer', borderRadius: 'var(--r-chip)',
